@@ -11,13 +11,17 @@ const PROFILES = [
 ];
 
 const state = { creators: {}, updated: null, error: null };
-const api = id => `https://api.socialcounts.org/youtube-live-subscriber-count/${encodeURIComponent(id)}`;
 
-// Realistic browser headers to prevent blocks, rate-limiting, and 403 errors
+// Mixerno.space API endpoint with proper referrer requirement
+const api = id => `https://mixerno.space/api/youtube-channel-counter/user/${encodeURIComponent(id)}`;
+
+// Real browser headers including Referer to prevent blocks and 403 errors on FadeHost / Cloud hosting
 const BROWSER_HEADERS = {
  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
  'Accept': 'application/json, text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
  'Accept-Language': 'en-US,en;q=0.9',
+ 'Referer': 'https://mixerno.space/',
+ 'Origin': 'https://mixerno.space',
  'Cache-Control': 'no-cache',
  'Pragma': 'no-cache',
  'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
@@ -25,7 +29,7 @@ const BROWSER_HEADERS = {
  'Sec-Ch-Ua-Platform': '"Windows"',
  'Sec-Fetch-Dest': 'empty',
  'Sec-Fetch-Mode': 'cors',
- 'Sec-Fetch-Site': 'same-origin'
+ 'Sec-Fetch-Site': 'cross-site'
 };
 
 async function stats(p) {
@@ -37,18 +41,22 @@ async function stats(p) {
    console.error(`[${p.name}] HTTP ${r.status}`, {
     server: r.headers.get('server'),
     contentType: r.headers.get('content-type'),
-    cfMitigated: r.headers.get('cf-mitigated'),
     response: body.slice(0, 300)
    });
    throw Error(`HTTP ${r.status}`);
   }
 
   const data = JSON.parse(body);
-  if (!data.counters) throw Error('Invalid counters');
+  
+  // Mixerno structure mapping (extracts counts array or object data safely)
+  const counterVal = data.counts?.[0]?.count ?? data.subscriberCount ?? data.counters;
+  if (!counterVal) throw Error('Invalid Mixerno response format');
 
+  // Normalize structure for your frontend compatibility
   state.creators[p.key] = {
    ...state.creators[p.key],
-   ...data,
+   counters: data.counts || data.counters,
+   subscriberCount: counterVal,
    name: p.name,
    id: p.id,
    error: null
@@ -72,7 +80,7 @@ async function avatar(p) {
 
   if (!url) throw Error('Avatar not found');
 
-  // Properly unescape HTML entities in URLs (e.g., &amp; -> &)
+  // Properly unescape HTML entity characters like &amp; to &
   url = url.replace(/&amp;/g, '&');
 
   state.creators[p.key] = { ...state.creators[p.key], avatar: url };
@@ -130,7 +138,6 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, '0.0.0.0', async () => {
   console.log(`Server running on port ${PORT}`);
   await refresh();
-  // Fetch initial avatars right away on startup so they aren't missing
   await Promise.all(PROFILES.map(avatar));
   
   setInterval(refresh, 5000);
