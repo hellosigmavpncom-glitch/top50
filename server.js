@@ -11,13 +11,35 @@ const api=id=>`https://api.socialcounts.org/youtube-live-subscriber-count/${enco
 
 async function stats(p){
  try{
-  const r=await fetch(api(p.id),{headers:{'Cache-Control':'no-cache'}});
-  if(!r.ok)throw Error(`HTTP ${r.status}`);
+  const r=await fetch(api(p.id),{
+   headers:{
+    'Cache-Control':'no-cache',
+    'Accept':'application/json'
+   }
+  });
 
-  const data=await r.json();
+  const body=await r.text();
+
+  if(!r.ok){
+   console.error(`[${p.name}] HTTP ${r.status}`,{
+    server:r.headers.get('server'),
+    contentType:r.headers.get('content-type'),
+    cfMitigated:r.headers.get('cf-mitigated'),
+    response:body.slice(0,300)
+   });
+   throw Error(`HTTP ${r.status}`);
+  }
+
+  const data=JSON.parse(body);
   if(!data.counters)throw Error('Invalid counters');
 
-  state.creators[p.key]={...state.creators[p.key],...data,name:p.name,id:p.id,error:null};
+  state.creators[p.key]={
+   ...state.creators[p.key],
+   ...data,
+   name:p.name,
+   id:p.id,
+   error:null
+  };
   return true;
  }catch(e){
   console.error(`[${p.name}]`,e.message);
@@ -25,6 +47,7 @@ async function stats(p){
   return false;
  }
 }
+
 
 async function avatar(p){
  try{
