@@ -1,0 +1,123 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Rise of Zhong | Live Battle</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/themes/odometer-theme-default.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
+<style>
+*{box-sizing:border-box}:root{color-scheme:dark;font-family:Inter,Arial,sans-serif}body{margin:0;background:#080b12;color:white;height:100vh;height:100dvh;overflow:hidden}
+.app{width:min(1350px,97%);height:100%;margin:auto;display:grid;grid-template-rows:34px minmax(0,1.1fr) auto minmax(0,.9fr) 16px;gap:7px;padding:8px 0}
+header,footer{display:flex;align-items:center;justify-content:space-between;min-width:0}.brand{font-size:clamp(16px,2vw,23px);font-weight:950;letter-spacing:1px}.live{display:flex;align-items:center;gap:7px;font-size:10px;color:#ff5363;font-weight:900}.dot{width:8px;height:8px;background:#ff4353;border-radius:50%;box-shadow:0 0 12px #ff4353}
+.battle,.details{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;min-height:0}
+.player{--accent:#7187ff;background:linear-gradient(145deg,#151e30,#0e1320);border:1px solid color-mix(in srgb,var(--accent),transparent 65%);border-radius:17px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:0;padding:10px;overflow:hidden}
+.identity{display:flex;align-items:center;justify-content:center;gap:13px;margin-bottom:9px;max-width:100%}.avatar{width:clamp(65px,11vh,100px);height:clamp(65px,11vh,100px);flex-shrink:0;border-radius:50%;object-fit:cover;border:4px solid var(--accent);background:#20283a;box-shadow:0 5px 25px #0008}
+.name{font-size:clamp(18px,2.5vw,29px);font-weight:950;white-space:nowrap}.handle{font-size:11px;color:#8995ac;margin-top:4px}.sub-label{font-size:clamp(10px,1.3vw,14px);font-weight:850;color:#a8b4ca;letter-spacing:2px}
+.sub-count{font-size:clamp(30px,5vw,72px);font-weight:950;line-height:1.2;letter-spacing:-2px;white-space:nowrap;font-variant-numeric:tabular-nums;max-width:100%}
+.goal{margin-top:8px;background:#ffffff0b;border:1px solid #ffffff16;border-radius:9px;padding:6px 15px;text-align:center;width:min(100%,280px)}.goal-label{font-size:9px;color:#8995ac;font-weight:850;letter-spacing:1.5px}.goal-value{font-size:clamp(17px,2.1vw,26px);font-weight:950;margin-top:3px}
+.gap-box{background:linear-gradient(100deg,#171d30,#251a30);border:1px solid #393752;border-radius:15px;padding:7px 10px;text-align:center;min-width:0}.gap-label{font-size:clamp(10px,1.4vw,14px);font-weight:900;color:#aab4ca;letter-spacing:2px}.gap-value{font-size:clamp(30px,4.5vw,58px);font-weight:950;letter-spacing:-2px;line-height:1.12;white-space:nowrap;font-variant-numeric:tabular-nums}.leader{font-size:10px;color:#aab4ca;font-weight:800;margin-top:2px}
+.detail-panel{background:#101725;border:1px solid #253047;border-radius:15px;padding:11px;min-width:0;min-height:0;overflow:hidden;contain:layout paint;display:flex;flex-direction:column}
+.detail-title{font-size:clamp(13px,1.4vw,17px);font-weight:950;letter-spacing:1px;color:#a5b1c8;margin-bottom:9px;flex-shrink:0}
+.detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-content:start;min-height:0}
+.stat{background:#171f2e;border-radius:10px;padding:10px 5px;text-align:center;min-width:0;overflow:hidden}
+.stat-label{font-size:clamp(9px,1vw,12px);color:#a0acc3;font-weight:850;overflow-wrap:anywhere;line-height:1.2}
+.stat-value{font-size:clamp(13px,1.7vw,23px);font-weight:950;white-space:nowrap;font-variant-numeric:tabular-nums;margin-top:5px}
+footer{font-size:9px;color:#68758d;padding:0 3px;white-space:nowrap}.odometer{font-family:inherit}
+@media(max-width:650px){body{height:auto;min-height:100dvh;overflow:auto}.app{height:auto;min-height:100dvh;width:96%;grid-template-rows:auto;gap:6px}.battle,.details{grid-template-columns:1fr;gap:6px}.player{min-height:190px;padding:9px}.avatar{width:65px;height:65px}.name{font-size:20px}.sub-count{font-size:clamp(30px,8vw,45px)}.detail-panel{padding:10px}.detail-grid{gap:7px}.stat{padding:10px 5px}footer{font-size:8px;min-height:14px}}
+@media(max-height:700px) and (min-width:651px){.app{gap:4px;padding:5px 0}.avatar{width:clamp(52px,9vh,72px);height:clamp(52px,9vh,72px)}.identity{margin-bottom:5px}.player{padding:5px}.goal{margin-top:5px;padding:4px}.gap-box{padding:4px}.detail-panel{padding:8px}.detail-title{margin-bottom:6px}.detail-grid{gap:6px}.stat{padding:7px 4px}.stat-value{margin-top:4px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header><div class="brand">THE RISE OF ZHONG</div><div class="live"><span class="dot"></span> LIVE BATTLE</div></header>
+<section id="battle" class="battle"></section>
+<section class="gap-box"><div id="gapLabel" class="gap-label">SUBSCRIBER GAP</div><div id="gap" class="gap-value odometer">0</div><div id="leader" class="leader">WAITING FOR DATA</div></section>
+<section id="details" class="details"></section>
+<footer><span id="status">CONNECTING...</span><span id="updated">WAITING FOR DATA</span></footer>
+</div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id),odos=new Map(),last=new Map(),pending=new Map();
+const labels={estimation:'ESTIMATED',api:'API'},fields={subscriberCount:'SUBSCRIBERS',viewCount:'VIEWS',videoCount:'VIDEOS'};
+let profiles=[],signature='',busy=false,frame=0,timer=null;
+const el=(tag,cls='',text,id='')=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;if(id)n.id=id;return n};
+function queue(id,value){
+ if(!Number.isFinite(value)||last.get(id)===value)return;
+ last.set(id,value);pending.set(id,value);if(frame)return;
+ frame=requestAnimationFrame(()=>{frame=0;for(const [key,n] of pending){let o=odos.get(key);if(!o){const target=$(key);if(!target)continue;o=new Odometer({el:target,value:0,format:'(,ddd)',duration:450,theme:'default'});odos.set(key,o)}o.update(n)}pending.clear()});
+}
+function card(p){
+ const box=el('article','player');box.id='player-'+p.key;box.style.setProperty('--accent',p.accent||'#7187ff');
+ const identity=el('div','identity'),avatar=el('img','avatar',undefined,p.key+'Avatar'),info=el('div');
+ avatar.alt=p.name;avatar.referrerPolicy='no-referrer';avatar.loading='eager';avatar.decoding='async';
+ info.append(el('div','name',p.name.toUpperCase()),el('div','handle',p.handle||''));identity.append(avatar,info);
+ const goal=el('div','goal');goal.append(el('div','goal-label','NEXT SUBSCRIBER GOAL'),el('div','goal-value odometer','0',p.key+'Goal'));
+ box.append(identity,el('div','sub-label','SUBSCRIBERS'),el('div','sub-count odometer','0',p.key+'Subs'),goal);return box;
+}
+function statsPanel(p){
+ const panel=el('article','detail-panel');panel.append(el('div','detail-title',p.name.toUpperCase()+' · CHANNEL STATISTICS'),el('div','detail-grid','',p.key+'Stats'));return panel;
+}
+function build(list){
+ const next=JSON.stringify(list.map(({key,name,handle,accent})=>({key,name,handle,accent})));if(signature===next)return;
+ signature=next;profiles=list;$('battle').replaceChildren(...list.map(card));$('details').replaceChildren(...list.map(statsPanel));odos.clear();last.clear();pending.clear();
+}
+function avatar(p,c){
+ const img=$(p.key+'Avatar'),url=c.avatar;
+ if(!img||!url||img.dataset.url===url)return;
+ img.dataset.url=url;img.dataset.attempt='0';img.onerror=null;
+ const base=url.replace(/=s\d+[^/]*$/,'');
+ const candidates=[url,base+'=s256-c-k-c0x00ffffff-no-rj',base+'=s100-c-k-c0x00ffffff-no-rj',base+'=s256',base+'=s100'];
+ const unique=[...new Set(candidates)];
+ img.onerror=()=>{
+  const next=Number(img.dataset.attempt||0)+1;
+  img.dataset.attempt=String(next);
+  if(next<unique.length)img.src=unique[next];
+  else console.error(`[${p.name}] Avatar failed to load`,url);
+ };
+ img.src=unique[0];
+}
+function renderStats(p,counters){
+ const grid=$(p.key+'Stats'),items=[];
+ for(const [group,data] of Object.entries(counters||{})){
+  if(!data||typeof data!=='object'||Array.isArray(data))continue;
+  for(const [field,value] of Object.entries(data))if(typeof value==='number'&&Number.isFinite(value))items.push({id:p.key+'-'+group+'-'+field,label:(labels[group]||group)+' · '+(fields[field]||field),value});
+ }
+ const sig=items.map(x=>x.id).join('|');
+ if(grid.dataset.signature!==sig){
+  grid.dataset.signature=sig;grid.replaceChildren();
+  for(const item of items){const box=el('div','stat');box.append(el('div','stat-label',item.label),el('div','stat-value odometer','0',item.id));grid.append(box);odos.delete(item.id);last.delete(item.id)}
+ }
+ items.forEach(x=>queue(x.id,x.value));
+}
+function updateGap(data){
+ const [a,b]=profiles;if(!a||!b)return;
+ const x=data.creators?.[a.key]?.counters?.estimation?.subscriberCount,y=data.creators?.[b.key]?.counters?.estimation?.subscriberCount;
+ if(!Number.isFinite(x)||!Number.isFinite(y))return;
+ $('gapLabel').textContent=`SUBSCRIBER GAP · ${a.name.toUpperCase()} VS ${b.name.toUpperCase()}`;
+ queue('gap',Math.abs(x-y));$('leader').textContent=x===y?'IT IS A TIE':x>y?a.name.toUpperCase()+' IS AHEAD':b.name.toUpperCase()+' IS AHEAD';
+}
+async function update(){
+ if(busy||document.hidden)return;busy=true;
+ try{
+  const r=await fetch('/api/stats',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);
+  const data=await r.json();if(!data.profiles?.length)throw Error('No profiles configured');build(data.profiles);
+  for(const p of profiles){
+   const c=data.creators?.[p.key];if(!c?.counters)continue;avatar(p,c);
+   const subs=c.counters.estimation?.subscriberCount;
+   if(Number.isFinite(subs)){queue(p.key+'Subs',subs);queue(p.key+'Goal',(Math.floor(subs/1e6)+1)*1e6)}
+   renderStats(p,c.counters);
+  }
+  updateGap(data);
+  const status=data.error?'PARTIAL DATA · RETRYING':'ALL CHANNELS CONNECTED',updated=data.updated?'UPDATED '+new Date(data.updated).toLocaleTimeString():'WAITING';
+  if($('status').textContent!==status)$('status').textContent=status;
+  if($('updated').textContent!==updated)$('updated').textContent=updated;
+ }catch(e){$('status').textContent='RECONNECTING...';console.error('[Battle]',e.message)}
+ finally{busy=false}
+}
+function start(){update();if(!timer)timer=setInterval(update,5000)}
+function stop(){clearInterval(timer);timer=null}
+document.addEventListener('visibilitychange',()=>document.hidden?stop():start());start();
+</script>
+</body>
+</html>
