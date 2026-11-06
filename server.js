@@ -89,8 +89,8 @@ const server=http.createServer((req,res)=>{
  res.end('Not found');
 });
 
-server.listen(PORT,'127.0.0.1',()=>{
- console.log(`Local server: http://127.0.0.1:${PORT} · MIXERNO`);
- refresh();
- setInterval(refresh,5000);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT} · MIXERNO`);
+  refresh();
+  setInterval(refresh, 5000);
 });
