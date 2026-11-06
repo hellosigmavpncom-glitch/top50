@@ -1,290 +1,257 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>The Rise of Zhong | Live Battle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/themes/odometer-theme-default.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
 <style>
-*{box-sizing:border-box}
-:root{color-scheme:dark;font-family:Inter,Arial,sans-serif}
-body{margin:0;background:#080b12;color:white;height:100vh;height:100dvh;overflow:hidden}
-.app{width:min(1350px,97%);height:100%;margin:auto;display:grid;grid-template-rows:34px minmax(0,1.1fr) auto minmax(0,.9fr) 16px;gap:7px;padding:8px 0}
-header,footer{display:flex;align-items:center;justify-content:space-between;min-width:0}
-.brand{font-size:clamp(16px,2vw,23px);font-weight:950;letter-spacing:1px}
-.live{display:flex;align-items:center;gap:7px;font-size:10px;color:#ff5363;font-weight:900}
-.dot{width:8px;height:8px;background:#ff4353;border-radius:50%;box-shadow:0 0 12px #ff4353}
-.battle,.details{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;min-height:0}
-.player{--accent:#7187ff;background:linear-gradient(145deg,#151e30,#0e1320);border:1px solid color-mix(in srgb,var(--accent),transparent 65%);border-radius:17px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:0;padding:10px;overflow:hidden}
-.identity{display:flex;align-items:center;justify-content:center;gap:13px;margin-bottom:7px;max-width:100%}
-.avatar{width:clamp(88px,14vh,120px);height:clamp(88px,14vh,120px);flex-shrink:0;border-radius:50%;object-fit:cover;border:4px solid var(--accent);background:#20283a;box-shadow:0 5px 25px #0009}
-.name{font-size:clamp(18px,2.5vw,29px);font-weight:950;white-space:nowrap}
-.handle{font-size:11px;color:#8995ac;margin-top:4px}
-.sub-label{font-size:clamp(10px,1.3vw,14px);font-weight:850;color:#a8b4ca;letter-spacing:2px}
-.sub-count{font-size:clamp(30px,5vw,72px);font-weight:950;line-height:1.2;letter-spacing:-2px;white-space:nowrap;font-variant-numeric:tabular-nums;max-width:100%}
-.goal{margin-top:8px;background:#ffffff0b;border:1px solid #ffffff16;border-radius:9px;padding:6px 15px;text-align:center;width:min(100%,280px)}
-.goal-label{font-size:9px;color:#8995ac;font-weight:850;letter-spacing:1.5px}
-.goal-value{font-size:clamp(17px,2.1vw,26px);font-weight:950;margin-top:3px}
-.gap-box{background:linear-gradient(100deg,#171d30,#251a30);border:1px solid #393752;border-radius:15px;padding:7px 10px;text-align:center;min-width:0}
-.gap-label{font-size:clamp(10px,1.4vw,14px);font-weight:900;color:#aab4ca;letter-spacing:2px}
-.gap-value{font-size:clamp(30px,4.5vw,58px);font-weight:950;letter-spacing:-2px;line-height:1.12;white-space:nowrap;font-variant-numeric:tabular-nums}
-.leader{font-size:10px;color:#aab4ca;font-weight:800;margin-top:2px}
-.detail-panel{background:#101725;border:1px solid #253047;border-radius:15px;padding:11px;min-width:0;min-height:0;overflow:hidden;contain:layout paint;display:flex;flex-direction:column}
-.detail-title{font-size:clamp(13px,1.4vw,17px);font-weight:950;letter-spacing:1px;color:#a5b1c8;margin-bottom:9px;flex-shrink:0}
-.detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-content:start;min-height:0}
-.stat{background:#171f2e;border-radius:10px;padding:10px 5px;text-align:center;min-width:0;overflow:hidden}
-.stat-label{font-size:clamp(9px,1vw,12px);color:#a0acc3;font-weight:850;overflow-wrap:anywhere;line-height:1.2}
-.stat-value{font-size:clamp(13px,1.7vw,23px);font-weight:950;white-space:nowrap;font-variant-numeric:tabular-nums;margin-top:5px}
-footer{font-size:9px;color:#68758d;padding:0 3px;white-space:nowrap}
-.odometer{font-family:inherit}
-@media(max-width:650px){
- body{height:auto;min-height:100dvh;overflow:auto}
- .app{height:auto;min-height:100dvh;width:96%;grid-template-rows:auto;gap:6px}
- .battle,.details{grid-template-columns:1fr;gap:6px}
- .player{min-height:190px;padding:9px}
- .avatar{width:78px;height:78px}
- .name{font-size:20px}
- .sub-count{font-size:clamp(30px,8vw,45px)}
- .detail-panel{padding:10px}
- .detail-grid{gap:7px}
- .stat{padding:10px 5px}
- footer{font-size:8px;min-height:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#080a12;--panel:#111522;--border:#293149;--muted:#a1abc5;--text:#f5f6ff}
+body{background:radial-gradient(ellipse at 50% 0,#202847 0,transparent 65%),var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif;font-weight:700;min-height:100vh;padding:12px;overflow:hidden}
+main{width:100%;max-width:1800px;height:calc(100svh - 24px);margin:auto;display:grid;grid-template-rows:40px minmax(220px,1fr) 65px minmax(230px,1fr) 15px;gap:8px;min-width:0}
+header,.panel,.player,.milestone,.gapbox{background:var(--panel);border:1px solid var(--border);border-radius:16px;min-width:0}
+header{display:flex;align-items:center;justify-content:space-between;padding:0 22px;overflow:hidden}
+h1{font-size:22px;font-weight:900;letter-spacing:.3px;white-space:nowrap}
+h1 span{color:#8193ff}
+.status{font-size:12px;font-weight:800;color:#64f2a5;white-space:nowrap}
+.status:before{content:"";display:inline-block;width:8px;height:8px;background:#53e69a;border-radius:50%;margin-right:8px;box-shadow:0 0 12px #53e69a}
+.players,.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;min-height:0;min-width:0}
+.creator{display:grid;grid-template-columns:minmax(0,1fr) minmax(250px,.95fr);gap:12px;min-width:0;min-height:0}
+.player{--accent:#7187ff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px;border-color:color-mix(in srgb,var(--accent),transparent 45%);box-shadow:0 0 25px color-mix(in srgb,var(--accent),transparent 91%)}
+.player.fede,.milestone.fede{--accent:#bd82ff}
+.avatar{width:clamp(125px,19vh,180px);height:clamp(125px,19vh,180px);border-radius:50%;object-fit:cover;border:5px solid var(--accent);box-shadow:0 0 27px color-mix(in srgb,var(--accent),transparent 35%);background:#20263b;flex-shrink:0}
+.name{font-size:27px;font-weight:900;margin-top:8px;letter-spacing:-.7px}
+.handle{font-size:15px;color:#aeb9d6;margin-top:3px}
+.label{font-size:13px;letter-spacing:2.5px;color:#aab4d0;margin-top:11px}
+.count{font-size:clamp(32px,3.3vw,48px);font-weight:900;letter-spacing:-2px;margin:4px 0;color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
+.milestone{--accent:#7187ff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:25px 16px;border-color:color-mix(in srgb,var(--accent),transparent 40%);min-width:0;overflow:visible;box-shadow:0 0 25px color-mix(in srgb,var(--accent),transparent 90%)}
+.mtitle{font-size:16px;font-weight:900;letter-spacing:1.7px;color:#c0c9e2;line-height:1.6}
+.mtarget{font-size:clamp(30px,3vw,46px);font-weight:900;color:var(--accent);line-height:1.4;white-space:nowrap;margin-top:16px}
+.mleft{font-size:18px;font-weight:800;color:#e1e6f7;margin-top:14px;line-height:1.7;overflow:visible}
+.mleft .odometer{display:inline-block;vertical-align:middle;line-height:1.7;overflow:visible}
+.gapbox{display:flex;align-items:center;justify-content:center;text-align:center;padding:7px}
+.gaptitle{font-size:12px;letter-spacing:2.5px;color:#aab4d0}
+.gap{font-size:36px;font-weight:900;letter-spacing:-1px;color:#fff;margin-top:2px}
+.leader{font-size:15px;color:#92a5ff;margin-top:2px}
+.statcard{padding:20px 22px;min-width:0;min-height:0;display:flex;flex-direction:column}
+.stathead{font-size:21px;font-weight:900;margin-bottom:16px;color:#e5e9ff;white-space:nowrap}
+.stathead span{font-size:13px;color:#9da9c8;margin-left:7px;letter-spacing:.5px}
+.statgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:12px 22px;min-width:0;flex:1}
+.statitem{min-width:0;min-height:0;overflow:visible}
+.statlabel{font-size:15px;color:#aab6d2;margin-bottom:8px;line-height:1.3}
+.statvalue{display:block;width:100%;font-size:34px;font-weight:900;letter-spacing:-1.4px;white-space:nowrap;font-variant-numeric:tabular-nums;min-width:0;line-height:1.2;overflow:visible}
+.odometer{font-family:Inter,Arial,sans-serif!important;font-weight:inherit!important}
+.odometer.odometer-auto-theme .odometer-digit,.odometer.odometer-theme-default .odometer-digit{padding:0 .03em}
+footer{display:flex;align-items:center;justify-content:space-between;padding:0 5px;color:#929cb6;font-size:11px;min-width:0;overflow:hidden;white-space:nowrap}
+
+@media(max-height:720px) and (min-width:701px){
+main{grid-template-rows:38px minmax(215px,1fr) 60px minmax(225px,1fr) 14px;gap:7px}
+.avatar{width:clamp(110px,16vh,145px);height:clamp(110px,16vh,145px)}
+.name{font-size:23px;margin-top:5px}
+.count{font-size:clamp(29px,3vw,38px)}
+.label{margin-top:7px}
+.milestone{padding:18px 12px}
+.mtitle{font-size:14px}
+.mtarget{font-size:clamp(28px,2.8vw,40px);margin-top:12px}
+.mleft{font-size:16px;margin-top:10px}
+.statcard{padding:14px 18px}
+.stathead{font-size:19px;margin-bottom:12px}
+.statgrid{gap:10px 17px}
+.statlabel{font-size:13px;margin-bottom:5px}
 }
-@media(max-height:700px) and (min-width:651px){
- .app{gap:4px;padding:5px 0}
- .avatar{width:clamp(76px,12vh,94px);height:clamp(76px,12vh,94px)}
- .identity{margin-bottom:4px}
- .player{padding:5px}
- .goal{margin-top:5px;padding:4px}
- .gap-box{padding:4px}
- .detail-panel{padding:8px}
- .detail-title{margin-bottom:6px}
- .detail-grid{gap:6px}
- .stat{padding:7px 4px}
- .stat-value{margin-top:4px}
+
+@media(max-width:950px) and (min-width:701px){
+.creator{grid-template-columns:minmax(0,1fr) minmax(195px,.9fr);gap:8px}
+.name{font-size:21px}
+.count{font-size:clamp(25px,3vw,36px)}
+.milestone{padding:16px 9px}
+.mtitle{font-size:12px}
+.mtarget{font-size:clamp(25px,2.8vw,35px)}
+.mleft{font-size:14px}
+}
+
+@media(max-width:700px){
+body{overflow:auto;padding:10px}
+main{height:auto;min-height:100vh;grid-template-rows:52px auto 85px auto 20px;gap:12px}
+h1{font-size:16px}
+.players,.stats{grid-template-columns:minmax(0,1fr)}
+.creator{grid-template-columns:minmax(0,1fr) minmax(155px,.8fr);min-height:310px;gap:9px}
+.avatar{width:125px;height:125px}
+.name{font-size:23px}
+.count{font-size:clamp(25px,6vw,38px)}
+.milestone{padding:18px 9px}
+.mtitle{font-size:12px}
+.mtarget{font-size:clamp(24px,5vw,30px);margin-top:13px}
+.mleft{font-size:14px;margin-top:11px}
+.gapbox{min-height:85px}
+.statcard{min-height:270px;padding:17px}
+.statgrid{min-height:205px}
+footer{font-size:10px}
+}
+
+@media(max-width:380px){
+.creator{grid-template-columns:minmax(0,1fr) minmax(130px,.8fr)}
+.avatar{width:105px;height:105px}
+.name{font-size:19px}
+.count{font-size:24px}
+.milestone{padding:14px 6px}
+.mtitle{font-size:10px;letter-spacing:1px}
+.mtarget{font-size:21px;margin-top:10px}
+.mleft{font-size:12px;margin-top:9px}
+.statgrid{gap:12px 7px}
+.statvalue{font-size:18px}
+.statlabel{font-size:11px}
+.stathead{font-size:16px}
 }
 </style>
 </head>
 <body>
-<div class="app">
+<main>
 <header>
- <div class="brand">THE RISE OF ZHONG</div>
- <div class="live"><span class="dot"></span> LIVE BATTLE · MIXERNO</div>
+<h1>THE RISE OF <span>ZHONG</span></h1>
+<div class="status" id="status">CONNECTING</div>
 </header>
-<section id="battle" class="battle"></section>
-<section class="gap-box">
- <div id="gapLabel" class="gap-label">SUBSCRIBER GAP</div>
- <div id="gap" class="gap-value odometer">0</div>
- <div id="leader" class="leader">WAITING FOR DATA</div>
-</section>
-<section id="details" class="details"></section>
-<footer>
- <span id="status">CONNECTING...</span>
- <span id="updated">WAITING FOR DATA</span>
-</footer>
-</div>
-<script>
-'use strict';
-const $=id=>document.getElementById(id),odos=new Map(),last=new Map(),pending=new Map();
-const labels={estimation:'MIXERNO ESTIMATE',api:'MIXERNO API'};
-const fields={subscriberCount:'SUBSCRIBERS',viewCount:'VIEWS',videoCount:'VIDEOS'};
-let profiles=[],signature='',busy=false,frame=0,timer=null;
 
-const el=(tag,cls='',text,id='')=>{
- const n=document.createElement(tag);
- if(cls)n.className=cls;
- if(text!==undefined)n.textContent=text;
- if(id)n.id=id;
- return n;
+<section class="players">
+<div class="creator">
+<article class="player">
+<img class="avatar" id="zhongAvatar" alt="Zhong">
+<div class="name">Zhong</div>
+<div class="handle">@zhong</div>
+<div class="label">SUBSCRIBERS</div>
+<div class="count odometer" id="zhongSubs">0</div>
+</article>
+<article class="milestone">
+<div class="mtitle">ZHONG · NEXT MILESTONE</div>
+<div class="mtarget odometer" id="zGoalTarget">0</div>
+<div class="mleft"><span class="odometer" id="zGoalLeft">0</span><br>subscribers left</div>
+</article>
+</div>
+
+<div class="creator">
+<article class="player fede">
+<img class="avatar" id="fedeAvatar" alt="Fede Vigevani">
+<div class="name">Fede Vigevani</div>
+<div class="handle">@fedevigevani</div>
+<div class="label">SUBSCRIBERS</div>
+<div class="count odometer" id="fedeSubs">0</div>
+</article>
+<article class="milestone fede">
+<div class="mtitle">FEDE · NEXT MILESTONE</div>
+<div class="mtarget odometer" id="fGoalTarget">0</div>
+<div class="mleft"><span class="odometer" id="fGoalLeft">0</span><br>subscribers left</div>
+</article>
+</div>
+</section>
+
+<section class="gapbox">
+<div>
+<div class="gaptitle">LIVE SUBSCRIBER GAP</div>
+<div class="gap odometer" id="gap">0</div>
+<div class="leader" id="leader">Calculating leader...</div>
+</div>
+</section>
+
+<section class="stats">
+<article class="panel statcard">
+<div class="stathead">ZHONG <span>CHANNEL STATISTICS</span></div>
+<div class="statgrid">
+<div class="statitem"><div class="statlabel">Live View Estimate</div><div class="statvalue odometer" id="zViews">0</div></div>
+<div class="statitem"><div class="statlabel">Videos</div><div class="statvalue odometer" id="zVideos">0</div></div>
+<div class="statitem"><div class="statlabel">YouTube API Subs</div><div class="statvalue odometer" id="zApi">0</div></div>
+<div class="statitem"><div class="statlabel">YouTube Total Views</div><div class="statvalue odometer" id="zApiViews">0</div></div>
+<div class="statitem"><div class="statlabel">YouTube API Videos</div><div class="statvalue odometer" id="zApiVideos">0</div></div>
+</div>
+</article>
+
+<article class="panel statcard">
+<div class="stathead">FEDE VIGEVANI <span>CHANNEL STATISTICS</span></div>
+<div class="statgrid">
+<div class="statitem"><div class="statlabel">Live View Estimate</div><div class="statvalue odometer" id="fViews">0</div></div>
+<div class="statitem"><div class="statlabel">Videos</div><div class="statvalue odometer" id="fVideos">0</div></div>
+<div class="statitem"><div class="statlabel">YouTube API Subs</div><div class="statvalue odometer" id="fApi">0</div></div>
+<div class="statitem"><div class="statlabel">YouTube Total Views</div><div class="statvalue odometer" id="fApiViews">0</div></div>
+<div class="statitem"><div class="statlabel">YouTube API Videos</div><div class="statvalue odometer" id="fApiVideos">0</div></div>
+</div>
+</article>
+</section>
+
+<footer>
+<span>THE RISE OF ZHONG · LIVE BATTLE</span>
+<span>AUTO-REFRESH ENABLED</span>
+</footer>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
+<script>
+const $=id=>document.getElementById(id),nums={};
+
+document.querySelectorAll('.odometer').forEach(el=>{
+nums[el.id]=new Odometer({el,value:0,duration:900,format:'(,ddd)',theme:'default'});
+});
+
+function fitStats(){
+document.querySelectorAll('.statvalue').forEach(el=>{
+el.style.fontSize='34px';
+let size=34;
+while(el.scrollWidth>el.clientWidth&&size>17)el.style.fontSize=--size+'px';
+});
+}
+window.addEventListener('resize',fitStats);
+
+const number=(id,n)=>{
+n=Number(n);
+if(Number.isFinite(n))nums[id]?.update(n);
 };
 
-function queue(id,value){
- if(!Number.isFinite(value)||last.get(id)===value)return;
- last.set(id,value);pending.set(id,value);
- if(frame)return;
- frame=requestAnimationFrame(()=>{
-  frame=0;
-  for(const [key,n] of pending){
-   let o=odos.get(key);
-   if(!o){
-    const target=$(key);if(!target)continue;
-    o=new Odometer({el:target,value:0,format:'(,ddd)',duration:450,theme:'default'});
-    odos.set(key,o);
-   }
-   o.update(n);
-  }
-  pending.clear();
- });
+function updatePlayer(key,d){
+const e=d.counters.estimation,a=d.counters.api,p=key==='zhong'?'z':'f';
+number(key+'Subs',e.subscriberCount);
+number(p+'Views',e.viewCount);
+number(p+'Videos',e.videoCount);
+number(p+'Api',a.subscriberCount);
+number(p+'ApiViews',a.viewCount);
+number(p+'ApiVideos',a.videoCount);
+
+const left=Number(d.goal)||0;
+number(p+'GoalTarget',Number(e.subscriberCount)+left);
+number(p+'GoalLeft',left);
+
+const avatar=$(key+'Avatar');
+if(d.avatar&&avatar.getAttribute('src')!==d.avatar)avatar.src=d.avatar;
 }
 
-function card(p){
- const box=el('article','player');
- box.id='player-'+p.key;
- box.style.setProperty('--accent',p.accent||'#7187ff');
+async function refresh(){
+try{
+const r=await fetch('/api/stats',{cache:'no-store'});
+if(!r.ok)throw Error('HTTP '+r.status);
 
- const identity=el('div','identity');
- const avatar=el('img','avatar',undefined,p.key+'Avatar');
- const info=el('div');
+const d=await r.json(),z=d.creators?.zhong,f=d.creators?.fede;
+if(!z||!f)throw Error('Waiting for channel data');
 
- Object.assign(avatar,{
-  alt:p.name,referrerPolicy:'no-referrer',loading:'eager',decoding:'async'
- });
+updatePlayer('zhong',z);
+updatePlayer('fede',f);
+requestAnimationFrame(fitStats);
 
- info.append(el('div','name',p.name.toUpperCase()),el('div','handle',p.handle||''));
- identity.append(avatar,info);
+const zs=Number(z.counters.estimation.subscriberCount);
+const fs=Number(f.counters.estimation.subscriberCount);
 
- const goal=el('div','goal');
- goal.append(
-  el('div','goal-label','NEXT SUBSCRIBER GOAL'),
-  el('div','goal-value odometer','0',p.key+'Goal')
- );
-
- box.append(
-  identity,
-  el('div','sub-label','SUBSCRIBERS'),
-  el('div','sub-count odometer','0',p.key+'Subs'),
-  goal
- );
- return box;
+number('gap',Math.abs(zs-fs));
+$('leader').textContent=zs>fs?'Zhong is ahead':fs>zs?'Fede Vigevani is ahead':'Both creators are tied';
+$('status').textContent=d.error?'LIVE · PARTIAL DATA':'LIVE · CONNECTED';
+$('status').style.color=d.error?'#ffbd75':'#64f2a5';
+}catch(e){
+$('status').textContent='CONNECTION ERROR';
+$('status').style.color='#ff7777';
+console.error('[Dashboard]',e.message);
+}
 }
 
-function statsPanel(p){
- const panel=el('article','detail-panel');
- panel.append(
-  el('div','detail-title',p.name.toUpperCase()+' · MIXERNO STATISTICS'),
-  el('div','detail-grid','',p.key+'Stats')
- );
- return panel;
-}
-
-function build(list){
- const next=JSON.stringify(list.map(({key,name,handle,accent})=>({key,name,handle,accent})));
- if(signature===next)return;
-
- signature=next;profiles=list;
- $('battle').replaceChildren(...list.map(card));
- $('details').replaceChildren(...list.map(statsPanel));
- odos.clear();last.clear();pending.clear();
-}
-
-function avatar(p,c){
- const img=$(p.key+'Avatar'),url=c.avatar;
- if(!img||!url||img.dataset.url===url)return;
-
- img.dataset.url=url;
- img.dataset.attempt='0';
- img.onerror=null;
-
- const base=url.replace(/=s\d+.*$/,'');
- const candidates=[url,...[
-  '=s256-c-k-c0x00ffffff-no-rj',
-  '=s100-c-k-c0x00ffffff-no-rj',
-  '=s256','=s100'
- ].map(s=>base+s)];
- const unique=[...new Set(candidates)];
-
- img.onerror=()=>{
-  const next=Number(img.dataset.attempt||0)+1;
-  img.dataset.attempt=String(next);
-  if(next<unique.length)img.src=unique[next];
-  else console.error(`[${p.name}] Avatar failed to load`,url);
- };
- img.src=unique[0];
-}
-
-function labelFor(group,field){
- const name=fields[field]||field.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/[_-]/g,' ');
- return ((labels[group]||group.toUpperCase())+' · '+name).toUpperCase();
-}
-
-function renderStats(p,counters){
- const grid=$(p.key+'Stats'),items=[];
- for(const [group,data] of Object.entries(counters||{})){
-  if(!data||typeof data!=='object'||Array.isArray(data))continue;
-  for(const [field,value] of Object.entries(data)){
-   if(typeof value==='number'&&Number.isFinite(value))
-    items.push({id:p.key+'-'+group+'-'+field,label:labelFor(group,field),value});
-  }
- }
-
- const sig=items.map(x=>x.id).join('|');
- if(grid.dataset.signature!==sig){
-  grid.dataset.signature=sig;
-  grid.replaceChildren();
-  for(const item of items){
-   const box=el('div','stat');
-   box.append(el('div','stat-label',item.label),el('div','stat-value odometer','0',item.id));
-   grid.append(box);
-   odos.delete(item.id);last.delete(item.id);
-  }
- }
- items.forEach(x=>queue(x.id,x.value));
-}
-
-function updateGap(data){
- const [a,b]=profiles;
- if(!a||!b)return;
-
- const x=data.creators?.[a.key]?.counters?.estimation?.subscriberCount;
- const y=data.creators?.[b.key]?.counters?.estimation?.subscriberCount;
- if(!Number.isFinite(x)||!Number.isFinite(y))return;
-
- $('gapLabel').textContent=`SUBSCRIBER GAP · ${a.name.toUpperCase()} VS ${b.name.toUpperCase()}`;
- queue('gap',Math.abs(x-y));
- $('leader').textContent=x===y?'IT IS A TIE':x>y?a.name.toUpperCase()+' IS AHEAD':b.name.toUpperCase()+' IS AHEAD';
-}
-
-async function update(){
- if(busy||document.hidden)return;
- busy=true;
- try{
-  const r=await fetch('/api/stats',{cache:'no-store'});
-  if(!r.ok)throw Error('HTTP '+r.status);
-
-  const data=await r.json();
-  if(!data.profiles?.length)throw Error('No profiles configured');
-  build(data.profiles);
-
-  for(const p of profiles){
-   const c=data.creators?.[p.key];
-   if(!c?.counters)continue;
-
-   avatar(p,c);
-
-   const subs=c.counters.estimation?.subscriberCount;
-   if(Number.isFinite(subs)){
-    queue(p.key+'Subs',subs);
-    queue(p.key+'Goal',(Math.floor(subs/1e6)+1)*1e6);
-   }
-   renderStats(p,c.counters);
-  }
-
-  updateGap(data);
-
-  const status=data.error?'PARTIAL DATA · RETRYING':'ALL CHANNELS CONNECTED';
-  const updated=data.updated?'UPDATED '+new Date(data.updated).toLocaleTimeString():'WAITING';
-
-  if($('status').textContent!==status)$('status').textContent=status;
-  if($('updated').textContent!==updated)$('updated').textContent=updated;
- }catch(e){
-  $('status').textContent='RECONNECTING...';
-  console.error('[Battle]',e.message);
- }finally{
-  busy=false;
- }
-}
-
-function start(){
- update();
- if(!timer)timer=setInterval(update,5000);
-}
-function stop(){
- clearInterval(timer);timer=null;
-}
-document.addEventListener('visibilitychange',()=>document.hidden?stop():start());
-start();
+refresh();
+setInterval(refresh,5000);
 </script>
 </body>
 </html>
