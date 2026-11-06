@@ -19,7 +19,7 @@ h1 span{color:#8193ff}
 .status{font-size:12px;font-weight:800;color:#64f2a5;white-space:nowrap}
 .status:before{content:"";display:inline-block;width:8px;height:8px;background:#53e69a;border-radius:50%;margin-right:8px;box-shadow:0 0 12px #53e69a}
 .players,.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;min-height:0;min-width:0}
-.creator{display:grid;grid-template-columns:minmax(0,1fr) minmax(250px,.95fr);gap:12px;min-width:0;min-height:0}
+.creator{display:grid;grid-template-columns:minmax(0,1fr) minmax(210px,.85fr);gap:10px;min-width:0;min-height:0}
 .player{--accent:#7187ff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px;border-color:color-mix(in srgb,var(--accent),transparent 45%);box-shadow:0 0 25px color-mix(in srgb,var(--accent),transparent 91%)}
 .player.fede,.milestone.fede{--accent:#bd82ff}
 .avatar{width:clamp(125px,19vh,180px);height:clamp(125px,19vh,180px);border-radius:50%;object-fit:cover;border:5px solid var(--accent);box-shadow:0 0 27px color-mix(in srgb,var(--accent),transparent 35%);background:#20263b;flex-shrink:0}
@@ -27,10 +27,10 @@ h1 span{color:#8193ff}
 .handle{font-size:15px;color:#aeb9d6;margin-top:3px}
 .label{font-size:13px;letter-spacing:2.5px;color:#aab4d0;margin-top:11px}
 .count{font-size:clamp(32px,3.3vw,48px);font-weight:900;letter-spacing:-2px;margin:4px 0;color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
-.milestone{--accent:#7187ff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:25px 16px;border-color:color-mix(in srgb,var(--accent),transparent 40%);min-width:0;overflow:visible;box-shadow:0 0 25px color-mix(in srgb,var(--accent),transparent 90%)}
-.mtitle{font-size:16px;font-weight:900;letter-spacing:1.7px;color:#c0c9e2;line-height:1.6}
-.mtarget{font-size:clamp(30px,3vw,46px);font-weight:900;color:var(--accent);line-height:1.4;white-space:nowrap;margin-top:16px}
-.mleft{font-size:18px;font-weight:800;color:#e1e6f7;margin-top:14px;line-height:1.7;overflow:visible}
+.milestone{--accent:#7187ff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:18px 12px;border-color:color-mix(in srgb,var(--accent),transparent 45%);min-width:0;overflow:visible}
+.mtitle{font-size:13px;font-weight:900;letter-spacing:1.5px;color:#aab4d0;line-height:1.5}
+.mtarget{font-size:clamp(25px,2.5vw,38px);font-weight:900;color:var(--accent);line-height:1.5;white-space:nowrap;margin-top:12px}
+.mleft{font-size:15px;font-weight:800;color:#dce2f5;margin-top:10px;line-height:1.7;overflow:visible}
 .mleft .odometer{display:inline-block;vertical-align:middle;line-height:1.7;overflow:visible}
 .gapbox{display:flex;align-items:center;justify-content:center;text-align:center;padding:7px}
 .gaptitle{font-size:12px;letter-spacing:2.5px;color:#aab4d0}
@@ -46,61 +46,53 @@ h1 span{color:#8193ff}
 .odometer{font-family:Inter,Arial,sans-serif!important;font-weight:inherit!important}
 .odometer.odometer-auto-theme .odometer-digit,.odometer.odometer-theme-default .odometer-digit{padding:0 .03em}
 footer{display:flex;align-items:center;justify-content:space-between;padding:0 5px;color:#929cb6;font-size:11px;min-width:0;overflow:hidden;white-space:nowrap}
-
 @media(max-height:720px) and (min-width:701px){
 main{grid-template-rows:38px minmax(215px,1fr) 60px minmax(225px,1fr) 14px;gap:7px}
 .avatar{width:clamp(110px,16vh,145px);height:clamp(110px,16vh,145px)}
 .name{font-size:23px;margin-top:5px}
 .count{font-size:clamp(29px,3vw,38px)}
 .label{margin-top:7px}
-.milestone{padding:18px 12px}
-.mtitle{font-size:14px}
-.mtarget{font-size:clamp(28px,2.8vw,40px);margin-top:12px}
-.mleft{font-size:16px;margin-top:10px}
+.creator{grid-template-columns:minmax(0,1fr) minmax(190px,.85fr);gap:8px}
+.milestone{padding:12px 8px}
+.mtarget{margin-top:7px}
+.mleft{margin-top:7px}
 .statcard{padding:14px 18px}
 .stathead{font-size:19px;margin-bottom:12px}
 .statgrid{gap:10px 17px}
 .statlabel{font-size:13px;margin-bottom:5px}
 }
-
 @media(max-width:950px) and (min-width:701px){
-.creator{grid-template-columns:minmax(0,1fr) minmax(195px,.9fr);gap:8px}
+.creator{grid-template-columns:minmax(0,1fr) minmax(160px,.8fr);gap:7px}
 .name{font-size:21px}
 .count{font-size:clamp(25px,3vw,36px)}
-.milestone{padding:16px 9px}
-.mtitle{font-size:12px}
-.mtarget{font-size:clamp(25px,2.8vw,35px)}
-.mleft{font-size:14px}
+.mtitle{font-size:11px}
+.mtarget{font-size:clamp(22px,2.5vw,30px)}
+.mleft{font-size:13px}
 }
-
 @media(max-width:700px){
 body{overflow:auto;padding:10px}
 main{height:auto;min-height:100vh;grid-template-rows:52px auto 85px auto 20px;gap:12px}
 h1{font-size:16px}
 .players,.stats{grid-template-columns:minmax(0,1fr)}
-.creator{grid-template-columns:minmax(0,1fr) minmax(155px,.8fr);min-height:310px;gap:9px}
+.creator{grid-template-columns:minmax(0,1fr) minmax(145px,.75fr);min-height:310px}
 .avatar{width:125px;height:125px}
 .name{font-size:23px}
 .count{font-size:clamp(25px,6vw,38px)}
-.milestone{padding:18px 9px}
-.mtitle{font-size:12px}
-.mtarget{font-size:clamp(24px,5vw,30px);margin-top:13px}
-.mleft{font-size:14px;margin-top:11px}
+.milestone{padding:14px 8px}
+.mtarget{font-size:25px}
 .gapbox{min-height:85px}
 .statcard{min-height:270px;padding:17px}
 .statgrid{min-height:205px}
 footer{font-size:10px}
 }
-
 @media(max-width:380px){
-.creator{grid-template-columns:minmax(0,1fr) minmax(130px,.8fr)}
+.creator{grid-template-columns:minmax(0,1fr) minmax(125px,.75fr)}
 .avatar{width:105px;height:105px}
 .name{font-size:19px}
 .count{font-size:24px}
-.milestone{padding:14px 6px}
-.mtitle{font-size:10px;letter-spacing:1px}
-.mtarget{font-size:21px;margin-top:10px}
-.mleft{font-size:12px;margin-top:9px}
+.mtitle{font-size:9px}
+.mtarget{font-size:19px}
+.mleft{font-size:11px}
 .statgrid{gap:12px 7px}
 .statvalue{font-size:18px}
 .statlabel{font-size:11px}
@@ -161,7 +153,8 @@ footer{font-size:10px}
 <div class="statgrid">
 <div class="statitem"><div class="statlabel">Live View Estimate</div><div class="statvalue odometer" id="zViews">0</div></div>
 <div class="statitem"><div class="statlabel">Videos</div><div class="statvalue odometer" id="zVideos">0</div></div>
-<div class="statitem"><div class="statlabel">YouTube API Subs</div><div class="statvalue odometer" id="zApi">0</div></div>
+<div class="statitem"><div class="statlabel">YouTube API Subs (Rounded)</div><div class="statvalue odometer" id="zApi">0</div></div>
+<div class="statitem"><div class="statlabel">Exact Subscribers</div><div class="statvalue odometer" id="zExact">0</div></div>
 <div class="statitem"><div class="statlabel">YouTube Total Views</div><div class="statvalue odometer" id="zApiViews">0</div></div>
 <div class="statitem"><div class="statlabel">YouTube API Videos</div><div class="statvalue odometer" id="zApiVideos">0</div></div>
 </div>
@@ -172,7 +165,8 @@ footer{font-size:10px}
 <div class="statgrid">
 <div class="statitem"><div class="statlabel">Live View Estimate</div><div class="statvalue odometer" id="fViews">0</div></div>
 <div class="statitem"><div class="statlabel">Videos</div><div class="statvalue odometer" id="fVideos">0</div></div>
-<div class="statitem"><div class="statlabel">YouTube API Subs</div><div class="statvalue odometer" id="fApi">0</div></div>
+<div class="statitem"><div class="statlabel">YouTube API Subs (Rounded)</div><div class="statvalue odometer" id="fApi">0</div></div>
+<div class="statitem"><div class="statlabel">Exact Subscribers</div><div class="statvalue odometer" id="fExact">0</div></div>
 <div class="statitem"><div class="statlabel">YouTube Total Views</div><div class="statvalue odometer" id="fApiViews">0</div></div>
 <div class="statitem"><div class="statlabel">YouTube API Videos</div><div class="statvalue odometer" id="fApiVideos">0</div></div>
 </div>
@@ -188,10 +182,7 @@ footer{font-size:10px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
 <script>
 const $=id=>document.getElementById(id),nums={};
-
-document.querySelectorAll('.odometer').forEach(el=>{
-nums[el.id]=new Odometer({el,value:0,duration:900,format:'(,ddd)',theme:'default'});
-});
+document.querySelectorAll('.odometer').forEach(el=>nums[el.id]=new Odometer({el,value:0,duration:900,format:'(,ddd)',theme:'default'}));
 
 function fitStats(){
 document.querySelectorAll('.statvalue').forEach(el=>{
@@ -213,13 +204,12 @@ number(key+'Subs',e.subscriberCount);
 number(p+'Views',e.viewCount);
 number(p+'Videos',e.videoCount);
 number(p+'Api',a.subscriberCount);
+number(p+'Exact',e.subscriberCount);
 number(p+'ApiViews',a.viewCount);
 number(p+'ApiVideos',a.videoCount);
-
 const left=Number(d.goal)||0;
 number(p+'GoalTarget',Number(e.subscriberCount)+left);
 number(p+'GoalLeft',left);
-
 const avatar=$(key+'Avatar');
 if(d.avatar&&avatar.getAttribute('src')!==d.avatar)avatar.src=d.avatar;
 }
@@ -228,17 +218,12 @@ async function refresh(){
 try{
 const r=await fetch('/api/stats',{cache:'no-store'});
 if(!r.ok)throw Error('HTTP '+r.status);
-
 const d=await r.json(),z=d.creators?.zhong,f=d.creators?.fede;
 if(!z||!f)throw Error('Waiting for channel data');
-
 updatePlayer('zhong',z);
 updatePlayer('fede',f);
 requestAnimationFrame(fitStats);
-
-const zs=Number(z.counters.estimation.subscriberCount);
-const fs=Number(f.counters.estimation.subscriberCount);
-
+const zs=Number(z.counters.estimation.subscriberCount),fs=Number(f.counters.estimation.subscriberCount);
 number('gap',Math.abs(zs-fs));
 $('leader').textContent=zs>fs?'Zhong is ahead':fs>zs?'Fede Vigevani is ahead':'Both creators are tied';
 $('status').textContent=d.error?'LIVE · PARTIAL DATA':'LIVE · CONNECTED';
@@ -249,7 +234,6 @@ $('status').style.color='#ff7777';
 console.error('[Dashboard]',e.message);
 }
 }
-
 refresh();
 setInterval(refresh,5000);
 </script>
