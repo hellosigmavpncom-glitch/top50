@@ -106,7 +106,6 @@ footer{font-size:10px}
 <h1>THE RISE OF <span>ZHONG</span></h1>
 <div class="status" id="status">CONNECTING</div>
 </header>
-
 <section class="players">
 <div class="creator">
 <article class="player">
@@ -122,7 +121,6 @@ footer{font-size:10px}
 <div class="mleft"><span class="odometer" id="zGoalLeft">0</span><br>subscribers left</div>
 </article>
 </div>
-
 <div class="creator">
 <article class="player fede">
 <img class="avatar" id="fedeAvatar" alt="Fede Vigevani">
@@ -138,7 +136,6 @@ footer{font-size:10px}
 </article>
 </div>
 </section>
-
 <section class="gapbox">
 <div>
 <div class="gaptitle">LIVE SUBSCRIBER GAP</div>
@@ -146,7 +143,6 @@ footer{font-size:10px}
 <div class="leader" id="leader">Calculating leader...</div>
 </div>
 </section>
-
 <section class="stats">
 <article class="panel statcard">
 <div class="stathead">ZHONG <span>CHANNEL STATISTICS</span></div>
@@ -159,7 +155,6 @@ footer{font-size:10px}
 <div class="statitem"><div class="statlabel">YouTube API Videos</div><div class="statvalue odometer" id="zApiVideos">0</div></div>
 </div>
 </article>
-
 <article class="panel statcard">
 <div class="stathead">FEDE VIGEVANI <span>CHANNEL STATISTICS</span></div>
 <div class="statgrid">
@@ -172,18 +167,15 @@ footer{font-size:10px}
 </div>
 </article>
 </section>
-
 <footer>
 <span>THE RISE OF ZHONG · LIVE BATTLE</span>
 <span>AUTO-REFRESH ENABLED</span>
 </footer>
 </main>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
 <script>
 const $=id=>document.getElementById(id),nums={};
 document.querySelectorAll('.odometer').forEach(el=>nums[el.id]=new Odometer({el,value:0,duration:900,format:'(,ddd)',theme:'default'}));
-
 function fitStats(){
 document.querySelectorAll('.statvalue').forEach(el=>{
 el.style.fontSize='34px';
@@ -192,12 +184,10 @@ while(el.scrollWidth>el.clientWidth&&size>17)el.style.fontSize=--size+'px';
 });
 }
 window.addEventListener('resize',fitStats);
-
 const number=(id,n)=>{
 n=Number(n);
 if(Number.isFinite(n))nums[id]?.update(n);
 };
-
 function updatePlayer(key,d){
 const e=d.counters.estimation,a=d.counters.api,p=key==='zhong'?'z':'f';
 number(key+'Subs',e.subscriberCount);
@@ -213,7 +203,6 @@ number(p+'GoalLeft',left);
 const avatar=$(key+'Avatar');
 if(d.avatar&&avatar.getAttribute('src')!==d.avatar)avatar.src=d.avatar;
 }
-
 async function refresh(){
 try{
 const r=await fetch('/api/stats',{cache:'no-store'});
