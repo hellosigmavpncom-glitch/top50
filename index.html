@@ -7,62 +7,60 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/odometer@0.4.8/themes/odometer-theme-default.css">
 <style>
 *{box-sizing:border-box}
-body{margin:0;padding:32px;background:#090b12;color:#f4f5ff;font:20px Arial,sans-serif}
-header{text-align:center;margin-bottom:40px}
-h1{font-size:clamp(42px,5vw,66px);margin:0 0 14px}
-header p,.muted{color:#a0a9c0;font-size:19px}
-main{max-width:1850px;margin:auto}
-.creators{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:30px}
-.creator{--accent:#7187ff;background:#111522;border:1px solid #303a52;border-radius:26px;padding:30px;min-width:0}
+body{margin:0;padding:14px;background:#090b12;color:#f4f5ff;font:17px Arial,sans-serif}
+header{text-align:center;margin-bottom:14px}
+h1{font-size:clamp(32px,3vw,46px);margin:0 0 5px}
+header p,.muted{color:#a0a9c0;font-size:14px;margin:5px 0}
+main{max-width:1800px;margin:auto}
+.creators{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.creator{--accent:#7187ff;background:#111522;border:1px solid #303a52;border-radius:19px;padding:17px;min-width:0}
 .creator.fede{--accent:#bd82ff}
-.creator-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:26px}
-.creator-title h2{margin:0;font-size:clamp(32px,3vw,44px)}
-.handle{color:#aab3c9;font-size:19px;margin-top:8px}
-.tag{color:var(--accent);font-size:16px;font-weight:bold}
-.top{display:grid;grid-template-columns:205px minmax(0,1fr);gap:22px}
-.avatar-card,.number-card,.goal-card,.stats-panel,.difference{background:#191f30;border:1px solid #303a52;border-radius:20px;padding:25px;min-width:0}
-.avatar-card{display:grid;place-items:center;min-height:245px}
-.avatar{width:180px;height:180px;border-radius:50%;object-fit:cover;background:#272e40;border:5px solid var(--accent)}
+.creator-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.creator-title h2{font-size:27px;margin:0}
+.handle{color:#aab3c9;font-size:14px;margin-top:4px}
+.tag{color:var(--accent);font-size:12px;font-weight:bold}
+.top{display:grid;grid-template-columns:125px minmax(0,1fr);gap:12px}
+.avatar-card,.number-card,.goal-card,.stats-panel,.difference{background:#191f30;border:1px solid #303a52;border-radius:14px;padding:13px;min-width:0}
+.avatar-card{display:grid;place-items:center;min-height:142px}
+.avatar{width:112px;height:112px;border-radius:50%;object-fit:cover;background:#272e40;border:4px solid var(--accent)}
 .number-card{display:flex;flex-direction:column;justify-content:center}
-.label{font-size:18px;color:#aab3c9;text-transform:uppercase;letter-spacing:1.3px}
-.big{font-size:clamp(40px,4vw,62px);font-weight:900;margin:19px 0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.label{font-size:13px;color:#aab3c9;text-transform:uppercase;letter-spacing:1px}
+.big{font-size:clamp(30px,3vw,46px);font-weight:900;margin:10px 0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .odometer{font-family:Arial,sans-serif;font-weight:900}
-.goal-card{margin-top:20px;padding:25px}
-.goal-line{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;margin-top:18px;font-size:20px}
-.goal-line strong{font-size:clamp(25px,2.5vw,36px);font-weight:900;font-variant-numeric:tabular-nums}
-.stats-panel{margin-top:22px;padding:26px}
-.stats-heading{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:22px}
-.stats-heading h3{margin:0;font-size:clamp(21px,2vw,28px)}
-.stats-note{font-size:15px;line-height:1.6;color:#a0a9c0;margin-bottom:0}
-.stat-head,.stat-row{display:grid;grid-template-columns:1.05fr 1fr 1fr;gap:12px;align-items:center}
-.stat-head{color:#aab3c9;font-size:16px;text-transform:uppercase;padding:0 16px 14px}
-.stat-row{background:#111725;border:1px solid #303a52;border-radius:15px;padding:22px 16px;margin-top:11px;min-height:82px}
-.stat-name{font-weight:800;font-size:19px}
-.stat-value{font-size:clamp(18px,1.8vw,25px);font-weight:900;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.goal-card{margin-top:11px}
+.goal-line{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:9px;font-size:15px}
+.goal-line strong{font-size:clamp(19px,1.8vw,26px);font-weight:900;font-variant-numeric:tabular-nums}
+.stats-panel{margin-top:11px;padding:13px}
+.stats-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.stats-heading h3{font-size:18px;margin:0}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.metric{background:#111725;border:1px solid #303a52;border-radius:11px;padding:10px;min-width:0}
+.metric h4{font-size:15px;margin:0 0 9px}
+.metric-labels,.metric-values{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.metric-labels{font-size:10px;color:#aab3c9;text-transform:uppercase;margin-bottom:5px}
+.metric-values{font-size:clamp(13px,1.25vw,18px);font-weight:900;font-variant-numeric:tabular-nums}
+.metric-values span{min-width:0;overflow-wrap:anywhere}
 .est{color:#b5c3ff}.api{color:#dfbaff}
-.difference{margin:32px 0;text-align:center;padding:32px}
-.difference .big{font-size:clamp(48px,6vw,76px);margin:18px 0}
-#leader{font-size:22px}
-.status{text-align:center;color:#a0a9c0;font-size:16px;margin-top:24px}
-@media(max-width:1100px){.creators{grid-template-columns:1fr}}
-@media(max-width:560px){
- body{padding:12px}
- .creator{padding:15px}
- .top{grid-template-columns:105px minmax(0,1fr);gap:10px}
- .avatar-card{min-height:130px;padding:8px}
- .avatar{width:95px;height:95px}
- .number-card,.goal-card,.stats-panel{padding:13px}
- .big{font-size:clamp(27px,7vw,40px)}
- .label{font-size:13px}
- .goal-line{font-size:15px}
- .goal-line strong{font-size:20px}
- .stats-heading h3{font-size:17px}
- .stat-head,.stat-row{gap:5px;padding-left:7px;padding-right:7px}
- .stat-head{font-size:11px}
- .stat-row{min-height:65px;padding-top:12px;padding-bottom:12px}
- .stat-name{font-size:13px}
- .stat-value{font-size:13px}
- .stats-note{font-size:12px}
+.difference{margin-top:14px;text-align:center;padding:12px}
+.difference .big{font-size:clamp(34px,3.5vw,52px);margin:5px}
+#leader{font-size:16px}
+.status{text-align:center;color:#a0a9c0;font-size:12px;margin-top:9px}
+@media(max-width:850px){.creators{grid-template-columns:1fr}body{overflow:auto}}
+@media(max-width:520px){
+ body{padding:9px}.creator{padding:11px}
+ .top{grid-template-columns:90px minmax(0,1fr);gap:8px}
+ .avatar-card{min-height:110px;padding:6px}
+ .avatar{width:82px;height:82px}
+ .number-card,.goal-card,.stats-panel{padding:10px}
+ .metrics{gap:5px}.metric{padding:7px}
+ .metric h4{font-size:12px}
+ .metric-values{font-size:11px}
+ .metric-labels{font-size:9px}
+ .stats-heading h3{font-size:15px}
+}
+@media(min-width:851px) and (min-height:650px){
+ body{min-height:100vh;overflow:hidden;display:flex;flex-direction:column}
+ main{width:100%}
 }
 </style>
 </head>
@@ -76,40 +74,41 @@ main{max-width:1850px;margin:auto}
 <article class="creator" id="zhong">
 <div class="creator-title"><div><h2>Zhong</h2><div class="handle">@zhong</div></div><span class="tag">CHANNEL 01</span></div>
 <div class="top">
-<div class="avatar-card"><img class="avatar" id="zhongAvatar" alt="Zhong avatar"></div>
+<div class="avatar-card"><img class="avatar" id="zhongAvatar" alt="Zhong"></div>
 <div class="number-card"><span class="label">Estimated subscribers</span><div class="big odometer" id="zhongSubs">0</div><span class="muted">Live estimated count</span></div>
 </div>
 <div class="goal-card">
 <span class="label">Next subscriber goal</span>
 <div class="goal-line"><span>Target</span><strong class="odometer" id="zhongGoal">0</strong></div>
-<div class="goal-line"><span>Subscribers remaining</span><strong class="odometer" id="zhongRemaining">0</strong></div>
+<div class="goal-line"><span>Remaining</span><strong class="odometer" id="zhongRemaining">0</strong></div>
 </div>
 <section class="stats-panel">
-<div class="stats-heading"><h3>ZHONG · CHANNEL STATISTICS</h3><span class="tag">LIVE DATA</span></div>
-<div class="stat-head"><span>Metric</span><span>Estimated</span><span>API</span></div>
-<div class="stat-row"><span class="stat-name">Subscribers</span><span class="stat-value est odometer" id="zhongEstSubs">0</span><span class="stat-value api odometer" id="zhongApiSubs">0</span></div>
-<div class="stat-row"><span class="stat-name">Views</span><span class="stat-value est odometer" id="zhongEstViews">0</span><span class="stat-value api odometer" id="zhongApiViews">0</span></div>
-<div class="stat-row"><span class="stat-name">Videos</span><span class="stat-value est odometer" id="zhongEstVideos">0</span><span class="stat-value api odometer" id="zhongApiVideos">0</span></div>
+<div class="stats-heading"><h3>ZHONG · CHANNEL STATISTICS</h3><span class="tag">LIVE</span></div>
+<div class="metrics">
+<div class="metric"><h4>Subscribers</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="est odometer" id="zhongEstSubs">0</span><span class="api odometer" id="zhongApiSubs">0</span></div></div>
+<div class="metric"><h4>Views</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="est odometer" id="zhongEstViews">0</span><span class="api odometer" id="zhongApiViews">0</span></div></div>
+<div class="metric"><h4>Videos</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="est odometer" id="zhongEstVideos">0</span><span class="api odometer" id="zhongApiVideos">0</span></div></div>
+</div>
 </section>
 </article>
 <article class="creator fede" id="fede">
 <div class="creator-title"><div><h2>Fede Vigevani</h2><div class="handle">@fedevigevani</div></div><span class="tag">CHANNEL 02</span></div>
 <div class="top">
-<div class="avatar-card"><img class="avatar" id="fedeAvatar" alt="Fede avatar"></div>
+<div class="avatar-card"><img class="avatar" id="fedeAvatar" alt="Fede"></div>
 <div class="number-card"><span class="label">Estimated subscribers</span><div class="big odometer" id="fedeSubs">0</div><span class="muted">Live estimated count</span></div>
 </div>
 <div class="goal-card">
 <span class="label">Next subscriber goal</span>
 <div class="goal-line"><span>Target</span><strong class="odometer" id="fedeGoal">0</strong></div>
-<div class="goal-line"><span>Subscribers remaining</span><strong class="odometer" id="fedeRemaining">0</strong></div>
+<div class="goal-line"><span>Remaining</span><strong class="odometer" id="fedeRemaining">0</strong></div>
 </div>
 <section class="stats-panel">
-<div class="stats-heading"><h3>FEDE · CHANNEL STATISTICS</h3><span class="tag">LIVE DATA</span></div>
-<div class="stat-head"><span>Metric</span><span>Estimated</span><span>API</span></div>
-<div class="stat-row"><span class="stat-name">Subscribers</span><span class="stat-value est odometer" id="fedeEstSubs">0</span><span class="stat-value api odometer" id="fedeApiSubs">0</span></div>
-<div class="stat-row"><span class="stat-name">Views</span><span class="stat-value est odometer" id="fedeEstViews">0</span><span class="stat-value api odometer" id="fedeApiViews">0</span></div>
-<div class="stat-row"><span class="stat-name">Videos</span><span class="stat-value est odometer" id="fedeEstVideos">0</span><span class="stat-value api odometer" id="fedeApiVideos">0</span></div>
-<p class="stats-note">Estimated values may update faster. API values may be rounded or cached. API video count currently shares the estimated value from your backend.</p>
+<div class="stats-heading"><h3>FEDE · CHANNEL STATISTICS</h3><span class="tag">LIVE</span></div>
+<div class="metrics">
+<div class="metric"><h4>Subscribers</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="est odometer" id="fedeEstSubs">0</span><span class="api odometer" id="fedeApiSubs">0</span></div></div>
+<div class="metric"><h4>Views</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="est odometer" id="fedeEstViews">0</span><span class="api odometer" id="fedeApiViews">0</span></div></div>
+<div class="metric"><h4>Videos</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="est odometer" id="fedeEstVideos">0</span><span class="api odometer" id="fedeApiVideos">0</span></div></div>
+</div>
 </section>
 </article>
 </section>
@@ -118,56 +117,49 @@ main{max-width:1850px;margin:auto}
 <div class="big odometer" id="difference">0</div>
 <div id="leader" class="muted">Waiting for channel data...</div>
 </section>
-<div class="status" id="status">Connecting to local server...</div>
+<div class="status" id="status">Connecting...</div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/odometer@0.4.8/odometer.min.js"></script>
 <script>
-const $=id=>document.getElementById(id);
-const fmt=n=>Number.isFinite(Number(n))?Math.round(Number(n)).toLocaleString('en-US'):'—';
-const nextGoal=n=>(Math.floor(n/1000000)+1)*1000000;
-const odometers={};
+const $=id=>document.getElementById(id),fmt=n=>Math.round(Number(n)).toLocaleString('en-US');
+const nextGoal=n=>(Math.floor(n/1000000)+1)*1000000,odometers={};
 function number(id,value){
- const el=$(id),n=Number(value);
+ const n=Number(value),el=$(id);
  if(!el||!Number.isFinite(n))return;
  if(!odometers[id]){
   if(!window.Odometer){el.textContent=fmt(n);return}
-  odometers[id]=new Odometer({el,value:0,format:'(,ddd)',duration:900,theme:'default'});
+  odometers[id]=new Odometer({el,value:0,format:'(,ddd)',duration:850,theme:'default'});
  }
  odometers[id].update(Math.round(n));
 }
 function updateCreator(key,c){
- const e=c.counters?.estimation||{},a=c.counters?.api||{};
- const subs=Number(e.subscriberCount);
- if(!Number.isFinite(subs))return null;
- number(key+'Subs',subs);
- const goal=nextGoal(subs);
- number(key+'Goal',goal);
- number(key+'Remaining',Math.max(0,goal-subs));
- number(key+'EstSubs',e.subscriberCount);
- number(key+'ApiSubs',a.subscriberCount);
- number(key+'EstViews',e.viewCount);
- number(key+'ApiViews',a.viewCount);
- number(key+'EstVideos',e.videoCount);
- number(key+'ApiVideos',a.videoCount);
+ const e=c.counters?.estimation||{},a=c.counters?.api||{},s=Number(e.subscriberCount);
+ if(!Number.isFinite(s))return null;
+ number(key+'Subs',s);
+ const g=nextGoal(s);
+ number(key+'Goal',g);number(key+'Remaining',Math.max(0,g-s));
+ for(const [id,v] of Object.entries({
+  EstSubs:e.subscriberCount,ApiSubs:a.subscriberCount,
+  EstViews:e.viewCount,ApiViews:a.viewCount,
+  EstVideos:e.videoCount,ApiVideos:a.videoCount
+ }))number(key+id,v);
  if(c.avatar&&$(key+'Avatar').src!==c.avatar)$(key+'Avatar').src=c.avatar;
- return subs;
+ return s;
 }
 async function refresh(){
  try{
   const r=await fetch('/api/stats',{cache:'no-store'});
   if(!r.ok)throw Error('HTTP '+r.status);
-  const data=await r.json();
-  const z=data.creators?.zhong,f=data.creators?.fede;
+  const d=await r.json(),z=d.creators?.zhong,f=d.creators?.fede;
   const zs=z&&updateCreator('zhong',z),fs=f&&updateCreator('fede',f);
   if(Number.isFinite(zs)&&Number.isFinite(fs)){
    number('difference',Math.abs(zs-fs));
    $('leader').textContent=zs===fs?'They are tied':zs>fs?'Zhong is ahead':'Fede is ahead';
   }
-  $('status').textContent='Last update: '+(data.updated?new Date(data.updated).toLocaleTimeString():'Waiting')+' · Automatic refresh';
- }catch(e){$('status').textContent='Connection error: '+e.message+' · Retrying...'}
+  $('status').textContent='Last update: '+(d.updated?new Date(d.updated).toLocaleTimeString():'Waiting')+' · Refresh every 5 seconds';
+ }catch(e){$('status').textContent='Connection error: '+e.message+' · Retrying'}
 }
-refresh();
-setInterval(refresh,5000);
+refresh();setInterval(refresh,5000);
 </script>
 </body>
 </html>
