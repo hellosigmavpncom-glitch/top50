@@ -7,85 +7,69 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/odometer@0.4.8/themes/odometer-theme-default.css">
 <style>
 *{box-sizing:border-box}
-body{margin:0;padding:15px;background:#080b14;color:#f5f7ff;font-family:Arial,sans-serif;min-height:100vh;display:flex;flex-direction:column}
-header,main,.footer{width:100%;max-width:1900px;margin-left:auto;margin-right:auto}
-header{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:15px}
-h1{font-size:clamp(38px,3.5vw,54px);font-weight:950;letter-spacing:-1.5px;margin:0}
+body{margin:0;padding:20px;background:#080b14;color:#f5f7ff;font-family:Arial,sans-serif;min-height:100vh}
+header,main,.footer{width:100%;max-width:1900px;margin:auto}
+header{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:22px}
+h1{font-size:clamp(42px,4vw,62px);font-weight:950;letter-spacing:-2px;margin:0}
 .subtitle,.handle,.caption{color:#a5b2ca}
-.subtitle{font-size:17px;margin-top:5px}
-.status{background:#172238;padding:13px 17px;border-radius:10px;font-size:15px;white-space:nowrap}
-main{flex:1;display:flex;flex-direction:column;gap:14px}
-.creators{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;flex:1;align-items:stretch;min-height:0}
-.creator{--accent:#7187ff;background:#141e32;border:2px solid var(--accent);border-radius:19px;padding:17px;display:flex;flex-direction:column;justify-content:space-between;gap:15px;min-width:0}
+.subtitle{font-size:19px;margin-top:7px}
+.status{background:#172238;padding:15px 20px;border-radius:11px;font-size:16px;white-space:nowrap}
+.creators{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:stretch}
+.creator{--accent:#7187ff;background:#141e32;border:2px solid var(--accent);border-radius:22px;padding:21px;display:flex;flex-direction:column;gap:19px;min-width:0}
 .fede{--accent:#bd82ff}
-.heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
-h2{font-size:clamp(33px,2.8vw,44px);font-weight:950;margin:0}
-.handle{font-size:16px;margin-top:5px}
-.platform{font-size:14px;font-weight:900;color:var(--accent);background:#ffffff0c;padding:10px;border-radius:8px}
-.top{display:grid;grid-template-columns:125px minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:stretch;min-height:150px}
-.avatar-box,.main,.goal,.stats{background:#090f1c;border:1px solid #34415b;border-radius:14px;padding:15px;min-width:0}
+.heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+h2{font-size:clamp(36px,3vw,48px);font-weight:950;margin:0}
+.handle{font-size:18px;margin-top:6px}
+.platform{font-size:15px;font-weight:900;color:var(--accent);background:#ffffff0c;padding:12px;border-radius:9px}
+.top{display:grid;grid-template-columns:145px minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:stretch}
+.avatar-box,.main,.goal,.stats{background:#090f1c;border:1px solid #34415b;border-radius:15px;padding:17px;min-width:0}
 .avatar-box{display:grid;place-items:center}
-.avatar{width:116px;height:116px;border-radius:50%;object-fit:cover;border:4px solid var(--accent);display:block}
+.avatar{width:130px;height:130px;border-radius:50%;object-fit:cover;border:5px solid var(--accent);display:block}
 .main{display:flex;flex-direction:column;justify-content:center}
-.label{font-size:17px;font-weight:950;color:#b8c5dc;letter-spacing:.6px}
-.big{font-size:clamp(30px,2.6vw,43px);font-weight:950;letter-spacing:-1px;margin-top:13px;white-space:nowrap}
-.caption{font-size:14px;margin-top:9px}
+.label{font-size:19px;font-weight:950;color:#b8c5dc;letter-spacing:.5px}
+.big{font-size:clamp(30px,2.8vw,46px);font-weight:950;letter-spacing:-1px;margin-top:15px;white-space:nowrap}
+.caption{font-size:15px;margin-top:10px}
 .goal{border-color:var(--accent);background:linear-gradient(110deg,#18243a,#090f1c);display:flex;flex-direction:column;justify-content:center}
-.goal-title{font-size:17px;font-weight:950;line-height:1.3}
-.goal-number{font-size:clamp(27px,2.2vw,37px);font-weight:950;margin-top:15px;white-space:nowrap}
-.remaining{font-size:clamp(16px,1.4vw,20px);font-weight:900;color:#c7d2e8;margin-top:12px;white-space:nowrap}
-.stats{padding:15px;display:flex;flex-direction:column;flex:1}
-.stats-title{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
-.stats-title strong{font-size:21px;letter-spacing:.7px}
-.stats-title span{font-size:12px;color:#a2afc8;white-space:nowrap}
-.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;flex:1}
-.metric{background:#172238;border:1px solid #35435e;border-radius:11px;padding:11px;min-width:0;display:flex;flex-direction:column}
-.metric-title{font-size:18px;font-weight:950;margin-bottom:9px}
-.value{background:#0b1220;border-radius:8px;padding:11px;margin-top:8px;min-width:0;flex:1;display:flex;flex-direction:column;justify-content:center}
-.value-label{font-size:13px;font-weight:950;color:#94a6c5;margin-bottom:7px}
-.value-number{font-size:clamp(16px,1.3vw,21px);font-weight:950;white-space:nowrap;letter-spacing:-.3px}
-.odometer,.odometer.odometer-auto-theme,.odometer.odometer-theme-default{font-family:inherit!important}
-.difference{padding:17px 22px;background:#172238;border:1px solid #35435e;border-radius:15px;display:flex;align-items:center;justify-content:space-between;gap:15px;flex-shrink:0}
-.diff-label{font-size:19px;font-weight:950;color:#c3d0e7}
-.diff-number{font-size:clamp(42px,3.8vw,59px);font-weight:950;margin-top:7px}
-.leader{text-align:right;color:#b4c1d8;font-weight:900;font-size:16px}
-.leader strong{display:block;color:white;font-size:28px;margin-top:7px}
-.footer{display:flex;justify-content:space-between;gap:10px;color:#8492ac;font-size:13px;margin-top:10px;flex-shrink:0}
-@media(min-width:851px) and (min-height:650px){
- html,body{height:100%;min-height:0}
- body{overflow:hidden}
- main{min-height:0}
- .creators{min-height:0}
- .creator{min-height:0}
-}
-@media(max-width:850px){
- body{padding:12px}
+.goal-title{font-size:19px;font-weight:950;line-height:1.3}
+.goal-number{font-size:clamp(29px,2.4vw,40px);font-weight:950;margin-top:17px;white-space:nowrap}
+.remaining{font-size:clamp(17px,1.5vw,22px);font-weight:900;color:#c7d2e8;margin-top:13px;white-space:nowrap}
+.stats{padding:17px;display:flex;flex-direction:column;gap:13px}
+.stats-title{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.stats-title strong{font-size:23px;letter-spacing:.7px}
+.stats-title span{font-size:13px;color:#a2afc8;white-space:nowrap}
+.metrics{display:grid;grid-template-columns:1fr 1.4fr .85fr;gap:11px}
+.metric{background:#172238;border:1px solid #35435e;border-radius:12px;padding:13px;min-width:0;display:flex;flex-direction:column;gap:9px}
+.metric-title{font-size:19px;font-weight:950}
+.value{background:#0b1220;border-radius:9px;padding:13px;min-width:0;min-height:76px;display:flex;flex-direction:column;justify-content:center;gap:8px}
+.value-label{font-size:13px;font-weight:950;color:#94b6ed}
+.value-number{font-size:clamp(16px,1.35vw,21px);font-weight:950;white-space:nowrap;letter-spacing:-.4px}
+.odometer,.odometer.odometer-auto-theme,.odometer.odometer-theme-default{font-family:inherit!important;line-height:1.3!important;vertical-align:middle}
+.odometer-digit-inner{overflow:hidden}
+.difference{margin-top:19px;padding:23px 26px;min-height:125px;background:#172238;border:1px solid #35435e;border-radius:17px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.diff-label{font-size:22px;font-weight:950;color:#c3d0e7}
+.diff-number{font-size:clamp(48px,4.3vw,67px);font-weight:950;margin-top:9px;line-height:1.4;overflow:visible}
+.leader{text-align:right;color:#b4c1d8;font-weight:900;font-size:18px}
+.leader strong{display:block;color:white;font-size:32px;margin-top:8px}
+.footer{display:flex;justify-content:space-between;gap:12px;color:#8492ac;font-size:14px;margin-top:13px;padding-bottom:8px}
+@media(max-width:1150px){
  .creators{grid-template-columns:1fr}
- .creator{gap:13px}
- .top{grid-template-columns:125px minmax(0,1fr) minmax(0,1fr)}
- .big{font-size:clamp(27px,5vw,42px)}
- .goal-number{font-size:clamp(25px,4vw,35px)}
+ .top{grid-template-columns:145px minmax(0,1fr) minmax(0,1fr)}
+ .metrics{grid-template-columns:1fr 1.4fr .85fr}
 }
-@media(max-width:560px){
+@media(max-width:650px){
+ body{padding:12px}
  header{align-items:flex-start;flex-direction:column}
- .top{grid-template-columns:85px minmax(0,1fr)}
- .avatar{width:76px;height:76px}
- .goal{grid-column:1/-1;min-height:125px}
+ h1{font-size:36px}
+ .creator{padding:13px;gap:13px}
+ .top{grid-template-columns:95px minmax(0,1fr)}
+ .avatar{width:84px;height:84px}
+ .goal{grid-column:1/-1;min-height:145px}
  .metrics{grid-template-columns:1fr}
- .metric{padding:12px}
+ .metric{padding:13px}
  .value-number{font-size:20px}
  .difference{align-items:flex-start;flex-direction:column}
  .leader{text-align:left}
  .footer{font-size:11px}
-}
-@media(min-width:851px) and (max-height:700px){
- body{overflow-y:auto}
- .creator{gap:10px}
- .top{min-height:125px}
- .avatar{width:95px;height:95px}
- .avatar-box,.main,.goal,.stats{padding:11px}
- .metric{padding:8px}
- .value{padding:8px}
 }
 </style>
 </head>
@@ -126,9 +110,13 @@ $('creators').innerHTML=creators.map(([k,name,handle])=>`
 <div class="main"><div class="label">LIVE SUBSCRIBERS</div><div class="big odometer" id="${k}-main">0</div><div class="caption">Estimated subscriber count</div></div>
 <div class="goal"><div class="goal-title">NEXT MILLION MILESTONE</div><div class="goal-number odometer" id="${k}-goal">0</div><div class="remaining"><span class="odometer" id="${k}-left">0</span> remaining</div></div>
 </div>
-<div class="stats"><div class="stats-title"><strong>CHANNEL STATISTICS</strong><span>ESTIMATED / API</span></div><div class="metrics">
+<div class="stats">
+<div class="stats-title"><strong>CHANNEL STATISTICS</strong><span>ESTIMATED / API</span></div>
+<div class="metrics">
 ${fields.map(([id,label])=>`<div class="metric"><div class="metric-title">${label}</div><div class="value"><div class="value-label">ESTIMATED</div><div class="value-number odometer" id="${k}-est-${id}">0</div></div><div class="value"><div class="value-label">API</div><div class="value-number odometer" id="${k}-api-${id}">0</div></div></div>`).join('')}
-</div></div></article>`).join('');
+</div>
+</div>
+</article>`).join('');
 function number(id,value){
  const el=$(id),n=Number(value);if(!el||!Number.isFinite(n))return;
  if(!window.Odometer){el.textContent=Math.round(n).toLocaleString('en-US');return}
