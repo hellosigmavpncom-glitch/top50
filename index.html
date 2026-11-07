@@ -7,60 +7,72 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/odometer@0.4.8/themes/odometer-theme-default.css">
 <style>
 *{box-sizing:border-box}
-body{margin:0;padding:14px;background:#090b12;color:#f4f5ff;font:17px Arial,sans-serif}
-header{text-align:center;margin-bottom:14px}
-h1{font-size:clamp(32px,3vw,46px);margin:0 0 5px}
-header p,.muted{color:#a0a9c0;font-size:14px;margin:5px 0}
-main{max-width:1800px;margin:auto}
-.creators{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-.creator{--accent:#7187ff;background:#111522;border:1px solid #303a52;border-radius:19px;padding:17px;min-width:0}
+body{margin:0;padding:clamp(12px,1.5vw,26px);background:#090b12;color:#f4f5ff;font:clamp(16px,1.2vw,21px) Arial,sans-serif}
+header{text-align:center;margin-bottom:clamp(12px,1.5vh,22px)}
+h1{font-size:clamp(36px,3.5vw,58px);margin:0 0 7px;font-weight:900}
+header p{font-size:clamp(15px,1.2vw,19px);color:#a0a9c0;margin:0}
+main{max-width:1900px;margin:auto}
+.creators{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(14px,1.5vw,24px)}
+.creator{--accent:#7187ff;background:#111522;border:1px solid #303a52;border-radius:22px;padding:clamp(16px,1.6vw,27px);min-width:0;display:flex;flex-direction:column}
 .creator.fede{--accent:#bd82ff}
-.creator-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.creator-title h2{font-size:27px;margin:0}
-.handle{color:#aab3c9;font-size:14px;margin-top:4px}
-.tag{color:var(--accent);font-size:12px;font-weight:bold}
-.top{display:grid;grid-template-columns:125px minmax(0,1fr);gap:12px}
-.avatar-card,.number-card,.goal-card,.stats-panel,.difference{background:#191f30;border:1px solid #303a52;border-radius:14px;padding:13px;min-width:0}
-.avatar-card{display:grid;place-items:center;min-height:142px}
-.avatar{width:112px;height:112px;border-radius:50%;object-fit:cover;background:#272e40;border:4px solid var(--accent)}
+.creator-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:clamp(12px,1.5vh,20px)}
+.creator-title h2{font-size:clamp(29px,2.5vw,42px);margin:0}
+.handle{color:#aab3c9;font-size:clamp(15px,1.2vw,19px);margin-top:5px}
+.tag{color:var(--accent);font-size:clamp(12px,.9vw,15px);font-weight:bold}
+.top{display:grid;grid-template-columns:clamp(130px,14vw,210px) minmax(0,1fr);gap:clamp(12px,1.3vw,20px)}
+.avatar-card,.number-card,.goal-card,.stats-panel,.difference{background:#191f30;border:1px solid #303a52;border-radius:17px;padding:clamp(14px,1.4vw,23px);min-width:0}
+.avatar-card{display:grid;place-items:center;min-height:clamp(150px,19vh,225px)}
+.avatar{width:clamp(110px,12vw,175px);height:clamp(110px,12vw,175px);border-radius:50%;object-fit:cover;background:#272e40;border:5px solid var(--accent)}
 .number-card{display:flex;flex-direction:column;justify-content:center}
-.label{font-size:13px;color:#aab3c9;text-transform:uppercase;letter-spacing:1px}
-.big{font-size:clamp(30px,3vw,46px);font-weight:900;margin:10px 0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.label{font-size:clamp(14px,1vw,17px);color:#aab3c9;text-transform:uppercase;letter-spacing:1px}
+.big{font-size:clamp(36px,3.4vw,57px);font-weight:900;margin:clamp(12px,1.5vh,20px) 0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .odometer{font-family:Arial,sans-serif;font-weight:900}
-.goal-card{margin-top:11px}
-.goal-line{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:9px;font-size:15px}
-.goal-line strong{font-size:clamp(19px,1.8vw,26px);font-weight:900;font-variant-numeric:tabular-nums}
-.stats-panel{margin-top:11px;padding:13px}
-.stats-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.stats-heading h3{font-size:18px;margin:0}
-.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.metric{background:#111725;border:1px solid #303a52;border-radius:11px;padding:10px;min-width:0}
-.metric h4{font-size:15px;margin:0 0 9px}
-.metric-labels,.metric-values{display:grid;grid-template-columns:1fr 1fr;gap:5px}
-.metric-labels{font-size:10px;color:#aab3c9;text-transform:uppercase;margin-bottom:5px}
-.metric-values{font-size:clamp(13px,1.25vw,18px);font-weight:900;font-variant-numeric:tabular-nums}
-.metric-values span{min-width:0;overflow-wrap:anywhere}
+.muted{color:#a0a9c0;font-size:clamp(14px,1vw,17px)}
+.goal-card{margin-top:clamp(12px,1.4vh,19px)}
+.goal-line{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:clamp(10px,1.3vh,17px);font-size:clamp(16px,1.2vw,20px)}
+.goal-line strong{font-size:clamp(23px,2vw,33px);font-weight:900;font-variant-numeric:tabular-nums}
+.stats-panel{margin-top:clamp(12px,1.4vh,19px);flex:1}
+.stats-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:clamp(12px,1.5vh,19px)}
+.stats-heading h3{font-size:clamp(19px,1.7vw,27px);margin:0}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(8px,.9vw,14px)}
+.metric{background:#111725;border:1px solid #303a52;border-radius:14px;padding:clamp(11px,1.1vw,18px);min-width:0}
+.metric h4{font-size:clamp(15px,1.25vw,20px);margin:0 0 13px}
+.metric-labels,.metric-values{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.metric-labels{font-size:clamp(11px,.85vw,14px);color:#aab3c9;text-transform:uppercase;margin-bottom:8px}
+.metric-values span{min-width:0;overflow-wrap:anywhere;font-size:clamp(15px,1.35vw,22px);font-weight:900;font-variant-numeric:tabular-nums}
 .est{color:#b5c3ff}.api{color:#dfbaff}
-.difference{margin-top:14px;text-align:center;padding:12px}
-.difference .big{font-size:clamp(34px,3.5vw,52px);margin:5px}
-#leader{font-size:16px}
-.status{text-align:center;color:#a0a9c0;font-size:12px;margin-top:9px}
-@media(max-width:850px){.creators{grid-template-columns:1fr}body{overflow:auto}}
-@media(max-width:520px){
- body{padding:9px}.creator{padding:11px}
- .top{grid-template-columns:90px minmax(0,1fr);gap:8px}
- .avatar-card{min-height:110px;padding:6px}
- .avatar{width:82px;height:82px}
- .number-card,.goal-card,.stats-panel{padding:10px}
- .metrics{gap:5px}.metric{padding:7px}
- .metric h4{font-size:12px}
- .metric-values{font-size:11px}
- .metric-labels{font-size:9px}
- .stats-heading h3{font-size:15px}
+.value-box{background:#191f30;border-radius:8px;padding:9px 6px;min-width:0}
+.difference{margin-top:clamp(12px,1.5vh,20px);text-align:center;padding:clamp(12px,1.3vw,20px)}
+.difference .big{font-size:clamp(40px,4vw,65px);margin:7px}
+#leader{font-size:clamp(16px,1.3vw,21px)}
+.status{text-align:center;color:#a0a9c0;font-size:clamp(12px,.9vw,15px);margin-top:9px}
+@media(min-width:900px) and (min-height:700px){
+html,body{height:100%;overflow:hidden}
+body{display:flex;flex-direction:column}
+main{width:100%;flex:1;min-height:0;display:flex;flex-direction:column}
+.creators{flex:1;min-height:0}
+.creator{min-height:0}
+.difference{flex-shrink:0}
 }
-@media(min-width:851px) and (min-height:650px){
- body{min-height:100vh;overflow:hidden;display:flex;flex-direction:column}
- main{width:100%}
+@media(max-width:899px){
+.creators{grid-template-columns:1fr}
+body{overflow:auto}
+}
+@media(max-width:520px){
+body{padding:10px}
+.creator{padding:12px}
+.top{grid-template-columns:100px minmax(0,1fr);gap:9px}
+.avatar-card{min-height:115px;padding:7px}
+.avatar{width:88px;height:88px}
+.number-card,.goal-card,.stats-panel{padding:11px}
+.metrics{gap:5px}
+.metric{padding:8px}
+.metric h4{font-size:13px}
+.metric-labels{font-size:9px;gap:3px}
+.metric-values{gap:3px}
+.metric-values span{font-size:11px}
+.value-box{padding:6px 3px}
+.stats-heading h3{font-size:16px}
 }
 </style>
 </head>
@@ -85,9 +97,9 @@ main{max-width:1800px;margin:auto}
 <section class="stats-panel">
 <div class="stats-heading"><h3>ZHONG · CHANNEL STATISTICS</h3><span class="tag">LIVE</span></div>
 <div class="metrics">
-<div class="metric"><h4>Subscribers</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="est odometer" id="zhongEstSubs">0</span><span class="api odometer" id="zhongApiSubs">0</span></div></div>
-<div class="metric"><h4>Views</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="est odometer" id="zhongEstViews">0</span><span class="api odometer" id="zhongApiViews">0</span></div></div>
-<div class="metric"><h4>Videos</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="est odometer" id="zhongEstVideos">0</span><span class="api odometer" id="zhongApiVideos">0</span></div></div>
+<div class="metric"><h4>Subscribers</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="value-box est odometer" id="zhongEstSubs">0</span><span class="value-box api odometer" id="zhongApiSubs">0</span></div></div>
+<div class="metric"><h4>Views</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="value-box est odometer" id="zhongEstViews">0</span><span class="value-box api odometer" id="zhongApiViews">0</span></div></div>
+<div class="metric"><h4>Videos</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="value-box est odometer" id="zhongEstVideos">0</span><span class="value-box api odometer" id="zhongApiVideos">0</span></div></div>
 </div>
 </section>
 </article>
@@ -105,9 +117,9 @@ main{max-width:1800px;margin:auto}
 <section class="stats-panel">
 <div class="stats-heading"><h3>FEDE · CHANNEL STATISTICS</h3><span class="tag">LIVE</span></div>
 <div class="metrics">
-<div class="metric"><h4>Subscribers</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="est odometer" id="fedeEstSubs">0</span><span class="api odometer" id="fedeApiSubs">0</span></div></div>
-<div class="metric"><h4>Views</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="est odometer" id="fedeEstViews">0</span><span class="api odometer" id="fedeApiViews">0</span></div></div>
-<div class="metric"><h4>Videos</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="est odometer" id="fedeEstVideos">0</span><span class="api odometer" id="fedeApiVideos">0</span></div></div>
+<div class="metric"><h4>Subscribers</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="value-box est odometer" id="fedeEstSubs">0</span><span class="value-box api odometer" id="fedeApiSubs">0</span></div></div>
+<div class="metric"><h4>Views</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="value-box est odometer" id="fedeEstViews">0</span><span class="value-box api odometer" id="fedeApiViews">0</span></div></div>
+<div class="metric"><h4>Videos</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="value-box est odometer" id="fedeEstVideos">0</span><span class="value-box api odometer" id="fedeApiVideos">0</span></div></div>
 </div>
 </section>
 </article>
@@ -121,8 +133,9 @@ main{max-width:1800px;margin:auto}
 </main>
 <script src="https://cdn.jsdelivr.net/npm/odometer@0.4.8/odometer.min.js"></script>
 <script>
-const $=id=>document.getElementById(id),fmt=n=>Math.round(Number(n)).toLocaleString('en-US');
-const nextGoal=n=>(Math.floor(n/1000000)+1)*1000000,odometers={};
+const $=id=>document.getElementById(id),odometers={};
+const fmt=n=>Math.round(Number(n)).toLocaleString('en-US');
+const nextGoal=n=>(Math.floor(n/1000000)+1)*1000000;
 function number(id,value){
  const n=Number(value),el=$(id);
  if(!el||!Number.isFinite(n))return;
