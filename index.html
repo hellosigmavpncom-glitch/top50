@@ -8,53 +8,54 @@
 *{box-sizing:border-box}
 body{margin:0;padding:15px;background:#080b14;color:#f5f7ff;font-family:Arial,sans-serif}
 header,main,.footer{max-width:1900px;margin:auto;width:100%}
-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-h1{font-size:clamp(27px,2.5vw,39px);margin:0;font-weight:900}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+h1{font-size:clamp(30px,2.8vw,43px);margin:0;font-weight:900}
 .subtitle,.handle,.caption{color:#a5b2ca}
-.subtitle{font-size:15px;margin-top:5px}
-.status{background:#172238;padding:11px 15px;border-radius:10px;font-size:14px}
-.creators{display:grid;grid-template-columns:1fr 1fr;gap:15px}
-.creator{--accent:#7187ff;background:#141e32;border:2px solid var(--accent);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:13px;min-width:0}
+.subtitle{font-size:16px;margin-top:6px}
+.status{background:#172238;padding:12px 17px;border-radius:10px;font-size:15px}
+.creators{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.creator{--accent:#7187ff;background:#141e32;border:2px solid var(--accent);border-radius:18px;padding:17px;display:flex;flex-direction:column;gap:14px;min-width:0}
 .fede{--accent:#bd82ff}
 .heading{display:flex;align-items:center;justify-content:space-between}
-h2{font-size:clamp(26px,2.2vw,35px);margin:0}
-.handle{font-size:15px;margin-top:4px}
-.platform{font-size:12px;font-weight:900;color:var(--accent);background:#ffffff0c;padding:9px;border-radius:8px}
-.top{display:grid;grid-template-columns:105px minmax(0,1fr);gap:11px}
-.avatar-box,.main,.goal,.stats{background:#090f1c;border:1px solid #34415b;border-radius:13px;padding:13px;min-width:0}
+h2{font-size:clamp(29px,2.4vw,40px);margin:0}
+.handle{font-size:17px;margin-top:5px}
+.platform{font-size:14px;font-weight:900;color:var(--accent);background:#ffffff0c;padding:10px;border-radius:8px}
+.top{display:grid;grid-template-columns:120px minmax(0,1fr);gap:13px}
+.avatar-box,.main,.goal,.stats{background:#090f1c;border:1px solid #34415b;border-radius:13px;padding:14px;min-width:0}
 .avatar-box{display:grid;place-items:center}
-.avatar{width:88px;height:88px;border-radius:50%;object-fit:cover;border:3px solid var(--accent)}
-.label{font-size:14px;font-weight:900;color:#b8c5dc;letter-spacing:1px}
-.big{font-size:clamp(34px,3.4vw,53px);font-weight:950;letter-spacing:-1px;margin-top:9px}
-.caption{font-size:13px;margin-top:5px}
-.goal{border-color:var(--accent);background:linear-gradient(110deg,#18243a,#090f1c);padding:14px}
-.goal-title{font-size:16px;font-weight:950;letter-spacing:.5px}
-.goal-number{font-size:clamp(29px,2.6vw,40px);font-weight:950;margin-top:8px}
-.remaining{font-size:19px;font-weight:700;color:#c7d2e8;margin-top:6px}
-.stats-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px}
-.stats-title strong{font-size:17px;letter-spacing:1px}
-.stats-title span{font-size:11px;color:#a2afc8}
-.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
-.metric{background:#172238;border:1px solid #35435e;border-radius:11px;padding:10px;min-width:0}
-.metric-title{font-size:16px;font-weight:950;margin-bottom:9px}
-.value{display:flex;justify-content:space-between;align-items:center;gap:5px;background:#0b1220;border-radius:8px;padding:9px;margin-top:6px;min-width:0}
-.value-label{font-size:11px;font-weight:900;color:#94a6c5;flex-shrink:0}
-.value-number{font-size:clamp(16px,1.45vw,22px);font-weight:950;text-align:right}
+.avatar{width:103px;height:103px;border-radius:50%;object-fit:cover;border:3px solid var(--accent)}
+.label{font-size:16px;font-weight:900;color:#b8c5dc;letter-spacing:1px}
+.big{font-size:clamp(39px,3.8vw,62px);font-weight:950;letter-spacing:-1px;margin-top:10px}
+.caption{font-size:15px;margin-top:6px}
+.goal{border-color:var(--accent);background:linear-gradient(110deg,#18243a,#090f1c);padding:16px}
+.goal-title{font-size:19px;font-weight:950;letter-spacing:.5px}
+.goal-number{font-size:clamp(34px,3vw,48px);font-weight:950;margin-top:9px}
+.remaining{font-size:23px;font-weight:700;color:#c7d2e8;margin-top:7px}
+.stats{padding:14px}
+.stats-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.stats-title strong{font-size:21px;letter-spacing:1px}
+.stats-title span{font-size:13px;color:#a2afc8}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.metric{background:#172238;border:1px solid #35435e;border-radius:11px;padding:11px;min-width:0}
+.metric-title{font-size:19px;font-weight:950;margin-bottom:9px}
+.value{display:flex;flex-direction:column;align-items:flex-start;gap:5px;background:#0b1220;border-radius:8px;padding:9px;margin-top:7px;min-width:0}
+.value-label{font-size:13px;font-weight:900;color:#94a6c5}
+.value-number{font-size:clamp(19px,1.65vw,27px);font-weight:950;text-align:left;max-width:100%}
 .odometer,.odometer.odometer-auto-theme,.odometer.odometer-theme-default{font-family:inherit!important;white-space:nowrap!important;display:inline-block;vertical-align:middle;line-height:1.35!important;font-variant-numeric:tabular-nums}
 .odometer .odometer-digit,.odometer .odometer-digit-spacer{line-height:1.35!important}
 .big,.goal-number,.remaining,.value-number,.diff-number{white-space:nowrap;overflow:visible}
-.difference{margin-top:13px;padding:15px 20px;background:#172238;border:1px solid #35435e;border-radius:15px;display:flex;align-items:center;justify-content:space-between;gap:15px}
-.diff-label{font-size:16px;font-weight:950;color:#c3d0e7}
-.diff-number{font-size:clamp(32px,3vw,46px);font-weight:950;margin-top:5px}
-.leader{text-align:right;color:#b4c1d8;font-weight:800}
-.leader strong{display:block;color:white;font-size:22px;margin-top:5px}
-.footer{display:flex;justify-content:space-between;color:#8492ac;font-size:12px;margin-top:9px}
+.difference{margin-top:14px;padding:17px 21px;background:#172238;border:1px solid #35435e;border-radius:15px;display:flex;align-items:center;justify-content:space-between;gap:15px}
+.diff-label{font-size:18px;font-weight:950;color:#c3d0e7}
+.diff-number{font-size:clamp(37px,3.4vw,53px);font-weight:950;margin-top:6px}
+.leader{text-align:right;color:#b4c1d8;font-weight:800;font-size:17px}
+.leader strong{display:block;color:white;font-size:25px;margin-top:6px}
+.footer{display:flex;justify-content:space-between;color:#8492ac;font-size:13px;margin-top:10px}
 @media(max-width:900px){.creators{grid-template-columns:1fr}.big{font-size:clamp(35px,7vw,53px)}}
 @media(max-width:520px){
  body{padding:9px}header{align-items:flex-start;flex-direction:column;gap:10px}
  .top{grid-template-columns:75px minmax(0,1fr)}.avatar{width:65px;height:65px}
  .creator{padding:10px}.metrics{grid-template-columns:1fr}
- .metric{padding:10px}.value-number{font-size:20px}
+ .metric{padding:10px}.value-number{font-size:23px}
  .difference{align-items:flex-start;flex-direction:column}.leader{text-align:left}
 }
 @media(min-width:901px) and (min-height:650px){
@@ -65,21 +66,22 @@ h2{font-size:clamp(26px,2.2vw,35px);margin:0}
  .creators{flex:1;min-height:0}
  .creator{min-height:0;justify-content:space-between;gap:clamp(8px,1.1vh,13px)}
  .difference,.footer{flex-shrink:0}
- .top{grid-template-columns:clamp(85px,7vw,105px) minmax(0,1fr)}
- .avatar{width:clamp(70px,6vw,88px);height:clamp(70px,6vw,88px)}
+ .top{grid-template-columns:clamp(95px,8vw,120px) minmax(0,1fr)}
+ .avatar{width:clamp(85px,7vw,103px);height:clamp(85px,7vw,103px)}
 }
 @media(min-width:901px) and (max-height:760px){
- .creator{padding:11px;gap:8px}
- .avatar{width:65px;height:65px}
- .top{grid-template-columns:75px minmax(0,1fr)}
+ .creator{padding:11px;gap:7px}
+ .avatar{width:75px;height:75px}
+ .top{grid-template-columns:85px minmax(0,1fr)}
  .main,.goal,.stats{padding:9px}
- .big{font-size:clamp(30px,2.8vw,42px)}
- .goal-number{font-size:28px;margin-top:5px}
- .remaining{font-size:16px;margin-top:3px}
- .metric{padding:7px}.metric-title{font-size:14px;margin-bottom:5px}
- .value{padding:7px;margin-top:4px}
- .value-number{font-size:clamp(15px,1.3vw,19px)}
- .difference{padding:10px 16px;margin-top:8px}
+ .big{font-size:clamp(32px,3vw,45px)}
+ .goal-number{font-size:32px;margin-top:5px}
+ .remaining{font-size:19px;margin-top:4px}
+ .metric{padding:7px}.metric-title{font-size:16px;margin-bottom:5px}
+ .value{padding:6px;margin-top:4px;gap:3px}
+ .value-number{font-size:clamp(17px,1.4vw,22px)}
+ .value-label{font-size:11px}
+ .difference{padding:11px 16px;margin-top:8px}
 }
 </style>
 </head>
