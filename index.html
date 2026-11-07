@@ -6,63 +6,80 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/odometer@0.4.8/themes/odometer-theme-default.css">
 <style>
 *{box-sizing:border-box}
-body{margin:0;padding:16px;background:#080b14;color:#f5f7ff;font-family:Arial,sans-serif}
-header,main,.footer{max-width:1900px;margin:auto}
-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
-h1{font-size:clamp(26px,2.5vw,38px);margin:0}
-.subtitle,.handle,.caption{color:#9ba8c0}
-.subtitle{margin-top:5px;font-size:15px}
-.status{background:#151e30;padding:10px 14px;border-radius:10px;font-size:14px}
-.creators{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.creator{--accent:#7187ff;background:#141d30;border:2px solid var(--accent);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:13px;min-width:0}
+body{margin:0;padding:15px;background:#080b14;color:#f5f7ff;font-family:Arial,sans-serif}
+header,main,.footer{max-width:1900px;margin:auto;width:100%}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+h1{font-size:clamp(27px,2.5vw,39px);margin:0;font-weight:900}
+.subtitle,.handle,.caption{color:#a5b2ca}
+.subtitle{font-size:15px;margin-top:5px}
+.status{background:#172238;padding:11px 15px;border-radius:10px;font-size:14px}
+.creators{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.creator{--accent:#7187ff;background:#141e32;border:2px solid var(--accent);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:13px;min-width:0}
 .fede{--accent:#bd82ff}
-.heading{display:flex;justify-content:space-between;align-items:center}
-h2{font-size:clamp(25px,2.2vw,34px);margin:0}
+.heading{display:flex;align-items:center;justify-content:space-between}
+h2{font-size:clamp(26px,2.2vw,35px);margin:0}
 .handle{font-size:15px;margin-top:4px}
-.platform,.tag{font-size:12px;font-weight:bold;letter-spacing:1px;color:var(--accent);background:#ffffff0c;padding:8px;border-radius:8px}
-.top{display:grid;grid-template-columns:110px 1fr;gap:12px}
-.avatar-box,.main,.goal,.stats{background:#090f1c;border:1px solid #303b53;border-radius:13px;padding:12px;min-width:0}
+.platform{font-size:12px;font-weight:900;color:var(--accent);background:#ffffff0c;padding:9px;border-radius:8px}
+.top{display:grid;grid-template-columns:105px minmax(0,1fr);gap:11px}
+.avatar-box,.main,.goal,.stats{background:#090f1c;border:1px solid #34415b;border-radius:13px;padding:13px;min-width:0}
 .avatar-box{display:grid;place-items:center}
-.avatar{width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid var(--accent)}
-.label{font-size:14px;font-weight:bold;color:#aab6ce;letter-spacing:1px}
-.big{font-size:clamp(35px,3.5vw,54px);font-weight:950;white-space:nowrap;margin-top:8px;letter-spacing:-1.5px}
+.avatar{width:88px;height:88px;border-radius:50%;object-fit:cover;border:3px solid var(--accent)}
+.label{font-size:14px;font-weight:900;color:#b8c5dc;letter-spacing:1px}
+.big{font-size:clamp(34px,3.4vw,53px);font-weight:950;letter-spacing:-1px;margin-top:9px}
 .caption{font-size:13px;margin-top:5px}
-.goal{background:linear-gradient(110deg,#18243a,#090f1c);border-color:var(--accent)}
-.goal-title{font-size:16px;font-weight:900}
-.goal-number{font-size:clamp(28px,2.6vw,40px);font-weight:950;margin-top:7px;white-space:nowrap}
-.remaining{font-size:18px;color:#c5cfe2;margin-top:5px}
-.stats-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.goal{border-color:var(--accent);background:linear-gradient(110deg,#18243a,#090f1c);padding:14px}
+.goal-title{font-size:16px;font-weight:950;letter-spacing:.5px}
+.goal-number{font-size:clamp(29px,2.6vw,40px);font-weight:950;margin-top:8px}
+.remaining{font-size:19px;font-weight:700;color:#c7d2e8;margin-top:6px}
+.stats-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px}
 .stats-title strong{font-size:17px;letter-spacing:1px}
-.stats-title span{font-size:11px;color:#98a5bf}
+.stats-title span{font-size:11px;color:#a2afc8}
 .metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
-.metric{background:#172238;border:1px solid #303d56;border-radius:10px;padding:10px 7px;min-width:0}
-.metric-title{font-size:15px;font-weight:900;margin-bottom:9px}
-.values{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.value{background:#0b1220;border-radius:8px;padding:8px 6px;min-width:0}
-.value-label{font-size:10px;font-weight:900;color:#91a0bc;margin-bottom:6px}
-.value-number{font-size:clamp(16px,1.5vw,23px);font-weight:950;white-space:nowrap}
-.difference{margin-top:14px;padding:15px 20px;background:#172238;border:1px solid #35415a;border-radius:15px;display:flex;justify-content:space-between;align-items:center}
-.diff-label{font-size:15px;font-weight:900;color:#b8c5dc}
-.diff-number{font-size:clamp(30px,3vw,44px);font-weight:950;margin-top:5px}
-.leader{text-align:right;color:#aab6ce;font-weight:bold}
-.leader strong{display:block;color:white;font-size:21px;margin-top:5px}
-.footer{display:flex;justify-content:space-between;color:#8491aa;font-size:12px;margin-top:10px}
-.odometer{font-family:inherit}
-@media(max-width:850px){.creators{grid-template-columns:1fr}body{padding:10px}.big{font-size:clamp(34px,7vw,52px)}}
-@media(max-width:480px){header{align-items:flex-start;flex-direction:column;gap:10px}.top{grid-template-columns:75px 1fr}.avatar{width:65px;height:65px}.creator{padding:11px}.metric{padding:8px 5px}.metric-title{font-size:12px}.value-number{font-size:14px}.difference{align-items:flex-start;flex-direction:column}.leader{text-align:left}}
-@media(min-width:851px) and (min-height:650px){
-html,body{height:100%;min-height:0}body{display:flex;flex-direction:column;overflow:hidden;padding:14px}
-header{width:100%;flex-shrink:0}main{width:100%;flex:1;min-height:0;display:flex;flex-direction:column}
-.creators{flex:1;min-height:0}.creator{justify-content:space-between;min-height:0;gap:clamp(7px,1.2vh,13px)}
-.top{grid-template-columns:clamp(80px,8vw,110px) 1fr}.avatar{width:clamp(68px,6.5vw,90px);height:clamp(68px,6.5vw,90px)}
-.main,.goal,.stats{padding:clamp(8px,1vw,13px)}
-.difference{flex-shrink:0;margin-top:10px}.footer{width:100%;flex-shrink:0}
+.metric{background:#172238;border:1px solid #35435e;border-radius:11px;padding:10px;min-width:0}
+.metric-title{font-size:16px;font-weight:950;margin-bottom:9px}
+.value{display:flex;justify-content:space-between;align-items:center;gap:5px;background:#0b1220;border-radius:8px;padding:9px;margin-top:6px;min-width:0}
+.value-label{font-size:11px;font-weight:900;color:#94a6c5;flex-shrink:0}
+.value-number{font-size:clamp(16px,1.45vw,22px);font-weight:950;text-align:right}
+.odometer,.odometer.odometer-auto-theme,.odometer.odometer-theme-default{font-family:inherit!important;white-space:nowrap!important;display:inline-block;vertical-align:middle;line-height:1.35!important;font-variant-numeric:tabular-nums}
+.odometer .odometer-digit,.odometer .odometer-digit-spacer{line-height:1.35!important}
+.big,.goal-number,.remaining,.value-number,.diff-number{white-space:nowrap;overflow:visible}
+.difference{margin-top:13px;padding:15px 20px;background:#172238;border:1px solid #35435e;border-radius:15px;display:flex;align-items:center;justify-content:space-between;gap:15px}
+.diff-label{font-size:16px;font-weight:950;color:#c3d0e7}
+.diff-number{font-size:clamp(32px,3vw,46px);font-weight:950;margin-top:5px}
+.leader{text-align:right;color:#b4c1d8;font-weight:800}
+.leader strong{display:block;color:white;font-size:22px;margin-top:5px}
+.footer{display:flex;justify-content:space-between;color:#8492ac;font-size:12px;margin-top:9px}
+@media(max-width:900px){.creators{grid-template-columns:1fr}.big{font-size:clamp(35px,7vw,53px)}}
+@media(max-width:520px){
+ body{padding:9px}header{align-items:flex-start;flex-direction:column;gap:10px}
+ .top{grid-template-columns:75px minmax(0,1fr)}.avatar{width:65px;height:65px}
+ .creator{padding:10px}.metrics{grid-template-columns:1fr}
+ .metric{padding:10px}.value-number{font-size:20px}
+ .difference{align-items:flex-start;flex-direction:column}.leader{text-align:left}
 }
-@media(min-width:851px) and (max-height:760px){
-.creator{gap:7px;padding:10px}.top{grid-template-columns:75px 1fr}.avatar{width:65px;height:65px}
-.big{font-size:clamp(30px,2.8vw,40px)}.goal-number{font-size:27px}.remaining{font-size:15px}
-.metric{padding:7px 5px}.metric-title{font-size:13px;margin-bottom:5px}.value{padding:6px 4px}
-.value-number{font-size:clamp(15px,1.3vw,19px)}.difference{padding:9px 15px}
+@media(min-width:901px) and (min-height:650px){
+ html,body{height:100%;min-height:0}
+ body{display:flex;flex-direction:column;overflow:hidden;padding:13px}
+ header{flex-shrink:0}
+ main{flex:1;min-height:0;display:flex;flex-direction:column}
+ .creators{flex:1;min-height:0}
+ .creator{min-height:0;justify-content:space-between;gap:clamp(8px,1.1vh,13px)}
+ .difference,.footer{flex-shrink:0}
+ .top{grid-template-columns:clamp(85px,7vw,105px) minmax(0,1fr)}
+ .avatar{width:clamp(70px,6vw,88px);height:clamp(70px,6vw,88px)}
+}
+@media(min-width:901px) and (max-height:760px){
+ .creator{padding:11px;gap:8px}
+ .avatar{width:65px;height:65px}
+ .top{grid-template-columns:75px minmax(0,1fr)}
+ .main,.goal,.stats{padding:9px}
+ .big{font-size:clamp(30px,2.8vw,42px)}
+ .goal-number{font-size:28px;margin-top:5px}
+ .remaining{font-size:16px;margin-top:3px}
+ .metric{padding:7px}.metric-title{font-size:14px;margin-bottom:5px}
+ .value{padding:7px;margin-top:4px}
+ .value-number{font-size:clamp(15px,1.3vw,19px)}
+ .difference{padding:10px 16px;margin-top:8px}
 }
 </style>
 </head>
@@ -78,21 +95,20 @@ header{width:100%;flex-shrink:0}main{width:100%;flex:1;min-height:0;display:flex
 'use strict';
 const $=id=>document.getElementById(id),odometers={};
 const creators=[['zhong','Zhong','@zhong'],['fede','Fede Vigevani','@fedevigevani']];
-const fmt=n=>Math.round(Number(n)||0).toLocaleString('en-US');
 const next=n=>(Math.floor(n/1e6)+1)*1e6;
 const fields=[['subs','Subscribers','subscriberCount'],['views','Views','viewCount'],['videos','Videos','videoCount']];
 $('creators').innerHTML=creators.map(([k,name,handle])=>`
 <article class="creator ${k==='fede'?'fede':''}">
-<div class="heading"><div><h2 id="${k}-name">${name}</h2><div class="handle">${handle}</div></div><span class="platform">YOUTUBE</span></div>
+<div class="heading"><div><h2>${name}</h2><div class="handle">${handle}</div></div><span class="platform">YOUTUBE</span></div>
 <div class="top"><div class="avatar-box"><img class="avatar" id="${k}-avatar" alt="${name}"></div><div class="main"><div class="label">LIVE SUBSCRIBERS</div><div class="big odometer" id="${k}-main">0</div><div class="caption">Estimated subscriber count</div></div></div>
 <div class="goal"><div class="goal-title">NEXT MILLION MILESTONE</div><div class="goal-number odometer" id="${k}-goal">0</div><div class="remaining"><span class="odometer" id="${k}-left">0</span> remaining</div></div>
 <div class="stats"><div class="stats-title"><strong>CHANNEL STATISTICS</strong><span>ESTIMATED / API</span></div><div class="metrics">
-${fields.map(([id,label])=>`<div class="metric"><div class="metric-title">${label}</div><div class="values"><div class="value"><div class="value-label">ESTIMATED</div><div class="value-number odometer" id="${k}-est-${id}">0</div></div><div class="value"><div class="value-label">API</div><div class="value-number odometer" id="${k}-api-${id}">0</div></div></div></div>`).join('')}
+${fields.map(([id,label])=>`<div class="metric"><div class="metric-title">${label}</div><div class="value"><span class="value-label">ESTIMATED</span><span class="value-number odometer" id="${k}-est-${id}">0</span></div><div class="value"><span class="value-label">API</span><span class="value-number odometer" id="${k}-api-${id}">0</span></div></div>`).join('')}
 </div></div></article>`).join('');
 function number(id,value){
  const el=$(id),n=Number(value);if(!el||!Number.isFinite(n))return;
- if(!window.Odometer){el.textContent=fmt(n);return}
- if(!odometers[id])odometers[id]=new Odometer({el,value:0,format:'(,ddd)',duration:900,theme:'default'});
+ if(!window.Odometer){el.textContent=Math.round(n).toLocaleString('en-US');return}
+ if(!odometers[id])odometers[id]=new Odometer({el,value:0,format:'(,ddd)',duration:700,theme:'default'});
  odometers[id].update(Math.round(n));
 }
 function update(k,c){
