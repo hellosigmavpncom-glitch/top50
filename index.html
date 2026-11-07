@@ -11,25 +11,26 @@
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#080a12;--panel:#111522;--border:#293149;--muted:#a1abc5;--text:#f5f6ff}
 body{background:radial-gradient(ellipse at 50% 0,#202847 0,transparent 65%),var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif;font-weight:700;min-height:100vh;padding:12px;overflow:hidden}
-main{width:100%;max-width:1800px;height:calc(100svh - 24px);margin:auto;display:grid;grid-template-rows:40px minmax(220px,1fr) 65px minmax(230px,1fr) 15px;gap:8px;min-width:0}
-header,.panel,.player,.milestone,.gapbox{background:var(--panel);border:1px solid var(--border);border-radius:16px;min-width:0}
+main{width:100%;max-width:1800px;height:calc(100svh - 24px);margin:auto;display:grid;grid-template-rows:40px minmax(240px,1fr) 65px minmax(210px,1fr) 15px;gap:8px;min-width:0}
+header,.panel,.player,.milestone,.avatar-card,.gapbox{background:var(--panel);border:1px solid var(--border);border-radius:16px;min-width:0}
 header{display:flex;align-items:center;justify-content:space-between;padding:0 22px;overflow:hidden}
 h1{font-size:22px;font-weight:900;letter-spacing:.3px;white-space:nowrap}
 h1 span{color:#8193ff}
 .status{font-size:12px;font-weight:800;color:#64f2a5;white-space:nowrap}
 .status:before{content:"";display:inline-block;width:8px;height:8px;background:#53e69a;border-radius:50%;margin-right:8px;box-shadow:0 0 12px #53e69a}
 .players,.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;min-height:0;min-width:0}
-.creator{display:grid;grid-template-columns:minmax(0,1fr) minmax(210px,.85fr);gap:10px;min-width:0;min-height:0}
+.creator{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(210px,.85fr);gap:10px;min-width:0;min-height:0}
 .player{--accent:#7187ff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px;border-color:color-mix(in srgb,var(--accent),transparent 45%);box-shadow:0 0 25px color-mix(in srgb,var(--accent),transparent 91%)}
-.player.fede,.milestone.fede{--accent:#bd82ff}
-.avatar{width:clamp(125px,19vh,180px);height:clamp(125px,19vh,180px);border-radius:50%;object-fit:cover;border:5px solid var(--accent);box-shadow:0 0 27px color-mix(in srgb,var(--accent),transparent 35%);background:#20263b;flex-shrink:0}
+.player.fede,.milestone.fede,.avatar-card.fede{--accent:#bd82ff}
+.avatar-card{--accent:#7187ff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px;border-color:color-mix(in srgb,var(--accent),transparent 45%);box-shadow:0 0 25px color-mix(in srgb,var(--accent),transparent 91%)}
+.avatar{width:clamp(150px,26vh,240px);height:clamp(150px,26vh,240px);border-radius:50%;object-fit:cover;border:6px solid var(--accent);box-shadow:0 0 35px color-mix(in srgb,var(--accent),transparent 35%);background:#20263b;flex-shrink:0}
 .name{font-size:27px;font-weight:900;margin-top:8px;letter-spacing:-.7px}
 .handle{font-size:15px;color:#aeb9d6;margin-top:3px}
 .label{font-size:13px;letter-spacing:2.5px;color:#aab4d0;margin-top:11px}
 .count{font-size:clamp(32px,3.3vw,48px);font-weight:900;letter-spacing:-2px;margin:4px 0;color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
 .milestone{--accent:#7187ff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:18px 12px;border-color:color-mix(in srgb,var(--accent),transparent 45%);min-width:0;overflow:visible}
 .mtitle{font-size:13px;font-weight:900;letter-spacing:1.5px;color:#aab4d0;line-height:1.5}
-.mtarget{font-size:clamp(25px,2.5vw,38px);font-weight:900;color:var(--accent);line-height:1.5;white-space:nowrap;margin-top:12px}
+.mtarget{font-size:clamp(23px,2.2vw,35px);font-weight:900;color:var(--accent);line-height:1.5;white-space:nowrap;margin-top:12px}
 .mleft{font-size:15px;font-weight:800;color:#dce2f5;margin-top:10px;line-height:1.7;overflow:visible}
 .mleft .odometer{display:inline-block;vertical-align:middle;line-height:1.7;overflow:visible}
 .gapbox{display:flex;align-items:center;justify-content:center;text-align:center;padding:7px}
@@ -47,12 +48,12 @@ h1 span{color:#8193ff}
 .odometer.odometer-auto-theme .odometer-digit,.odometer.odometer-theme-default .odometer-digit{padding:0 .03em}
 footer{display:flex;align-items:center;justify-content:space-between;padding:0 5px;color:#929cb6;font-size:11px;min-width:0;overflow:hidden;white-space:nowrap}
 @media(max-height:720px) and (min-width:701px){
-main{grid-template-rows:38px minmax(215px,1fr) 60px minmax(225px,1fr) 14px;gap:7px}
-.avatar{width:clamp(110px,16vh,145px);height:clamp(110px,16vh,145px)}
+main{grid-template-rows:38px minmax(225px,1fr) 60px minmax(210px,1fr) 14px;gap:7px}
+.avatar{width:clamp(130px,21vh,180px);height:clamp(130px,21vh,180px)}
 .name{font-size:23px;margin-top:5px}
 .count{font-size:clamp(29px,3vw,38px)}
 .label{margin-top:7px}
-.creator{grid-template-columns:minmax(0,1fr) minmax(190px,.85fr);gap:8px}
+.creator{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(190px,.85fr);gap:8px}
 .milestone{padding:12px 8px}
 .mtarget{margin-top:7px}
 .mleft{margin-top:7px}
@@ -61,12 +62,12 @@ main{grid-template-rows:38px minmax(215px,1fr) 60px minmax(225px,1fr) 14px;gap:7
 .statgrid{gap:10px 17px}
 .statlabel{font-size:13px;margin-bottom:5px}
 }
-@media(max-width:950px) and (min-width:701px){
-.creator{grid-template-columns:minmax(0,1fr) minmax(160px,.8fr);gap:7px}
+@media(max-width:1050px) and (min-width:701px){
+.creator{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(160px,.8fr);gap:7px}
 .name{font-size:21px}
 .count{font-size:clamp(25px,3vw,36px)}
 .mtitle{font-size:11px}
-.mtarget{font-size:clamp(22px,2.5vw,30px)}
+.mtarget{font-size:clamp(20px,2.2vw,28px)}
 .mleft{font-size:13px}
 }
 @media(max-width:700px){
@@ -74,8 +75,8 @@ body{overflow:auto;padding:10px}
 main{height:auto;min-height:100vh;grid-template-rows:52px auto 85px auto 20px;gap:12px}
 h1{font-size:16px}
 .players,.stats{grid-template-columns:minmax(0,1fr)}
-.creator{grid-template-columns:minmax(0,1fr) minmax(145px,.75fr);min-height:310px}
-.avatar{width:125px;height:125px}
+.creator{grid-template-columns:minmax(0,1fr);min-height:auto}
+.avatar{width:150px;height:150px}
 .name{font-size:23px}
 .count{font-size:clamp(25px,6vw,38px)}
 .milestone{padding:14px 8px}
@@ -84,19 +85,6 @@ h1{font-size:16px}
 .statcard{min-height:270px;padding:17px}
 .statgrid{min-height:205px}
 footer{font-size:10px}
-}
-@media(max-width:380px){
-.creator{grid-template-columns:minmax(0,1fr) minmax(125px,.75fr)}
-.avatar{width:105px;height:105px}
-.name{font-size:19px}
-.count{font-size:24px}
-.mtitle{font-size:9px}
-.mtarget{font-size:19px}
-.mleft{font-size:11px}
-.statgrid{gap:12px 7px}
-.statvalue{font-size:18px}
-.statlabel{font-size:11px}
-.stathead{font-size:16px}
 }
 </style>
 </head>
@@ -108,8 +96,10 @@ footer{font-size:10px}
 </header>
 <section class="players">
 <div class="creator">
-<article class="player">
+<article class="avatar-card">
 <img class="avatar" id="zhongAvatar" alt="Zhong">
+</article>
+<article class="player">
 <div class="name">Zhong</div>
 <div class="handle">@zhong</div>
 <div class="label">SUBSCRIBERS</div>
@@ -118,12 +108,14 @@ footer{font-size:10px}
 <article class="milestone">
 <div class="mtitle">ZHONG · NEXT MILESTONE</div>
 <div class="mtarget odometer" id="zGoalTarget">0</div>
-<div class="mleft"><span class="odometer" id="zGoalLeft">0</span><br>subscribers left</div>
+<div class="mleft"><span class="odometer" id="zGoalLeft">0</span><br>exact subs left</div>
 </article>
 </div>
 <div class="creator">
-<article class="player fede">
+<article class="avatar-card fede">
 <img class="avatar" id="fedeAvatar" alt="Fede Vigevani">
+</article>
+<article class="player fede">
 <div class="name">Fede Vigevani</div>
 <div class="handle">@fedevigevani</div>
 <div class="label">SUBSCRIBERS</div>
@@ -132,7 +124,7 @@ footer{font-size:10px}
 <article class="milestone fede">
 <div class="mtitle">FEDE · NEXT MILESTONE</div>
 <div class="mtarget odometer" id="fGoalTarget">0</div>
-<div class="mleft"><span class="odometer" id="fGoalLeft">0</span><br>subscribers left</div>
+<div class="mleft"><span class="odometer" id="fGoalLeft">0</span><br>exact subs left</div>
 </article>
 </div>
 </section>
@@ -197,9 +189,11 @@ number(p+'Api',a.subscriberCount);
 number(p+'Exact',e.subscriberCount);
 number(p+'ApiViews',a.viewCount);
 number(p+'ApiVideos',a.videoCount);
-const left=Number(d.goal)||0;
-number(p+'GoalTarget',Number(e.subscriberCount)+left);
-number(p+'GoalLeft',left);
+const subs=Number(e.subscriberCount)||0;
+let target=1000000;
+while(target<=subs)target+=1000000;
+number(p+'GoalTarget',target);
+number(p+'GoalLeft',target-subs);
 const avatar=$(key+'Avatar');
 if(d.avatar&&avatar.getAttribute('src')!==d.avatar)avatar.src=d.avatar;
 }
