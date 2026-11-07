@@ -3,176 +3,258 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Zhong vs Fede</title>
+<title>Zhong vs Fede — Live Battle</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/odometer@0.4.8/themes/odometer-theme-default.css">
 <style>
 *{box-sizing:border-box}
-body{margin:0;padding:clamp(12px,1.5vw,26px);background:#090b12;color:#f4f5ff;font:clamp(16px,1.2vw,21px) Arial,sans-serif}
-header{text-align:center;margin-bottom:clamp(12px,1.5vh,22px)}
-h1{font-size:clamp(36px,3.5vw,58px);margin:0 0 7px;font-weight:900}
-header p{font-size:clamp(15px,1.2vw,19px);color:#a0a9c0;margin:0}
-main{max-width:1900px;margin:auto}
-.creators{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(14px,1.5vw,24px)}
-.creator{--accent:#7187ff;background:#111522;border:1px solid #303a52;border-radius:22px;padding:clamp(16px,1.6vw,27px);min-width:0;display:flex;flex-direction:column}
-.creator.fede{--accent:#bd82ff}
-.creator-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:clamp(12px,1.5vh,20px)}
-.creator-title h2{font-size:clamp(29px,2.5vw,42px);margin:0}
-.handle{color:#aab3c9;font-size:clamp(15px,1.2vw,19px);margin-top:5px}
-.tag{color:var(--accent);font-size:clamp(12px,.9vw,15px);font-weight:bold}
-.top{display:grid;grid-template-columns:clamp(130px,14vw,210px) minmax(0,1fr);gap:clamp(12px,1.3vw,20px)}
-.avatar-card,.number-card,.goal-card,.stats-panel,.difference{background:#191f30;border:1px solid #303a52;border-radius:17px;padding:clamp(14px,1.4vw,23px);min-width:0}
-.avatar-card{display:grid;place-items:center;min-height:clamp(150px,19vh,225px)}
-.avatar{width:clamp(110px,12vw,175px);height:clamp(110px,12vw,175px);border-radius:50%;object-fit:cover;background:#272e40;border:5px solid var(--accent)}
-.number-card{display:flex;flex-direction:column;justify-content:center}
-.label{font-size:clamp(14px,1vw,17px);color:#aab3c9;text-transform:uppercase;letter-spacing:1px}
-.big{font-size:clamp(36px,3.4vw,57px);font-weight:900;margin:clamp(12px,1.5vh,20px) 0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
-.odometer{font-family:Arial,sans-serif;font-weight:900}
-.muted{color:#a0a9c0;font-size:clamp(14px,1vw,17px)}
-.goal-card{margin-top:clamp(12px,1.4vh,19px)}
-.goal-line{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:clamp(10px,1.3vh,17px);font-size:clamp(16px,1.2vw,20px)}
-.goal-line strong{font-size:clamp(23px,2vw,33px);font-weight:900;font-variant-numeric:tabular-nums}
-.stats-panel{margin-top:clamp(12px,1.4vh,19px);flex:1}
-.stats-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:clamp(12px,1.5vh,19px)}
-.stats-heading h3{font-size:clamp(19px,1.7vw,27px);margin:0}
-.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(8px,.9vw,14px)}
-.metric{background:#111725;border:1px solid #303a52;border-radius:14px;padding:clamp(11px,1.1vw,18px);min-width:0}
-.metric h4{font-size:clamp(15px,1.25vw,20px);margin:0 0 13px}
-.metric-labels,.metric-values{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-.metric-labels{font-size:clamp(11px,.85vw,14px);color:#aab3c9;text-transform:uppercase;margin-bottom:8px}
-.metric-values span{min-width:0;overflow-wrap:anywhere;font-size:clamp(15px,1.35vw,22px);font-weight:900;font-variant-numeric:tabular-nums}
-.est{color:#b5c3ff}.api{color:#dfbaff}
-.value-box{background:#191f30;border-radius:8px;padding:9px 6px;min-width:0}
-.difference{margin-top:clamp(12px,1.5vh,20px);text-align:center;padding:clamp(12px,1.3vw,20px)}
-.difference .big{font-size:clamp(40px,4vw,65px);margin:7px}
-#leader{font-size:clamp(16px,1.3vw,21px)}
-.status{text-align:center;color:#a0a9c0;font-size:clamp(12px,.9vw,15px);margin-top:9px}
-@media(min-width:900px) and (min-height:700px){
-html,body{height:100%;overflow:hidden}
-body{display:flex;flex-direction:column}
-main{width:100%;flex:1;min-height:0;display:flex;flex-direction:column}
-.creators{flex:1;min-height:0}
-.creator{min-height:0}
-.difference{flex-shrink:0}
+:root{--bg:#080b14;--panel:#111726;--card:#192236;--muted:#aab5ca;--white:#f5f7ff;--blue:#7187ff;--purple:#bd82ff;--border:#ffffff16}
+body{margin:0;padding:20px;background:radial-gradient(ellipse at 50% -15%,#25345c 0%,#10182a 35%,var(--bg) 75%);color:var(--white);font-family:Arial,Helvetica,sans-serif;min-height:100vh}
+header{text-align:center;margin:0 auto 22px}
+header h1{font-size:clamp(34px,4.2vw,58px);margin:0;font-weight:900;letter-spacing:-2px}
+header p{font-size:18px;color:var(--muted);margin:9px 0 0}
+main{width:100%;max-width:1900px;margin:auto}
+.creators{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.creator{--accent:var(--blue);background:linear-gradient(145deg,#18233a,#101624 75%);border:2px solid color-mix(in srgb,var(--accent) 55%,transparent);border-radius:22px;padding:20px;min-width:0;box-shadow:0 12px 40px #0005;display:flex;flex-direction:column;gap:16px}
+.creator.fede{--accent:var(--purple)}
+.creator-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.creator-heading h2{font-size:clamp(27px,3vw,40px);margin:0;font-weight:900}
+.handle{font-size:17px;color:var(--muted);margin-top:5px}
+.live{font-size:14px;font-weight:900;color:#7ff0ad;background:#17432e;padding:9px 13px;border-radius:30px;white-space:nowrap}
+.top{display:grid;grid-template-columns:minmax(125px, .75fr) minmax(0,2fr);gap:15px;align-items:stretch}
+.avatar-card,.sub-card,.goal-card,.stats-panel,.metric,.difference{background:var(--card);border:1px solid var(--border);border-radius:17px}
+.avatar-card{display:flex;align-items:center;justify-content:center;padding:14px;min-height:165px}
+.avatar{width:clamp(105px,11vw,155px);height:clamp(105px,11vw,155px);border-radius:50%;object-fit:cover;border:5px solid var(--accent);background:#26314a}
+.sub-card{padding:18px;display:flex;flex-direction:column;justify-content:center;min-width:0}
+.label{font-size:15px;color:var(--muted);font-weight:800;letter-spacing:1.3px}
+.sub-count{font-size:clamp(34px,4.1vw,61px);font-weight:900;letter-spacing:-2px;margin-top:10px;white-space:nowrap}
+.sub-count .odometer{font-size:inherit}
+.goal-card{padding:17px 19px;display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.goal-block{min-width:0}
+.goal-number{font-size:clamp(24px,2.8vw,38px);font-weight:900;margin-top:8px;white-space:nowrap}
+.goal-caption{font-size:14px;color:var(--muted);margin-top:5px}
+.stats-panel{padding:16px}
+.stats-title{font-size:19px;font-weight:900;letter-spacing:1.5px;margin:0 0 13px}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.metric{padding:13px 11px;min-width:0;background:#111a2b}
+.metric-name{font-size:16px;font-weight:900;margin-bottom:12px}
+.metric-values{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.value-box{background:#202c42;border-radius:11px;padding:10px 8px;min-width:0}
+.value-label{font-size:12px;color:var(--muted);font-weight:800;margin-bottom:7px}
+.value-number{font-size:clamp(17px,1.8vw,25px);font-weight:900;white-space:nowrap;letter-spacing:-.5px}
+.value-number .odometer{font-size:inherit}
+.difference{margin-top:19px;padding:19px 22px;text-align:center;background:linear-gradient(110deg,#172442,#211a39);border:2px solid #ffffff22}
+.difference-label{font-size:19px;font-weight:900;letter-spacing:1.5px}
+.leader{font-size:21px;font-weight:900;margin:8px 0;color:#d4dcff}
+.gap-number{font-size:clamp(37px,5vw,65px);font-weight:900;letter-spacing:-2px}
+.status{text-align:center;color:var(--muted);font-size:14px;margin:13px 0 0}
+.odometer.odometer-auto-theme,.odometer.odometer-theme-default{font-family:Arial,Helvetica,sans-serif}
+@media(max-width:850px){
+ body{padding:13px}
+ .creators{grid-template-columns:1fr}
+ .creator{padding:15px}
+ .top{grid-template-columns:120px minmax(0,1fr)}
+ .avatar-card{min-height:135px}
+ .avatar{width:100px;height:100px}
+ .sub-count{font-size:clamp(27px,6vw,43px)}
+ .metrics{gap:7px}
+ .metric{padding:10px 7px}
+ .metric-name{font-size:14px}
+ .value-box{padding:8px 5px}
+ .value-number{font-size:17px}
 }
-@media(max-width:899px){
-.creators{grid-template-columns:1fr}
-body{overflow:auto}
-}
-@media(max-width:520px){
-body{padding:10px}
-.creator{padding:12px}
-.top{grid-template-columns:100px minmax(0,1fr);gap:9px}
-.avatar-card{min-height:115px;padding:7px}
-.avatar{width:88px;height:88px}
-.number-card,.goal-card,.stats-panel{padding:11px}
-.metrics{gap:5px}
-.metric{padding:8px}
-.metric h4{font-size:13px}
-.metric-labels{font-size:9px;gap:3px}
-.metric-values{gap:3px}
-.metric-values span{font-size:11px}
-.value-box{padding:6px 3px}
-.stats-heading h3{font-size:16px}
+@media(max-width:480px){
+ .top{grid-template-columns:1fr}
+ .avatar-card{min-height:120px}
+ .goal-card{grid-template-columns:1fr 1fr;padding:13px}
+ .metrics{grid-template-columns:1fr}
+ .metric-values{grid-template-columns:1fr 1fr}
+ .value-number{font-size:22px}
 }
 </style>
 </head>
 <body>
 <header>
-<h1>Zhong vs Fede</h1>
-<p>YouTube Subscriber Battle · Live Channel Statistics</p>
+ <h1>ZHONG VS FEDE</h1>
+ <p>LIVE SUBSCRIBER BATTLE · YOUTUBE</p>
 </header>
+
 <main>
-<section class="creators">
-<article class="creator" id="zhong">
-<div class="creator-title"><div><h2>Zhong</h2><div class="handle">@zhong</div></div><span class="tag">CHANNEL 01</span></div>
-<div class="top">
-<div class="avatar-card"><img class="avatar" id="zhongAvatar" alt="Zhong"></div>
-<div class="number-card"><span class="label">Estimated subscribers</span><div class="big odometer" id="zhongSubs">0</div><span class="muted">Live estimated count</span></div>
-</div>
-<div class="goal-card">
-<span class="label">Next subscriber goal</span>
-<div class="goal-line"><span>Target</span><strong class="odometer" id="zhongGoal">0</strong></div>
-<div class="goal-line"><span>Remaining</span><strong class="odometer" id="zhongRemaining">0</strong></div>
-</div>
-<section class="stats-panel">
-<div class="stats-heading"><h3>ZHONG · CHANNEL STATISTICS</h3><span class="tag">LIVE</span></div>
-<div class="metrics">
-<div class="metric"><h4>Subscribers</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="value-box est odometer" id="zhongEstSubs">0</span><span class="value-box api odometer" id="zhongApiSubs">0</span></div></div>
-<div class="metric"><h4>Views</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="value-box est odometer" id="zhongEstViews">0</span><span class="value-box api odometer" id="zhongApiViews">0</span></div></div>
-<div class="metric"><h4>Videos</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="value-box est odometer" id="zhongEstVideos">0</span><span class="value-box api odometer" id="zhongApiVideos">0</span></div></div>
-</div>
-</section>
-</article>
-<article class="creator fede" id="fede">
-<div class="creator-title"><div><h2>Fede Vigevani</h2><div class="handle">@fedevigevani</div></div><span class="tag">CHANNEL 02</span></div>
-<div class="top">
-<div class="avatar-card"><img class="avatar" id="fedeAvatar" alt="Fede"></div>
-<div class="number-card"><span class="label">Estimated subscribers</span><div class="big odometer" id="fedeSubs">0</div><span class="muted">Live estimated count</span></div>
-</div>
-<div class="goal-card">
-<span class="label">Next subscriber goal</span>
-<div class="goal-line"><span>Target</span><strong class="odometer" id="fedeGoal">0</strong></div>
-<div class="goal-line"><span>Remaining</span><strong class="odometer" id="fedeRemaining">0</strong></div>
-</div>
-<section class="stats-panel">
-<div class="stats-heading"><h3>FEDE · CHANNEL STATISTICS</h3><span class="tag">LIVE</span></div>
-<div class="metrics">
-<div class="metric"><h4>Subscribers</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="value-box est odometer" id="fedeEstSubs">0</span><span class="value-box api odometer" id="fedeApiSubs">0</span></div></div>
-<div class="metric"><h4>Views</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="value-box est odometer" id="fedeEstViews">0</span><span class="value-box api odometer" id="fedeApiViews">0</span></div></div>
-<div class="metric"><h4>Videos</h4><div class="metric-labels"><span>Estimated</span><span>API</span></div><div class="metric-values"><span class="value-box est odometer" id="fedeEstVideos">0</span><span class="value-box api odometer" id="fedeApiVideos">0</span></div></div>
-</div>
-</section>
-</article>
-</section>
-<section class="difference">
-<span class="label">Exact subscriber difference</span>
-<div class="big odometer" id="difference">0</div>
-<div id="leader" class="muted">Waiting for channel data...</div>
-</section>
-<div class="status" id="status">Connecting...</div>
+ <section class="creators">
+  <article class="creator" id="zhong-card">
+   <div class="creator-heading">
+    <div><h2>Zhong</h2><div class="handle">@zhong</div></div>
+    <span class="live">● LIVE</span>
+   </div>
+   <div class="top">
+    <div class="avatar-card"><img class="avatar" id="zhong-avatar" alt="Zhong"></div>
+    <div class="sub-card">
+     <div class="label">TOTAL SUBSCRIBERS</div>
+     <div class="sub-count"><span id="zhong-subs">0</span></div>
+    </div>
+   </div>
+   <div class="goal-card">
+    <div class="goal-block">
+     <div class="label">NEXT MILLION</div>
+     <div class="goal-number" id="zhong-goal">0</div>
+     <div class="goal-caption">Next subscriber milestone</div>
+    </div>
+    <div class="goal-block">
+     <div class="label">SUBSCRIBERS LEFT</div>
+     <div class="goal-number" id="zhong-remaining">0</div>
+     <div class="goal-caption">Until the next million</div>
+    </div>
+   </div>
+   <section class="stats-panel">
+    <h3 class="stats-title">CHANNEL STATISTICS</h3>
+    <div class="metrics">
+     <div class="metric">
+      <div class="metric-name">Subscribers</div>
+      <div class="metric-values">
+       <div class="value-box"><div class="value-label">ESTIMATED</div><div class="value-number" id="zhong-est-subs">0</div></div>
+       <div class="value-box"><div class="value-label">API</div><div class="value-number" id="zhong-api-subs">0</div></div>
+      </div>
+     </div>
+     <div class="metric">
+      <div class="metric-name">Views</div>
+      <div class="metric-values">
+       <div class="value-box"><div class="value-label">ESTIMATED</div><div class="value-number" id="zhong-est-views">0</div></div>
+       <div class="value-box"><div class="value-label">API</div><div class="value-number" id="zhong-api-views">0</div></div>
+      </div>
+     </div>
+     <div class="metric">
+      <div class="metric-name">Videos</div>
+      <div class="metric-values">
+       <div class="value-box"><div class="value-label">ESTIMATED</div><div class="value-number" id="zhong-est-videos">0</div></div>
+       <div class="value-box"><div class="value-label">API</div><div class="value-number" id="zhong-api-videos">0</div></div>
+      </div>
+     </div>
+    </div>
+   </section>
+  </article>
+
+  <article class="creator fede" id="fede-card">
+   <div class="creator-heading">
+    <div><h2>Fede Vigevani</h2><div class="handle">@fedevigevani</div></div>
+    <span class="live">● LIVE</span>
+   </div>
+   <div class="top">
+    <div class="avatar-card"><img class="avatar" id="fede-avatar" alt="Fede Vigevani"></div>
+    <div class="sub-card">
+     <div class="label">TOTAL SUBSCRIBERS</div>
+     <div class="sub-count"><span id="fede-subs">0</span></div>
+    </div>
+   </div>
+   <div class="goal-card">
+    <div class="goal-block">
+     <div class="label">NEXT MILLION</div>
+     <div class="goal-number" id="fede-goal">0</div>
+     <div class="goal-caption">Next subscriber milestone</div>
+    </div>
+    <div class="goal-block">
+     <div class="label">SUBSCRIBERS LEFT</div>
+     <div class="goal-number" id="fede-remaining">0</div>
+     <div class="goal-caption">Until the next million</div>
+    </div>
+   </div>
+   <section class="stats-panel">
+    <h3 class="stats-title">CHANNEL STATISTICS</h3>
+    <div class="metrics">
+     <div class="metric">
+      <div class="metric-name">Subscribers</div>
+      <div class="metric-values">
+       <div class="value-box"><div class="value-label">ESTIMATED</div><div class="value-number" id="fede-est-subs">0</div></div>
+       <div class="value-box"><div class="value-label">API</div><div class="value-number" id="fede-api-subs">0</div></div>
+      </div>
+     </div>
+     <div class="metric">
+      <div class="metric-name">Views</div>
+      <div class="metric-values">
+       <div class="value-box"><div class="value-label">ESTIMATED</div><div class="value-number" id="fede-est-views">0</div></div>
+       <div class="value-box"><div class="value-label">API</div><div class="value-number" id="fede-api-views">0</div></div>
+      </div>
+     </div>
+     <div class="metric">
+      <div class="metric-name">Videos</div>
+      <div class="metric-values">
+       <div class="value-box"><div class="value-label">ESTIMATED</div><div class="value-number" id="fede-est-videos">0</div></div>
+       <div class="value-box"><div class="value-label">API</div><div class="value-number" id="fede-api-videos">0</div></div>
+      </div>
+     </div>
+    </div>
+   </section>
+  </article>
+ </section>
+
+ <section class="difference">
+  <div class="difference-label">EXACT SUBSCRIBER DIFFERENCE</div>
+  <div class="leader" id="leader">Loading battle...</div>
+  <div class="gap-number" id="difference">0</div>
+ </section>
+ <div class="status" id="status">Connecting to live statistics...</div>
 </main>
+
 <script src="https://cdn.jsdelivr.net/npm/odometer@0.4.8/odometer.min.js"></script>
 <script>
-const $=id=>document.getElementById(id),odometers={};
-const fmt=n=>Math.round(Number(n)).toLocaleString('en-US');
+'use strict';
+const $=id=>document.getElementById(id);
+const odometers={};
+const fmt=n=>Math.round(Number(n)||0).toLocaleString('en-US');
 const nextGoal=n=>(Math.floor(n/1000000)+1)*1000000;
+
 function number(id,value){
- const n=Number(value),el=$(id);
+ const el=$(id),n=Number(value);
  if(!el||!Number.isFinite(n))return;
  if(!odometers[id]){
   if(!window.Odometer){el.textContent=fmt(n);return}
-  odometers[id]=new Odometer({el,value:0,format:'(,ddd)',duration:850,theme:'default'});
+  odometers[id]=new Odometer({el,value:0,format:'(,ddd)',duration:1000,theme:'default'});
  }
  odometers[id].update(Math.round(n));
 }
-function updateCreator(key,c){
- const e=c.counters?.estimation||{},a=c.counters?.api||{},s=Number(e.subscriberCount);
- if(!Number.isFinite(s))return null;
- number(key+'Subs',s);
- const g=nextGoal(s);
- number(key+'Goal',g);number(key+'Remaining',Math.max(0,g-s));
- for(const [id,v] of Object.entries({
-  EstSubs:e.subscriberCount,ApiSubs:a.subscriberCount,
-  EstViews:e.viewCount,ApiViews:a.viewCount,
-  EstVideos:e.videoCount,ApiVideos:a.videoCount
- }))number(key+id,v);
- if(c.avatar&&$(key+'Avatar').src!==c.avatar)$(key+'Avatar').src=c.avatar;
- return s;
+
+function updateCreator(key,data){
+ if(!data)return;
+ const estimated=data.counters?.estimation||{};
+ const api=data.counters?.api||{};
+ const subs=Number(estimated.subscriberCount);
+ if(Number.isFinite(subs)){
+  const goal=nextGoal(subs);
+  number(key+'-subs',subs);
+  number(key+'-goal',goal);
+  number(key+'-remaining',goal-subs);
+ }
+ number(key+'-est-subs',estimated.subscriberCount);
+ number(key+'-api-subs',api.subscriberCount);
+ number(key+'-est-views',estimated.viewCount);
+ number(key+'-api-views',api.viewCount);
+ number(key+'-est-videos',estimated.videoCount);
+ number(key+'-api-videos',api.videoCount);
+ if(data.avatar&&$(key+'-avatar').src!==data.avatar)
+  $(key+'-avatar').src=data.avatar;
 }
+
 async function refresh(){
  try{
-  const r=await fetch('/api/stats',{cache:'no-store'});
-  if(!r.ok)throw Error('HTTP '+r.status);
-  const d=await r.json(),z=d.creators?.zhong,f=d.creators?.fede;
-  const zs=z&&updateCreator('zhong',z),fs=f&&updateCreator('fede',f);
+  const response=await fetch('/api/stats',{cache:'no-store'});
+  if(!response.ok)throw Error('HTTP '+response.status);
+  const data=await response.json();
+  const z=data.creators?.zhong,f=data.creators?.fede;
+  updateCreator('zhong',z);
+  updateCreator('fede',f);
+  const zs=Number(z?.counters?.estimation?.subscriberCount);
+  const fs=Number(f?.counters?.estimation?.subscriberCount);
   if(Number.isFinite(zs)&&Number.isFinite(fs)){
    number('difference',Math.abs(zs-fs));
-   $('leader').textContent=zs===fs?'They are tied':zs>fs?'Zhong is ahead':'Fede is ahead';
+   $('leader').textContent=zs>fs?'Zhong is ahead':fs>zs?'Fede is ahead':'It is a tie!';
   }
-  $('status').textContent='Last update: '+(d.updated?new Date(d.updated).toLocaleTimeString():'Waiting')+' · Refresh every 5 seconds';
- }catch(e){$('status').textContent='Connection error: '+e.message+' · Retrying'}
+  $('status').textContent=data.updated
+   ?'Last updated: '+new Date(data.updated).toLocaleTimeString()+' · Refreshing every 5 seconds'
+   :'Waiting for first update...';
+ }catch(e){
+  $('status').textContent='Connection error: '+e.message;
+ }
 }
-refresh();setInterval(refresh,5000);
+refresh();
+setInterval(refresh,5000);
 </script>
 </body>
 </html>
