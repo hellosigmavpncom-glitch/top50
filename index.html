@@ -7,66 +7,76 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/odometer@0.4.8/themes/odometer-theme-default.css">
 <style>
 *{box-sizing:border-box}
-body{margin:0;padding:20px;background:#080b14;color:#f5f7ff;font-family:Arial,sans-serif;min-height:100vh}
+body{margin:0;padding:18px;background:#080b14;color:#f5f7ff;font-family:Arial,sans-serif;min-height:100vh}
 header,main,.footer{width:100%;max-width:1900px;margin:auto}
-header{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:22px}
-h1{font-size:clamp(42px,4vw,62px);font-weight:950;letter-spacing:-2px;margin:0}
+header{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:20px}
+h1{font-size:clamp(40px,3.8vw,60px);font-weight:950;letter-spacing:-1.5px;margin:0}
 .subtitle,.handle,.caption{color:#a5b2ca}
-.subtitle{font-size:19px;margin-top:7px}
-.status{background:#172238;padding:15px 20px;border-radius:11px;font-size:16px;white-space:nowrap}
-.creators{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:stretch}
-.creator{--accent:#7187ff;background:#141e32;border:2px solid var(--accent);border-radius:22px;padding:21px;display:flex;flex-direction:column;gap:19px;min-width:0}
+.subtitle{font-size:18px;margin-top:6px}
+.status{background:#172238;padding:14px 19px;border-radius:11px;font-size:16px;white-space:nowrap}
+.creators{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:stretch}
+.creator{--accent:#7187ff;background:#141e32;border:2px solid var(--accent);border-radius:21px;padding:19px;display:flex;flex-direction:column;gap:17px;min-width:0}
 .fede{--accent:#bd82ff}
-.heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
-h2{font-size:clamp(36px,3vw,48px);font-weight:950;margin:0}
-.handle{font-size:18px;margin-top:6px}
-.platform{font-size:15px;font-weight:900;color:var(--accent);background:#ffffff0c;padding:12px;border-radius:9px}
-.top{display:grid;grid-template-columns:145px minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:stretch}
-.avatar-box,.main,.goal,.stats{background:#090f1c;border:1px solid #34415b;border-radius:15px;padding:17px;min-width:0}
-.avatar-box{display:grid;place-items:center}
-.avatar{width:130px;height:130px;border-radius:50%;object-fit:cover;border:5px solid var(--accent);display:block}
+.heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+h2{font-size:clamp(34px,3vw,47px);font-weight:950;margin:0}
+.handle{font-size:17px;margin-top:5px}
+.platform{font-size:14px;font-weight:900;color:var(--accent);background:#ffffff0c;padding:11px;border-radius:9px}
+.top{display:grid;grid-template-columns:170px minmax(0,1fr) minmax(0,1fr);gap:11px;align-items:stretch}
+.avatar-box,.main,.goal,.stats{background:#090f1c;border:1px solid #34415b;border-radius:15px;padding:15px;min-width:0}
+.avatar-box{display:grid;place-items:center;min-height:170px}
+.avatar{width:154px;height:154px;border-radius:50%;object-fit:cover;border:5px solid var(--accent);display:block}
 .main{display:flex;flex-direction:column;justify-content:center}
-.label{font-size:19px;font-weight:950;color:#b8c5dc;letter-spacing:.5px}
-.big{font-size:clamp(30px,2.8vw,46px);font-weight:950;letter-spacing:-1px;margin-top:15px;white-space:nowrap}
-.caption{font-size:15px;margin-top:10px}
+.label{font-size:18px;font-weight:950;color:#b8c5dc;letter-spacing:.5px}
+.big{font-size:clamp(29px,2.5vw,43px);font-weight:950;letter-spacing:-1px;margin-top:15px;white-space:nowrap}
+.caption{font-size:14px;margin-top:10px}
 .goal{border-color:var(--accent);background:linear-gradient(110deg,#18243a,#090f1c);display:flex;flex-direction:column;justify-content:center}
-.goal-title{font-size:19px;font-weight:950;line-height:1.3}
-.goal-number{font-size:clamp(29px,2.4vw,40px);font-weight:950;margin-top:17px;white-space:nowrap}
-.remaining{font-size:clamp(17px,1.5vw,22px);font-weight:900;color:#c7d2e8;margin-top:13px;white-space:nowrap}
-.stats{padding:17px;display:flex;flex-direction:column;gap:13px}
-.stats-title{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.stats-title strong{font-size:23px;letter-spacing:.7px}
-.stats-title span{font-size:13px;color:#a2afc8;white-space:nowrap}
-.metrics{display:grid;grid-template-columns:1fr 1.4fr .85fr;gap:11px}
-.metric{background:#172238;border:1px solid #35435e;border-radius:12px;padding:13px;min-width:0;display:flex;flex-direction:column;gap:9px}
-.metric-title{font-size:19px;font-weight:950}
-.value{background:#0b1220;border-radius:9px;padding:13px;min-width:0;min-height:76px;display:flex;flex-direction:column;justify-content:center;gap:8px}
-.value-label{font-size:13px;font-weight:950;color:#94b6ed}
-.value-number{font-size:clamp(16px,1.35vw,21px);font-weight:950;white-space:nowrap;letter-spacing:-.4px}
-.odometer,.odometer.odometer-auto-theme,.odometer.odometer-theme-default{font-family:inherit!important;line-height:1.3!important;vertical-align:middle}
-.odometer-digit-inner{overflow:hidden}
-.difference{margin-top:19px;padding:23px 26px;min-height:125px;background:#172238;border:1px solid #35435e;border-radius:17px;display:flex;align-items:center;justify-content:space-between;gap:18px}
-.diff-label{font-size:22px;font-weight:950;color:#c3d0e7}
-.diff-number{font-size:clamp(48px,4.3vw,67px);font-weight:950;margin-top:9px;line-height:1.4;overflow:visible}
-.leader{text-align:right;color:#b4c1d8;font-weight:900;font-size:18px}
-.leader strong{display:block;color:white;font-size:32px;margin-top:8px}
-.footer{display:flex;justify-content:space-between;gap:12px;color:#8492ac;font-size:14px;margin-top:13px;padding-bottom:8px}
-@media(max-width:1150px){
- .creators{grid-template-columns:1fr}
- .top{grid-template-columns:145px minmax(0,1fr) minmax(0,1fr)}
- .metrics{grid-template-columns:1fr 1.4fr .85fr}
+.goal-title{font-size:17px;font-weight:950;line-height:1.35}
+.goal-number{font-size:clamp(27px,2.2vw,38px);font-weight:950;margin-top:16px;white-space:nowrap}
+.remaining{font-size:clamp(15px,1.3vw,20px);font-weight:900;color:#c7d2e8;margin-top:13px;white-space:nowrap}
+.stats{padding:16px;display:flex;flex-direction:column;gap:12px}
+.stats-title{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.stats-title strong{font-size:21px;letter-spacing:.5px}
+.stats-title span{font-size:12px;color:#a2afc8;white-space:nowrap}
+.metrics{display:grid;grid-template-columns:1fr 1.3fr .85fr;gap:9px}
+.metric{background:#172238;border:1px solid #35435e;border-radius:11px;padding:11px;min-width:0;display:flex;flex-direction:column;gap:9px}
+.metric-title{font-size:18px;font-weight:950}
+.value{background:#0b1220;border-radius:9px;padding:11px;min-width:0;min-height:77px;display:flex;flex-direction:column;justify-content:center;gap:8px}
+.value-label{font-size:12px;font-weight:950;color:#94b6ed}
+.value-number{font-size:clamp(15px,1.25vw,20px);font-weight:950;white-space:nowrap;letter-spacing:-.4px}
+.metric:nth-child(2) .value-number{font-size:clamp(14px,1.12vw,18px);letter-spacing:-.6px}
+.odometer,.odometer.odometer-auto-theme,.odometer.odometer-theme-default{font-family:Arial,sans-serif!important;line-height:1.25!important;vertical-align:baseline;display:inline-block}
+.odometer-digit,.odometer-digit-spacer{vertical-align:baseline}
+.difference{margin-top:17px;padding:20px 24px;min-height:140px;background:#172238;border:1px solid #35435e;border-radius:16px;display:flex;align-items:center;justify-content:space-between;gap:15px}
+.diff-label{font-size:21px;font-weight:950;color:#c3d0e7}
+.diff-number{font-size:clamp(45px,4vw,64px);font-weight:950;margin-top:8px;line-height:1.4;min-height:1.4em;overflow:visible}
+.leader{text-align:right;color:#b4c1d8;font-weight:900;font-size:17px}
+.leader strong{display:block;color:white;font-size:30px;margin-top:7px}
+.footer{display:flex;justify-content:space-between;gap:10px;color:#8492ac;font-size:13px;margin-top:12px;padding-bottom:8px}
+@media(max-width:900px){
+ .creator{padding:13px}
+ .top{grid-template-columns:115px minmax(0,1fr) minmax(0,1fr);gap:8px}
+ .avatar-box{min-height:120px}
+ .avatar{width:105px;height:105px}
+ .big{font-size:clamp(22px,2.5vw,32px)}
+ .goal-number{font-size:clamp(22px,2vw,29px)}
+ .metrics{grid-template-columns:1fr 1.2fr .85fr;gap:6px}
+ .metric{padding:7px}
+ .value{padding:8px}
+ .metric-title{font-size:15px}
+ .value-number{font-size:14px}
+ .metric:nth-child(2) .value-number{font-size:12px}
 }
 @media(max-width:650px){
- body{padding:12px}
+ body{padding:10px}
  header{align-items:flex-start;flex-direction:column}
- h1{font-size:36px}
- .creator{padding:13px;gap:13px}
+ .creators{grid-template-columns:1fr}
  .top{grid-template-columns:95px minmax(0,1fr)}
- .avatar{width:84px;height:84px}
- .goal{grid-column:1/-1;min-height:145px}
+ .avatar-box{min-height:100px}
+ .avatar{width:86px;height:86px}
+ .goal{grid-column:1/-1;min-height:130px}
  .metrics{grid-template-columns:1fr}
- .metric{padding:13px}
- .value-number{font-size:20px}
+ .metric{padding:12px}
+ .value-number,.metric:nth-child(2) .value-number{font-size:19px}
  .difference{align-items:flex-start;flex-direction:column}
  .leader{text-align:left}
  .footer{font-size:11px}
