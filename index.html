@@ -1,260 +1,119 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Zhong vs Fede — Live Battle</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Zhong vs Fede</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/odometer@0.4.8/themes/odometer-theme-default.css">
 <style>
 *{box-sizing:border-box}
-:root{--bg:#080b14;--panel:#111726;--card:#192236;--muted:#aab5ca;--white:#f5f7ff;--blue:#7187ff;--purple:#bd82ff;--border:#ffffff16}
-body{margin:0;padding:20px;background:radial-gradient(ellipse at 50% -15%,#25345c 0%,#10182a 35%,var(--bg) 75%);color:var(--white);font-family:Arial,Helvetica,sans-serif;min-height:100vh}
-header{text-align:center;margin:0 auto 22px}
-header h1{font-size:clamp(34px,4.2vw,58px);margin:0;font-weight:900;letter-spacing:-2px}
-header p{font-size:18px;color:var(--muted);margin:9px 0 0}
-main{width:100%;max-width:1900px;margin:auto}
-.creators{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-.creator{--accent:var(--blue);background:linear-gradient(145deg,#18233a,#101624 75%);border:2px solid color-mix(in srgb,var(--accent) 55%,transparent);border-radius:22px;padding:20px;min-width:0;box-shadow:0 12px 40px #0005;display:flex;flex-direction:column;gap:16px}
-.creator.fede{--accent:var(--purple)}
-.creator-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.creator-heading h2{font-size:clamp(27px,3vw,40px);margin:0;font-weight:900}
-.handle{font-size:17px;color:var(--muted);margin-top:5px}
-.live{font-size:14px;font-weight:900;color:#7ff0ad;background:#17432e;padding:9px 13px;border-radius:30px;white-space:nowrap}
-.top{display:grid;grid-template-columns:minmax(125px, .75fr) minmax(0,2fr);gap:15px;align-items:stretch}
-.avatar-card,.sub-card,.goal-card,.stats-panel,.metric,.difference{background:var(--card);border:1px solid var(--border);border-radius:17px}
-.avatar-card{display:flex;align-items:center;justify-content:center;padding:14px;min-height:165px}
-.avatar{width:clamp(105px,11vw,155px);height:clamp(105px,11vw,155px);border-radius:50%;object-fit:cover;border:5px solid var(--accent);background:#26314a}
-.sub-card{padding:18px;display:flex;flex-direction:column;justify-content:center;min-width:0}
-.label{font-size:15px;color:var(--muted);font-weight:800;letter-spacing:1.3px}
-.sub-count{font-size:clamp(34px,4.1vw,61px);font-weight:900;letter-spacing:-2px;margin-top:10px;white-space:nowrap}
-.sub-count .odometer{font-size:inherit}
-.goal-card{padding:17px 19px;display:grid;grid-template-columns:1fr 1fr;gap:15px}
-.goal-block{min-width:0}
-.goal-number{font-size:clamp(24px,2.8vw,38px);font-weight:900;margin-top:8px;white-space:nowrap}
-.goal-caption{font-size:14px;color:var(--muted);margin-top:5px}
-.stats-panel{padding:16px}
-.stats-title{font-size:19px;font-weight:900;letter-spacing:1.5px;margin:0 0 13px}
-.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
-.metric{padding:13px 11px;min-width:0;background:#111a2b}
-.metric-name{font-size:16px;font-weight:900;margin-bottom:12px}
-.metric-values{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.value-box{background:#202c42;border-radius:11px;padding:10px 8px;min-width:0}
-.value-label{font-size:12px;color:var(--muted);font-weight:800;margin-bottom:7px}
-.value-number{font-size:clamp(17px,1.8vw,25px);font-weight:900;white-space:nowrap;letter-spacing:-.5px}
-.value-number .odometer{font-size:inherit}
-.difference{margin-top:19px;padding:19px 22px;text-align:center;background:linear-gradient(110deg,#172442,#211a39);border:2px solid #ffffff22}
-.difference-label{font-size:19px;font-weight:900;letter-spacing:1.5px}
-.leader{font-size:21px;font-weight:900;margin:8px 0;color:#d4dcff}
-.gap-number{font-size:clamp(37px,5vw,65px);font-weight:900;letter-spacing:-2px}
-.status{text-align:center;color:var(--muted);font-size:14px;margin:13px 0 0}
-.odometer.odometer-auto-theme,.odometer.odometer-theme-default{font-family:Arial,Helvetica,sans-serif}
-@media(max-width:850px){
- body{padding:13px}
- .creators{grid-template-columns:1fr}
- .creator{padding:15px}
- .top{grid-template-columns:120px minmax(0,1fr)}
- .avatar-card{min-height:135px}
- .avatar{width:100px;height:100px}
- .sub-count{font-size:clamp(27px,6vw,43px)}
- .metrics{gap:7px}
- .metric{padding:10px 7px}
- .metric-name{font-size:14px}
- .value-box{padding:8px 5px}
- .value-number{font-size:17px}
+body{margin:0;padding:16px;background:#080b14;color:#f5f7ff;font-family:Arial,sans-serif}
+header,main,.footer{max-width:1900px;margin:auto}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+h1{font-size:clamp(26px,2.5vw,38px);margin:0}
+.subtitle,.handle,.caption{color:#9ba8c0}
+.subtitle{margin-top:5px;font-size:15px}
+.status{background:#151e30;padding:10px 14px;border-radius:10px;font-size:14px}
+.creators{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.creator{--accent:#7187ff;background:#141d30;border:2px solid var(--accent);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:13px;min-width:0}
+.fede{--accent:#bd82ff}
+.heading{display:flex;justify-content:space-between;align-items:center}
+h2{font-size:clamp(25px,2.2vw,34px);margin:0}
+.handle{font-size:15px;margin-top:4px}
+.platform,.tag{font-size:12px;font-weight:bold;letter-spacing:1px;color:var(--accent);background:#ffffff0c;padding:8px;border-radius:8px}
+.top{display:grid;grid-template-columns:110px 1fr;gap:12px}
+.avatar-box,.main,.goal,.stats{background:#090f1c;border:1px solid #303b53;border-radius:13px;padding:12px;min-width:0}
+.avatar-box{display:grid;place-items:center}
+.avatar{width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid var(--accent)}
+.label{font-size:14px;font-weight:bold;color:#aab6ce;letter-spacing:1px}
+.big{font-size:clamp(35px,3.5vw,54px);font-weight:950;white-space:nowrap;margin-top:8px;letter-spacing:-1.5px}
+.caption{font-size:13px;margin-top:5px}
+.goal{background:linear-gradient(110deg,#18243a,#090f1c);border-color:var(--accent)}
+.goal-title{font-size:16px;font-weight:900}
+.goal-number{font-size:clamp(28px,2.6vw,40px);font-weight:950;margin-top:7px;white-space:nowrap}
+.remaining{font-size:18px;color:#c5cfe2;margin-top:5px}
+.stats-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.stats-title strong{font-size:17px;letter-spacing:1px}
+.stats-title span{font-size:11px;color:#98a5bf}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.metric{background:#172238;border:1px solid #303d56;border-radius:10px;padding:10px 7px;min-width:0}
+.metric-title{font-size:15px;font-weight:900;margin-bottom:9px}
+.values{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.value{background:#0b1220;border-radius:8px;padding:8px 6px;min-width:0}
+.value-label{font-size:10px;font-weight:900;color:#91a0bc;margin-bottom:6px}
+.value-number{font-size:clamp(16px,1.5vw,23px);font-weight:950;white-space:nowrap}
+.difference{margin-top:14px;padding:15px 20px;background:#172238;border:1px solid #35415a;border-radius:15px;display:flex;justify-content:space-between;align-items:center}
+.diff-label{font-size:15px;font-weight:900;color:#b8c5dc}
+.diff-number{font-size:clamp(30px,3vw,44px);font-weight:950;margin-top:5px}
+.leader{text-align:right;color:#aab6ce;font-weight:bold}
+.leader strong{display:block;color:white;font-size:21px;margin-top:5px}
+.footer{display:flex;justify-content:space-between;color:#8491aa;font-size:12px;margin-top:10px}
+.odometer{font-family:inherit}
+@media(max-width:850px){.creators{grid-template-columns:1fr}body{padding:10px}.big{font-size:clamp(34px,7vw,52px)}}
+@media(max-width:480px){header{align-items:flex-start;flex-direction:column;gap:10px}.top{grid-template-columns:75px 1fr}.avatar{width:65px;height:65px}.creator{padding:11px}.metric{padding:8px 5px}.metric-title{font-size:12px}.value-number{font-size:14px}.difference{align-items:flex-start;flex-direction:column}.leader{text-align:left}}
+@media(min-width:851px) and (min-height:650px){
+html,body{height:100%;min-height:0}body{display:flex;flex-direction:column;overflow:hidden;padding:14px}
+header{width:100%;flex-shrink:0}main{width:100%;flex:1;min-height:0;display:flex;flex-direction:column}
+.creators{flex:1;min-height:0}.creator{justify-content:space-between;min-height:0;gap:clamp(7px,1.2vh,13px)}
+.top{grid-template-columns:clamp(80px,8vw,110px) 1fr}.avatar{width:clamp(68px,6.5vw,90px);height:clamp(68px,6.5vw,90px)}
+.main,.goal,.stats{padding:clamp(8px,1vw,13px)}
+.difference{flex-shrink:0;margin-top:10px}.footer{width:100%;flex-shrink:0}
 }
-@media(max-width:480px){
- .top{grid-template-columns:1fr}
- .avatar-card{min-height:120px}
- .goal-card{grid-template-columns:1fr 1fr;padding:13px}
- .metrics{grid-template-columns:1fr}
- .metric-values{grid-template-columns:1fr 1fr}
- .value-number{font-size:22px}
+@media(min-width:851px) and (max-height:760px){
+.creator{gap:7px;padding:10px}.top{grid-template-columns:75px 1fr}.avatar{width:65px;height:65px}
+.big{font-size:clamp(30px,2.8vw,40px)}.goal-number{font-size:27px}.remaining{font-size:15px}
+.metric{padding:7px 5px}.metric-title{font-size:13px;margin-bottom:5px}.value{padding:6px 4px}
+.value-number{font-size:clamp(15px,1.3vw,19px)}.difference{padding:9px 15px}
 }
 </style>
 </head>
 <body>
-<header>
- <h1>ZHONG VS FEDE</h1>
- <p>LIVE SUBSCRIBER BATTLE · YOUTUBE</p>
-</header>
-
+<header><div><h1>THE RISE OF ZHONG</h1><div class="subtitle">Live YouTube Subscriber Battle · Zhong vs Fede</div></div><div class="status" id="status">Connecting...</div></header>
 <main>
- <section class="creators">
-  <article class="creator" id="zhong-card">
-   <div class="creator-heading">
-    <div><h2>Zhong</h2><div class="handle">@zhong</div></div>
-    <span class="live">● LIVE</span>
-   </div>
-   <div class="top">
-    <div class="avatar-card"><img class="avatar" id="zhong-avatar" alt="Zhong"></div>
-    <div class="sub-card">
-     <div class="label">TOTAL SUBSCRIBERS</div>
-     <div class="sub-count"><span id="zhong-subs">0</span></div>
-    </div>
-   </div>
-   <div class="goal-card">
-    <div class="goal-block">
-     <div class="label">NEXT MILLION</div>
-     <div class="goal-number" id="zhong-goal">0</div>
-     <div class="goal-caption">Next subscriber milestone</div>
-    </div>
-    <div class="goal-block">
-     <div class="label">SUBSCRIBERS LEFT</div>
-     <div class="goal-number" id="zhong-remaining">0</div>
-     <div class="goal-caption">Until the next million</div>
-    </div>
-   </div>
-   <section class="stats-panel">
-    <h3 class="stats-title">CHANNEL STATISTICS</h3>
-    <div class="metrics">
-     <div class="metric">
-      <div class="metric-name">Subscribers</div>
-      <div class="metric-values">
-       <div class="value-box"><div class="value-label">ESTIMATED</div><div class="value-number" id="zhong-est-subs">0</div></div>
-       <div class="value-box"><div class="value-label">API</div><div class="value-number" id="zhong-api-subs">0</div></div>
-      </div>
-     </div>
-     <div class="metric">
-      <div class="metric-name">Views</div>
-      <div class="metric-values">
-       <div class="value-box"><div class="value-label">ESTIMATED</div><div class="value-number" id="zhong-est-views">0</div></div>
-       <div class="value-box"><div class="value-label">API</div><div class="value-number" id="zhong-api-views">0</div></div>
-      </div>
-     </div>
-     <div class="metric">
-      <div class="metric-name">Videos</div>
-      <div class="metric-values">
-       <div class="value-box"><div class="value-label">ESTIMATED</div><div class="value-number" id="zhong-est-videos">0</div></div>
-       <div class="value-box"><div class="value-label">API</div><div class="value-number" id="zhong-api-videos">0</div></div>
-      </div>
-     </div>
-    </div>
-   </section>
-  </article>
-
-  <article class="creator fede" id="fede-card">
-   <div class="creator-heading">
-    <div><h2>Fede Vigevani</h2><div class="handle">@fedevigevani</div></div>
-    <span class="live">● LIVE</span>
-   </div>
-   <div class="top">
-    <div class="avatar-card"><img class="avatar" id="fede-avatar" alt="Fede Vigevani"></div>
-    <div class="sub-card">
-     <div class="label">TOTAL SUBSCRIBERS</div>
-     <div class="sub-count"><span id="fede-subs">0</span></div>
-    </div>
-   </div>
-   <div class="goal-card">
-    <div class="goal-block">
-     <div class="label">NEXT MILLION</div>
-     <div class="goal-number" id="fede-goal">0</div>
-     <div class="goal-caption">Next subscriber milestone</div>
-    </div>
-    <div class="goal-block">
-     <div class="label">SUBSCRIBERS LEFT</div>
-     <div class="goal-number" id="fede-remaining">0</div>
-     <div class="goal-caption">Until the next million</div>
-    </div>
-   </div>
-   <section class="stats-panel">
-    <h3 class="stats-title">CHANNEL STATISTICS</h3>
-    <div class="metrics">
-     <div class="metric">
-      <div class="metric-name">Subscribers</div>
-      <div class="metric-values">
-       <div class="value-box"><div class="value-label">ESTIMATED</div><div class="value-number" id="fede-est-subs">0</div></div>
-       <div class="value-box"><div class="value-label">API</div><div class="value-number" id="fede-api-subs">0</div></div>
-      </div>
-     </div>
-     <div class="metric">
-      <div class="metric-name">Views</div>
-      <div class="metric-values">
-       <div class="value-box"><div class="value-label">ESTIMATED</div><div class="value-number" id="fede-est-views">0</div></div>
-       <div class="value-box"><div class="value-label">API</div><div class="value-number" id="fede-api-views">0</div></div>
-      </div>
-     </div>
-     <div class="metric">
-      <div class="metric-name">Videos</div>
-      <div class="metric-values">
-       <div class="value-box"><div class="value-label">ESTIMATED</div><div class="value-number" id="fede-est-videos">0</div></div>
-       <div class="value-box"><div class="value-label">API</div><div class="value-number" id="fede-api-videos">0</div></div>
-      </div>
-     </div>
-    </div>
-   </section>
-  </article>
- </section>
-
- <section class="difference">
-  <div class="difference-label">EXACT SUBSCRIBER DIFFERENCE</div>
-  <div class="leader" id="leader">Loading battle...</div>
-  <div class="gap-number" id="difference">0</div>
- </section>
- <div class="status" id="status">Connecting to live statistics...</div>
+<section class="creators" id="creators"></section>
+<section class="difference"><div><div class="diff-label">EXACT SUBSCRIBER DIFFERENCE</div><div class="diff-number odometer" id="difference">0</div></div><div class="leader">CURRENT LEADER<strong id="leader">Waiting...</strong></div></section>
 </main>
-
+<div class="footer"><span>Live data · 5-second updates</span><span id="updated">Waiting for update</span></div>
 <script src="https://cdn.jsdelivr.net/npm/odometer@0.4.8/odometer.min.js"></script>
 <script>
 'use strict';
-const $=id=>document.getElementById(id);
-const odometers={};
+const $=id=>document.getElementById(id),odometers={};
+const creators=[['zhong','Zhong','@zhong'],['fede','Fede Vigevani','@fedevigevani']];
 const fmt=n=>Math.round(Number(n)||0).toLocaleString('en-US');
-const nextGoal=n=>(Math.floor(n/1000000)+1)*1000000;
-
+const next=n=>(Math.floor(n/1e6)+1)*1e6;
+const fields=[['subs','Subscribers','subscriberCount'],['views','Views','viewCount'],['videos','Videos','videoCount']];
+$('creators').innerHTML=creators.map(([k,name,handle])=>`
+<article class="creator ${k==='fede'?'fede':''}">
+<div class="heading"><div><h2 id="${k}-name">${name}</h2><div class="handle">${handle}</div></div><span class="platform">YOUTUBE</span></div>
+<div class="top"><div class="avatar-box"><img class="avatar" id="${k}-avatar" alt="${name}"></div><div class="main"><div class="label">LIVE SUBSCRIBERS</div><div class="big odometer" id="${k}-main">0</div><div class="caption">Estimated subscriber count</div></div></div>
+<div class="goal"><div class="goal-title">NEXT MILLION MILESTONE</div><div class="goal-number odometer" id="${k}-goal">0</div><div class="remaining"><span class="odometer" id="${k}-left">0</span> remaining</div></div>
+<div class="stats"><div class="stats-title"><strong>CHANNEL STATISTICS</strong><span>ESTIMATED / API</span></div><div class="metrics">
+${fields.map(([id,label])=>`<div class="metric"><div class="metric-title">${label}</div><div class="values"><div class="value"><div class="value-label">ESTIMATED</div><div class="value-number odometer" id="${k}-est-${id}">0</div></div><div class="value"><div class="value-label">API</div><div class="value-number odometer" id="${k}-api-${id}">0</div></div></div></div>`).join('')}
+</div></div></article>`).join('');
 function number(id,value){
- const el=$(id),n=Number(value);
- if(!el||!Number.isFinite(n))return;
- if(!odometers[id]){
-  if(!window.Odometer){el.textContent=fmt(n);return}
-  odometers[id]=new Odometer({el,value:0,format:'(,ddd)',duration:1000,theme:'default'});
- }
+ const el=$(id),n=Number(value);if(!el||!Number.isFinite(n))return;
+ if(!window.Odometer){el.textContent=fmt(n);return}
+ if(!odometers[id])odometers[id]=new Odometer({el,value:0,format:'(,ddd)',duration:900,theme:'default'});
  odometers[id].update(Math.round(n));
 }
-
-function updateCreator(key,data){
- if(!data)return;
- const estimated=data.counters?.estimation||{};
- const api=data.counters?.api||{};
- const subs=Number(estimated.subscriberCount);
- if(Number.isFinite(subs)){
-  const goal=nextGoal(subs);
-  number(key+'-subs',subs);
-  number(key+'-goal',goal);
-  number(key+'-remaining',goal-subs);
- }
- number(key+'-est-subs',estimated.subscriberCount);
- number(key+'-api-subs',api.subscriberCount);
- number(key+'-est-views',estimated.viewCount);
- number(key+'-api-views',api.viewCount);
- number(key+'-est-videos',estimated.videoCount);
- number(key+'-api-videos',api.videoCount);
- if(data.avatar&&$(key+'-avatar').src!==data.avatar)
-  $(key+'-avatar').src=data.avatar;
+function update(k,c){
+ if(!c)return null;
+ const e=c.counters?.estimation||{},a=c.counters?.api||{},s=Number(e.subscriberCount);
+ if(!Number.isFinite(s))return null;
+ number(k+'-main',s);number(k+'-goal',next(s));number(k+'-left',Math.max(0,next(s)-s));
+ fields.forEach(([id,,field])=>{number(k+'-est-'+id,e[field]);number(k+'-api-'+id,a[field])});
+ if(c.avatar&&$(k+'-avatar').src!==c.avatar)$(k+'-avatar').src=c.avatar;
+ return s;
 }
-
 async function refresh(){
  try{
-  const response=await fetch('/api/stats',{cache:'no-store'});
-  if(!response.ok)throw Error('HTTP '+response.status);
-  const data=await response.json();
-  const z=data.creators?.zhong,f=data.creators?.fede;
-  updateCreator('zhong',z);
-  updateCreator('fede',f);
-  const zs=Number(z?.counters?.estimation?.subscriberCount);
-  const fs=Number(f?.counters?.estimation?.subscriberCount);
-  if(Number.isFinite(zs)&&Number.isFinite(fs)){
-   number('difference',Math.abs(zs-fs));
-   $('leader').textContent=zs>fs?'Zhong is ahead':fs>zs?'Fede is ahead':'It is a tie!';
-  }
-  $('status').textContent=data.updated
-   ?'Last updated: '+new Date(data.updated).toLocaleTimeString()+' · Refreshing every 5 seconds'
-   :'Waiting for first update...';
- }catch(e){
-  $('status').textContent='Connection error: '+e.message;
- }
+  const r=await fetch('/api/stats',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);
+  const d=await r.json(),z=update('zhong',d.creators?.zhong),f=update('fede',d.creators?.fede);
+  if(z!==null&&f!==null){number('difference',Math.abs(z-f));$('leader').textContent=z===f?'TIED':z>f?'Zhong':'Fede Vigevani'}
+  $('status').textContent=d.error?'Some stats unavailable':'LIVE · CONNECTED';
+  $('updated').textContent=d.updated?'Last update: '+new Date(d.updated).toLocaleTimeString():'Waiting for update';
+ }catch(e){$('status').textContent='Connection error';console.error('[Dashboard] '+e.message)}
 }
-refresh();
-setInterval(refresh,5000);
+refresh();setInterval(refresh,5000);
 </script>
 </body>
 </html>
