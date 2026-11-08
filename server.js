@@ -3,7 +3,9 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+const HOST = '0.0.0.0';
+
 const CHANNELS = [
   { id: 'UCyagEfIN1okQ-s996XAqCFQ', name: 'Zhong' },
   { id: 'UCoQm-PeHC-cbJclKJYJ8LzA', name: 'Fede Vigevani' }
@@ -15,7 +17,7 @@ const HTML = path.join(__dirname, 'index.html');
 async function getChannels() {
   const ids = CHANNELS.map(c => c.id).join(',');
   const response = await fetch(API + ids, {
-    headers: { 'Accept': 'application/json' },
+    headers: { Accept: 'application/json' },
     signal: AbortSignal.timeout(12000)
   });
 
@@ -45,10 +47,10 @@ async function getChannels() {
 }
 
 const server = http.createServer(async (req, res) => {
-  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
 
   if (req.url === '/api/stats') {
-    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
 
     try {
       const channels = await getChannels();
@@ -72,6 +74,7 @@ const server = http.createServer(async (req, res) => {
   if (req.url === '/' || req.url === '/index.html') {
     fs.readFile(HTML, (error, file) => {
       if (error) {
+        console.error('[HTML]', error.message);
         res.writeHead(500);
         return res.end('Could not load index.html');
       }
@@ -88,7 +91,12 @@ const server = http.createServer(async (req, res) => {
   res.end('Not found');
 });
 
-server.listen(PORT, '127.0.0.1', () => {
-  console.log(`\nZhong vs Fede running at http://localhost:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`Zhong vs Fede running on port ${PORT}`);
   console.log('SCTools polling starts when the dashboard requests data.');
+});
+
+server.on('error', error => {
+  console.error('[SERVER]', error.message);
+  process.exit(1);
 });
