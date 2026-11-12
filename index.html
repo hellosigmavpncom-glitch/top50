@@ -11,26 +11,27 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:100%;height:100%;overflow:hidden}
 body{background:var(--bg);color:var(--white);font-family:Inter,sans-serif}
-.container{width:100%;height:100%;padding:10px 14px;display:grid;grid-template-columns:minmax(0,1fr) 420px;grid-template-rows:30px minmax(0,1fr) 104px minmax(0,1fr) 18px;gap:9px}
+.container{width:100%;height:100%;padding:10px 14px;display:grid;grid-template-columns:minmax(0,1fr) 420px;grid-template-rows:30px minmax(0,1fr) 94px minmax(0,1fr) 18px;gap:9px}
 header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;min-width:0}
 h1{font-size:19px;font-weight:900;letter-spacing:-.5px}h1 span{color:var(--purple)}
 .header-badge{font-size:10px;font-weight:900;letter-spacing:1px;color:var(--purple);border:1px solid #7541a5;background:#28143d;padding:5px 10px;border-radius:5px}
-.channel{background:var(--panel);border:2px solid var(--border);border-radius:14px;padding:11px 17px;display:grid;grid-template-rows:auto minmax(0,1fr);gap:8px;min-width:0;min-height:0;overflow:hidden}
+.channel{background:var(--panel);border:2px solid var(--border);border-radius:14px;padding:10px 17px;display:grid;grid-template-rows:auto minmax(0,1fr);gap:8px;min-width:0;min-height:0;overflow:hidden}
 .channel.celine{border-color:var(--purple);box-shadow:0 0 24px #a855f733}
-.api-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;border-bottom:1px solid #ffffff25;padding-bottom:8px}
+.api-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;border-bottom:1px solid #ffffff25;padding-bottom:7px;min-width:0}
 .api-stat,.stream-stat{min-width:0;display:flex;flex-direction:column;gap:4px}
 .api-label{font-size:10px;font-weight:900;letter-spacing:.9px;color:var(--muted);white-space:nowrap}
 .api-value{font-size:clamp(19px,2vw,31px);font-weight:900;letter-spacing:-1px;white-space:nowrap;line-height:1.15;overflow:hidden;text-overflow:ellipsis}
-.channel-main{display:grid;grid-template-columns:150px minmax(0,1fr);align-items:center;gap:16px;min-width:0;min-height:0}
-.identity{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:10px;text-align:left;min-width:0}
-.avatar{width:130px;height:130px;flex-shrink:0;object-fit:cover;border-radius:15px;border:3px solid #475569;background:#1a2234;box-shadow:0 0 22px #0009}
+.channel-main{display:grid;grid-template-columns:220px minmax(0,1fr);align-items:center;gap:16px;min-width:0;min-height:0}
+.identity{display:grid;grid-template-columns:100px minmax(0,1fr);align-items:center;gap:10px;min-width:0}
+.avatar{width:100px;height:100px;flex-shrink:0;object-fit:cover;border-radius:14px;border:3px solid #475569;background:#1a2234;box-shadow:0 0 22px #0009}
 .celine .avatar{border-color:var(--purple);box-shadow:0 0 25px #a855f766}
-.identity-info{min-width:0;display:none}
-.name{font-size:24px;font-weight:900;line-height:1.1}.handle{font-size:13px;color:var(--muted)}
-.tag{font-size:9px;font-weight:900;letter-spacing:1px;color:var(--purple)}
-.primary-counter{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:9px}
-.counter-label{font-size:12px;font-weight:900;letter-spacing:1.2px;color:var(--muted)}
-.count{font-size:clamp(58px,6.2vw,112px);font-weight:900;letter-spacing:-.075em;line-height:1.05;white-space:nowrap}
+.identity-info{display:flex;flex-direction:column;gap:5px;min-width:0}
+.name{font-size:18px;font-weight:900;line-height:1.1;overflow-wrap:anywhere}
+.handle{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.tag{font-size:8px;font-weight:900;letter-spacing:.5px;color:var(--purple);line-height:1.3}
+.primary-counter{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:7px;overflow:hidden}
+.counter-label{font-size:11px;font-weight:900;letter-spacing:1px;color:var(--muted)}
+.count{font-size:clamp(54px,5.2vw,82px);font-weight:900;letter-spacing:-.075em;line-height:1.08;white-space:nowrap}
 .odometer{font-family:Inter,sans-serif!important;font-variant-numeric:tabular-nums;line-height:1.15!important;vertical-align:middle}
 .right-panel{grid-column:2;grid-row:2/5;background:var(--panel);border:2px solid var(--purple);border-radius:14px;padding:15px;display:flex;flex-direction:column;gap:11px;min-width:0;min-height:0;overflow:hidden;box-shadow:0 0 24px #a855f72b}
 .right-heading,.stream-heading{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -51,20 +52,21 @@ h1{font-size:19px;font-weight:900;letter-spacing:-.5px}h1 span{color:var(--purpl
 .stream-details{min-width:0}.stream-title{font-size:16px;font-weight:900;line-height:1.3;overflow-wrap:anywhere}
 .stream-channel{font-size:12px;color:var(--muted);margin-top:5px}
 .stream-meta{font-size:10px;color:var(--muted);line-height:1.6;overflow-wrap:anywhere}
-.stream-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px;flex:1;align-content:space-evenly}
+.stream-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px;flex:1;align-content:space-evenly;min-height:0}
 .stream-stat{gap:6px}.stream-stat label{font-size:10px;font-weight:900;color:var(--blue);letter-spacing:.8px;white-space:nowrap}
 .stream-stat .value{font-size:clamp(36px,3vw,46px);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-1.5px;line-height:1.1}
 .stream-stat:first-child .value{color:var(--blue)}
-.difference{grid-column:1;grid-row:3;background:linear-gradient(135deg,#28143d,#171025);border:2px solid #7541a5;border-radius:12px;padding:0 12px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;text-align:center;box-shadow:0 0 22px #a855f72b;min-width:0;overflow:hidden}
+.difference{grid-column:1;grid-row:3;background:linear-gradient(135deg,#28143d,#171025);border:2px solid #7541a5;border-radius:12px;padding:4px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px;text-align:center;box-shadow:0 0 22px #a855f72b;min-width:0;overflow:hidden}
 .difference-label{font-size:11px;font-weight:900;color:#c084fc;letter-spacing:1.1px;text-align:left}
-.difference-value{font-size:clamp(58px,6.2vw,112px);font-weight:900;color:var(--purple);letter-spacing:-.075em;line-height:1.05;white-space:nowrap}
-.difference-status{font-size:11px;color:#c4b5fd;font-weight:900;text-align:right}
+.difference-value{font-size:clamp(54px,5.2vw,82px);font-weight:900;color:var(--purple);letter-spacing:-.075em;line-height:1.08;white-space:nowrap}
+.difference-status{font-size:11px;color:#c4b5fd;font-weight:900;text-align:right;white-space:nowrap}
 footer{grid-row:5;font-size:10px;color:var(--muted)}.live{color:var(--green);font-weight:900}
 </style>
 </head>
 <body>
 <div class="container">
 <header><h1>RACE TO TOP 50: <span>CELINE</span></h1><div class="header-badge">GLOBAL TOP 50 MISSION</div></header>
+
 <section class="channel celine">
 <div class="api-row">
 <div class="api-stat"><div class="api-label">API SUBSCRIBERS</div><div class="api-value" id="celine-api-subs">0</div></div>
@@ -72,14 +74,28 @@ footer{grid-row:5;font-size:10px;color:var(--muted)}.live{color:var(--green);fon
 <div class="api-stat"><div class="api-label">API VIEWS</div><div class="api-value" id="celine-api-views">0</div></div>
 <div class="api-stat"><div class="api-label">VIDEOS</div><div class="api-value" id="celine-videos">0</div></div>
 </div>
-<div class="channel-main"><div class="identity">
+<div class="channel-main">
+<div class="identity">
 <img id="celine-avatar" class="avatar" alt="Celine Dept">
 <div class="identity-info">
-<div class="name" id="celine-name">Celine Dept</div><div class="handle" id="celine-handle">@celinedept</div><div class="tag">TARGET CHANNEL · TOP 51</div>
+<div class="name" id="celine-name">Celine Dept</div>
+<div class="handle" id="celine-handle">@celinedept</div>
+<div class="tag">TARGET CHANNEL · TOP 51</div>
 </div>
-</div><div class="primary-counter"><div class="counter-label">LIVE ESTIMATED SUBSCRIBERS</div><div class="count odometer" id="celine-est-subs">0</div></div></div>
+</div>
+<div class="primary-counter">
+<div class="counter-label">LIVE ESTIMATED SUBSCRIBERS</div>
+<div class="count odometer" id="celine-est-subs">0</div>
+</div>
+</div>
 </section>
-<div class="difference"><div class="difference-label">LIVE SUBSCRIBER DIFFERENCE</div><div class="difference-value odometer" id="sub-diff">0</div><div class="difference-status" id="gap-status">Connecting...</div></div>
+
+<div class="difference">
+<div class="difference-label">LIVE SUBSCRIBER DIFFERENCE</div>
+<div class="difference-value odometer" id="sub-diff">0</div>
+<div class="difference-status" id="gap-status">Connecting...</div>
+</div>
+
 <section class="channel kondzilla">
 <div class="api-row">
 <div class="api-stat"><div class="api-label">API SUBSCRIBERS</div><div class="api-value" id="kondzilla-api-subs">0</div></div>
@@ -87,26 +103,48 @@ footer{grid-row:5;font-size:10px;color:var(--muted)}.live{color:var(--green);fon
 <div class="api-stat"><div class="api-label">API VIEWS</div><div class="api-value" id="kondzilla-api-views">0</div></div>
 <div class="api-stat"><div class="api-label">VIDEOS</div><div class="api-value" id="kondzilla-videos">0</div></div>
 </div>
-<div class="channel-main"><div class="identity">
+<div class="channel-main">
+<div class="identity">
 <img id="kondzilla-avatar" class="avatar" alt="Canal KondZilla">
 <div class="identity-info">
-<div class="name" id="kondzilla-name">Canal KondZilla</div><div class="handle" id="kondzilla-handle">@kondzilla</div><div class="tag">COMPARISON CHANNEL</div>
+<div class="name" id="kondzilla-name">Canal KondZilla</div>
+<div class="handle" id="kondzilla-handle">@kondzilla</div>
+<div class="tag">COMPARISON CHANNEL</div>
 </div>
-</div><div class="primary-counter"><div class="counter-label">LIVE ESTIMATED SUBSCRIBERS</div><div class="count odometer" id="kondzilla-est-subs">0</div></div></div>
+</div>
+<div class="primary-counter">
+<div class="counter-label">LIVE ESTIMATED SUBSCRIBERS</div>
+<div class="count odometer" id="kondzilla-est-subs">0</div>
+</div>
+</div>
 </section>
+
 <aside class="right-panel">
 <div class="right-heading"><div class="section-heading">MY CHANNEL · VYSTATS</div><div class="live-indicator">● LIVE</div></div>
-<div class="my-channel"><img id="vystats-avatar" class="my-avatar" alt="VYStats"><div>
-<div class="my-name" id="vystats-name">VYStats</div><div class="my-handle" id="vystats-handle">@VYStats</div>
-<div class="my-count-label">ESTIMATED SUBSCRIBERS</div><div class="my-count odometer" id="vystats-est-subs">0</div>
-</div></div>
+<div class="my-channel">
+<img id="vystats-avatar" class="my-avatar" alt="VYStats">
+<div>
+<div class="my-name" id="vystats-name">VYStats</div>
+<div class="my-handle" id="vystats-handle">@VYStats</div>
+<div class="my-count-label">ESTIMATED SUBSCRIBERS</div>
+<div class="my-count odometer" id="vystats-est-subs">0</div>
+</div>
+</div>
 <div class="my-api"><div class="my-api-label">API SUBSCRIBERS</div><div class="my-api-count odometer" id="vystats-api-subs">0</div></div>
 <div class="panel-divider"></div>
 <div class="stream-heading"><span>MY LIVESTREAM</span><span class="stream-status" id="stream-status">● LIVE PERFORMANCE</span></div>
-<div class="stream-info"><img id="stream-thumb" class="stream-thumb" alt="My livestream thumbnail"><div class="stream-details">
-<div class="stream-title" id="stream-title">Loading livestream...</div><div class="stream-channel" id="stream-channel">Loading channel...</div>
-</div></div>
-<div class="stream-meta"><span>VIDEO ID: <span id="stream-id">B8iHWmFwaHY</span></span><br><span>UPLOAD DATE: <span id="stream-date">—</span></span><span id="stream-extra-info"></span></div>
+<div class="stream-info">
+<img id="stream-thumb" class="stream-thumb" alt="My livestream thumbnail">
+<div class="stream-details">
+<div class="stream-title" id="stream-title">Loading livestream...</div>
+<div class="stream-channel" id="stream-channel">Loading channel...</div>
+</div>
+</div>
+<div class="stream-meta">
+<span>VIDEO ID: <span id="stream-id">B8iHWmFwaHY</span></span><br>
+<span>UPLOAD DATE: <span id="stream-date">—</span></span>
+<span id="stream-extra-info"></span>
+</div>
 <div class="stream-grid" id="stream-grid">
 <div class="stream-stat"><label>VIEWERS WATCHING</label><div class="value" id="stream-viewers">0</div></div>
 <div class="stream-stat"><label>TOTAL VIEWS</label><div class="value" id="stream-views">0</div></div>
@@ -114,8 +152,10 @@ footer{grid-row:5;font-size:10px;color:var(--muted)}.live{color:var(--green);fon
 <div class="stream-stat"><label>LIKES</label><div class="value" id="stream-likes">0</div></div>
 </div>
 </aside>
+
 <footer><div><span class="live">● LIVE</span> &nbsp; MIXERNO & BASEPOINT API</div><div id="updated">Connecting...</div></footer>
 </div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
 <script>
 const $=id=>document.getElementById(id),C={};let lastValidStream=null;
@@ -124,44 +164,75 @@ if(window.Odometer)E.forEach(id=>C[id]=new Odometer({el:$(id),value:0,format:"(,
 const fmt=v=>Number(v??0).toLocaleString("en-US");
 const uV=(id,v)=>{if(v===null||v===undefined||v==="")return;const n=Number(v);if(Number.isFinite(n)){if(C[id])C[id].update(n);else $(id).textContent=fmt(n)}};
 const setText=(id,v)=>$(id).textContent=v??"—";
+
 function render(k,d){
 if(!d)return;
-if(d.name)setText(k+"-name",d.name);if(d.handle)setText(k+"-handle",d.handle);
+if(d.name)setText(k+"-name",d.name);
+if(d.handle)setText(k+"-handle",d.handle);
 if(d.avatar&&!$(k+"-avatar").src.includes("/api/avatar/"+k))$(k+"-avatar").src="/api/avatar/"+k;
 [["est-subs","estimatedSubscriberCount"],["api-subs","apiSubscriberCount"],["views","viewCount"],["api-views","apiViewCount"],["videos","videoCount"]].forEach(([f,p])=>uV(k+"-"+f,d[p]));
 }
+
 function renderVystats(d){
 if(!d)return;
-if(d.name)setText("vystats-name",d.name);if(d.handle)setText("vystats-handle",d.handle);
+if(d.name)setText("vystats-name",d.name);
+if(d.handle)setText("vystats-handle",d.handle);
 if(d.avatar&&!$("vystats-avatar").src.includes("/api/avatar/vystats"))$("vystats-avatar").src="/api/avatar/vystats";
-uV("vystats-est-subs",d.estimatedSubscriberCount);uV("vystats-api-subs",d.apiSubscriberCount);
+uV("vystats-est-subs",d.estimatedSubscriberCount);
+uV("vystats-api-subs",d.apiSubscriberCount);
 }
+
 function renderStream(s){
 if(s)lastValidStream=s;else if(lastValidStream)s=lastValidStream;else return;
 const i=s.info||{},st=s.stats||{},ch=i.channel||{};
-if(i.title)setText("stream-title",i.title);if(ch.name)setText("stream-channel",ch.name);if(i.id)setText("stream-id",i.id);
+if(i.title)setText("stream-title",i.title);
+if(ch.name)setText("stream-channel",ch.name);
+if(i.id)setText("stream-id",i.id);
 if(i.uploadDate){const date=new Date(i.uploadDate);setText("stream-date",Number.isNaN(date.getTime())?"—":date.toLocaleString())}
 if(i.thumbnail){const im=$("stream-thumb");if(im.src!==i.thumbnail)im.src=i.thumbnail}
 setText("stream-status","● LIVE PERFORMANCE");
 [["stream-viewers","viewerCount"],["stream-views","viewCount"],["stream-est-views","estimatedViewCount"],["stream-likes","likeCount"]].forEach(([id,key])=>setText(id,fmt(st[key])));
 const extra=Object.entries(i).filter(([k,v])=>!["id","title","thumbnail","uploadDate","channel"].includes(k)&&v!==null&&typeof v!=="object").map(([k,v])=>k+": "+v);
-if(ch.id)extra.push("CHANNEL ID: "+ch.id);$("stream-extra-info").textContent=extra.join(" · ");
-const grid=$("stream-grid");grid.querySelectorAll(".dynamic-stat").forEach(x=>x.remove());
+if(ch.id)extra.push("CHANNEL ID: "+ch.id);
+$("stream-extra-info").textContent=extra.join(" · ");
+const grid=$("stream-grid");
+grid.querySelectorAll(".dynamic-stat").forEach(x=>x.remove());
 Object.entries(st).filter(([k,v])=>!["viewerCount","viewCount","estimatedViewCount","likeCount"].includes(k)&&v!==null&&typeof v!=="object").forEach(([k,v])=>{
 const item=document.createElement("div"),label=document.createElement("label"),value=document.createElement("div");
-item.className="stream-stat dynamic-stat";label.textContent=k.replace(/([A-Z])/g," $1").toUpperCase();value.className="value";value.textContent=typeof v==="number"?fmt(v):String(v);item.append(label,value);grid.append(item);
+item.className="stream-stat dynamic-stat";
+label.textContent=k.replace(/([A-Z])/g," $1").toUpperCase();
+value.className="value";
+value.textContent=typeof v==="number"?fmt(v):String(v);
+item.append(label,value);
+grid.append(item);
 });
 }
+
 async function fS(){
 try{
-const r=await fetch("/api/stats",{cache:"no-store"});if(!r.ok)throw Error("Stats request failed: "+r.status);
-const d=await r.json();render("celine",d.celine);render("kondzilla",d.kondzilla);renderVystats(d.vystats);renderStream(d.stream);
-if(d.celine&&d.kondzilla){const a=Number(d.celine.estimatedSubscriberCount),b=Number(d.kondzilla.estimatedSubscriberCount);
-if(Number.isFinite(a)&&Number.isFinite(b)){uV("sub-diff",Math.abs(a-b));setText("gap-status",a>b?"Celine is ahead":a<b?"Celine is behind":"Channels are tied")}}
-setText("updated",d.lastUpdated?"Updated "+new Date(d.lastUpdated).toLocaleTimeString():"Waiting...");
-}catch(e){setText("updated","Connection error (showing last known stats)");if(lastValidStream)renderStream(lastValidStream);console.error("[Dashboard]",e)}
+const r=await fetch("/api/stats",{cache:"no-store"});
+if(!r.ok)throw Error("Stats request failed: "+r.status);
+const d=await r.json();
+render("celine",d.celine);
+render("kondzilla",d.kondzilla);
+renderVystats(d.vystats);
+renderStream(d.stream);
+if(d.celine&&d.kondzilla){
+const a=Number(d.celine.estimatedSubscriberCount),b=Number(d.kondzilla.estimatedSubscriberCount);
+if(Number.isFinite(a)&&Number.isFinite(b)){
+uV("sub-diff",Math.abs(a-b));
+setText("gap-status",a>b?"Celine is ahead":a<b?"Celine is behind":"Channels are tied");
 }
-fS();setInterval(fS,5000);
+}
+setText("updated",d.lastUpdated?"Updated "+new Date(d.lastUpdated).toLocaleTimeString():"Waiting...");
+}catch(e){
+setText("updated","Connection error (showing last known stats)");
+if(lastValidStream)renderStream(lastValidStream);
+console.error("[Dashboard]",e);
+}
+}
+fS();
+setInterval(fS,5000);
 </script>
 </body>
 </html>
