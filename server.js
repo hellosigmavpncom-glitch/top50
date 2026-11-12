@@ -1,7 +1,12 @@
+
 const app=require('express')(),path=require('path'),PORT=process.env.PORT||3000;
-const chs={celine:{id:'UC1a2ZCw7tugRZYRMnecNj3A',name:'Celine Dept'},kondzilla:{id:'UCffDXn7ycAzwL2LDlbyWOTw',name:'Canal KondZilla'}};
-const STREAM_ID='Nr1IWBNNQFA';
-let cache={celine:null,kondzilla:null,stream:null,lastUpdated:null},busy=false;
+const chs={
+  celine:{id:'UC1a2ZCw7tugRZYRMnecNj3A',name:'Celine Dept',handle:'@celinedept'},
+  kondzilla:{id:'UCffDXn7ycAzwL2LDlbyWOTw',name:'Canal KondZilla',handle:'@kondzilla'},
+  vystats:{id:'UCnKrmx7XhDqbiMD3aSBwz_g',name:'VYStats',handle:'@VYStats'}
+};
+const STREAM_ID='B8iHWmFwaHY';
+let cache={celine:null,kondzilla:null,vystats:null,stream:null,lastUpdated:null},busy=false;
 app.use((req,res,next)=>{res.setHeader("Cache-Control","no-store");next();});
 async function fetchCh(k,ch){
   try{
@@ -11,7 +16,7 @@ async function fetchCh(k,ch){
     const est=gc("subscribers"),apiSub=gc("apisubscribers");
     const name=gu("name")||ch.name,avatar=gu("pfp");
     if(!est||isNaN(Number(est)))throw 0;
-    return{id:ch.id,name,handle:`@${k==='celine'?'celinedept':'kondzilla'}`,avatar:avatar.trim(),estimatedSubscriberCount:Number(est),apiSubscriberCount:Number(apiSub),viewCount:Number(gc("views")),apiViewCount:Number(gc("apiviews")),videoCount:Number(gc("videos"))};
+    return{id:ch.id,name,handle:ch.handle,avatar:avatar.trim(),estimatedSubscriberCount:Number(est),apiSubscriberCount:Number(apiSub),viewCount:Number(gc("views")),apiViewCount:Number(gc("apiviews")),videoCount:Number(gc("videos"))};
   }catch{return null;}
 }
 async function fetchStream(){
@@ -23,15 +28,17 @@ async function fetchStream(){
 }
 async function update(){
   if(busy)return;busy=true;
-  const [cRes,kRes,sRes]=await Promise.all([
+  const [cRes,kRes,vRes,sRes]=await Promise.all([
     fetchCh('celine',chs.celine),
     fetchCh('kondzilla',chs.kondzilla),
+    fetchCh('vystats',chs.vystats),
     fetchStream()
   ]);
   if(cRes)cache.celine=cRes;
   if(kRes)cache.kondzilla=kRes;
+  if(vRes)cache.vystats=vRes;
   if(sRes)cache.stream=sRes;
-  if(cache.celine||cache.kondzilla||cache.stream)cache.lastUpdated=new Date().toISOString();
+  if(cache.celine||cache.kondzilla||cache.vystats||cache.stream)cache.lastUpdated=new Date().toISOString();
   busy=false;
 }
 app.get("/api/stats",(_,res)=>res.json(cache));
