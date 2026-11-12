@@ -11,7 +11,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:100%;height:100%;overflow:hidden}
 body{background:var(--bg);color:var(--white);font-family:Inter,sans-serif}
-.container{width:100%;height:100%;padding:10px 14px;display:grid;grid-template-columns:minmax(0,1fr) 420px;grid-template-rows:30px minmax(0,1fr) 120px minmax(0,1fr) 18px;gap:9px}
+.container{width:100%;height:100%;padding:10px 14px;display:grid;grid-template-columns:minmax(0,1fr) 420px;grid-template-rows:30px minmax(0,1fr) 104px minmax(0,1fr) 18px;gap:9px}
 header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;min-width:0}
 h1{font-size:19px;font-weight:900;letter-spacing:-.5px}h1 span{color:var(--purple)}
 .header-badge{font-size:10px;font-weight:900;letter-spacing:1px;color:var(--purple);border:1px solid #7541a5;background:#28143d;padding:5px 10px;border-radius:5px}
@@ -21,10 +21,11 @@ h1{font-size:19px;font-weight:900;letter-spacing:-.5px}h1 span{color:var(--purpl
 .api-stat,.stream-stat{min-width:0;display:flex;flex-direction:column;gap:4px}
 .api-label{font-size:10px;font-weight:900;letter-spacing:.9px;color:var(--muted);white-space:nowrap}
 .api-value{font-size:clamp(19px,2vw,31px);font-weight:900;letter-spacing:-1px;white-space:nowrap;line-height:1.15;overflow:hidden;text-overflow:ellipsis}
-.channel-main{display:grid;grid-template-columns:245px minmax(0,1fr);align-items:center;gap:20px;min-width:0;min-height:0}
-.identity{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;text-align:center;min-width:0}
-.avatar{width:200px;height:200px;max-width:100%;object-fit:cover;border-radius:17px;border:3px solid #475569;background:#1a2234;box-shadow:0 0 22px #0009}
+.channel-main{display:grid;grid-template-columns:150px minmax(0,1fr);align-items:center;gap:16px;min-width:0;min-height:0}
+.identity{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:10px;text-align:left;min-width:0}
+.avatar{width:130px;height:130px;flex-shrink:0;object-fit:cover;border-radius:15px;border:3px solid #475569;background:#1a2234;box-shadow:0 0 22px #0009}
 .celine .avatar{border-color:var(--purple);box-shadow:0 0 25px #a855f766}
+.identity-info{min-width:0;display:none}
 .name{font-size:24px;font-weight:900;line-height:1.1}.handle{font-size:13px;color:var(--muted)}
 .tag{font-size:9px;font-weight:900;letter-spacing:1px;color:var(--purple)}
 .primary-counter{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:9px}
@@ -54,7 +55,7 @@ h1{font-size:19px;font-weight:900;letter-spacing:-.5px}h1 span{color:var(--purpl
 .stream-stat{gap:6px}.stream-stat label{font-size:10px;font-weight:900;color:var(--blue);letter-spacing:.8px;white-space:nowrap}
 .stream-stat .value{font-size:clamp(36px,3vw,46px);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-1.5px;line-height:1.1}
 .stream-stat:first-child .value{color:var(--blue)}
-.difference{grid-column:1;grid-row:3;background:linear-gradient(135deg,#28143d,#171025);border:2px solid #7541a5;border-radius:12px;padding:5px 16px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;text-align:center;box-shadow:0 0 22px #a855f72b;min-width:0;overflow:hidden}
+.difference{grid-column:1;grid-row:3;background:linear-gradient(135deg,#28143d,#171025);border:2px solid #7541a5;border-radius:12px;padding:0 12px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;text-align:center;box-shadow:0 0 22px #a855f72b;min-width:0;overflow:hidden}
 .difference-label{font-size:11px;font-weight:900;color:#c084fc;letter-spacing:1.1px;text-align:left}
 .difference-value{font-size:clamp(58px,6.2vw,112px);font-weight:900;color:var(--purple);letter-spacing:-.075em;line-height:1.05;white-space:nowrap}
 .difference-status{font-size:11px;color:#c4b5fd;font-weight:900;text-align:right}
@@ -73,7 +74,9 @@ footer{grid-row:5;font-size:10px;color:var(--muted)}.live{color:var(--green);fon
 </div>
 <div class="channel-main"><div class="identity">
 <img id="celine-avatar" class="avatar" alt="Celine Dept">
+<div class="identity-info">
 <div class="name" id="celine-name">Celine Dept</div><div class="handle" id="celine-handle">@celinedept</div><div class="tag">TARGET CHANNEL · TOP 51</div>
+</div>
 </div><div class="primary-counter"><div class="counter-label">LIVE ESTIMATED SUBSCRIBERS</div><div class="count odometer" id="celine-est-subs">0</div></div></div>
 </section>
 <div class="difference"><div class="difference-label">LIVE SUBSCRIBER DIFFERENCE</div><div class="difference-value odometer" id="sub-diff">0</div><div class="difference-status" id="gap-status">Connecting...</div></div>
@@ -86,7 +89,9 @@ footer{grid-row:5;font-size:10px;color:var(--muted)}.live{color:var(--green);fon
 </div>
 <div class="channel-main"><div class="identity">
 <img id="kondzilla-avatar" class="avatar" alt="Canal KondZilla">
+<div class="identity-info">
 <div class="name" id="kondzilla-name">Canal KondZilla</div><div class="handle" id="kondzilla-handle">@kondzilla</div><div class="tag">COMPARISON CHANNEL</div>
+</div>
 </div><div class="primary-counter"><div class="counter-label">LIVE ESTIMATED SUBSCRIBERS</div><div class="count odometer" id="kondzilla-est-subs">0</div></div></div>
 </section>
 <aside class="right-panel">
