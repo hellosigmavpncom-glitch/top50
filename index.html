@@ -4,102 +4,112 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Race to Top 50 | Live Battle</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/themes/odometer-theme-minimal.min.css">
 <style>
-:root{--bg:#07090e;--panel:#0e1320;--border:#263149;--purple:#a855f7;--muted:#8993a8;--white:#f8f9ff;--blue:#38bdf8;--green:#4ade80}
+:root{--bg:#070910;--panel:#101522;--line:#29344a;--purple:#b45cff;--blue:#39c5ff;--white:#f7f8ff;--muted:#a5b1c7;--green:#42ed9b}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:100%;height:100%;overflow:hidden}
-body{background:var(--bg);color:var(--white);font-family:Inter,sans-serif}
-.container{width:100%;height:100%;padding:8px 10px;display:grid;grid-template-columns:minmax(0,1fr) 390px;grid-template-rows:28px minmax(0,1fr) 76px minmax(0,1fr) 16px;gap:7px}
+body{font-family:Inter,sans-serif;background:var(--bg);color:var(--white);font-weight:600}
+.container{height:100%;width:100%;padding:10px 13px;display:grid;grid-template-columns:minmax(0,1fr) 355px;grid-template-rows:38px minmax(0,1fr) 17px;gap:9px;background:radial-gradient(ellipse at 28% 35%,#29123c55,transparent 48%),radial-gradient(ellipse at 75% 55%,#102a4455,transparent 48%),#070910}
 header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;min-width:0}
-h1{font-size:20px;font-weight:900;letter-spacing:-.5px}h1 span{color:var(--purple)}
-.header-badge{font-size:12px;font-weight:900;letter-spacing:1px;color:var(--purple);border:1px solid #7541a5;background:#28143d;padding:5px 10px;border-radius:5px}
-.channel{background:var(--panel);border:2px solid var(--border);border-radius:12px;padding:8px 12px;display:grid;grid-template-rows:auto minmax(0,1fr);gap:8px;min-width:0;min-height:0;overflow:hidden}
-.channel.celine{border-color:var(--purple);box-shadow:0 0 24px #a855f733}
-.api-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;border-bottom:1px solid #ffffff25;padding-bottom:7px;min-width:0}
-.api-stat,.stream-stat{min-width:0;display:flex;flex-direction:column;gap:4px}
-.api-label{font-size:10px;font-weight:900;letter-spacing:1px;color:var(--muted);white-space:nowrap}
-.api-value{font-size:clamp(18px,1.8vw,27px);font-weight:900;letter-spacing:-1px;white-space:nowrap;line-height:1.15;overflow:hidden;text-overflow:ellipsis}
-.channel-main{display:grid;grid-template-columns:235px minmax(0,1fr);align-items:center;gap:14px;min-width:0;min-height:0}
-.identity{display:grid;grid-template-columns:132px minmax(0,1fr);align-items:center;gap:11px;min-width:0}
-.avatar{width:132px;height:132px;flex-shrink:0;object-fit:cover;border-radius:17px;border:3px solid #475569;background:#1a2234;box-shadow:0 0 22px #0009}
-.celine .avatar{border-color:var(--purple);box-shadow:0 0 25px #a855f766}
-.identity-info{display:flex;flex-direction:column;gap:6px;min-width:0}
-.name{font-size:19px;font-weight:900;line-height:1.12;overflow-wrap:anywhere}
-.handle{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
-.tag{font-size:10px;font-weight:900;letter-spacing:.5px;color:var(--purple);line-height:1.35}
-.primary-counter{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:7px;overflow:hidden}
-.counter-label{font-size:12px;font-weight:900;letter-spacing:1.2px;color:var(--muted)}
-.count{font-size:clamp(42px,4.4vw,62px);font-weight:900;letter-spacing:-.075em;line-height:1.08;white-space:nowrap}
+h1{font-size:23px;font-weight:800;letter-spacing:-.7px}h1 span{color:var(--purple)}
+.header-badge{padding:7px 12px;border:1px solid #a855f7;border-radius:5px;background:#27113b;color:#d8a5ff;font-size:12px;font-weight:700}
+.battle{grid-column:1;grid-row:2;display:grid;grid-template-rows:minmax(0,1fr) 88px;gap:10px;min-width:0;min-height:0}
+.versus{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:17px;position:relative;min-width:0;min-height:0}
+.channel{position:relative;overflow:hidden;min-width:0;min-height:0;background:linear-gradient(145deg,#171329,#0e1320 60%);border:1px solid #8d45c9;border-radius:15px;padding:15px;display:grid;grid-template-rows:36px minmax(0,1fr) 140px;gap:10px;box-shadow:inset 0 0 35px #a855f70b,0 8px 28px #0007}
+.channel:before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#8b35dd,#e0a5ff)}
+.channel.kond{background:linear-gradient(145deg,#101d30,#0e1320 65%);border-color:#277eb3}
+.channel.kond:before{background:linear-gradient(90deg,#168bc5,#71ddff)}
+.channel-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff20;padding-bottom:9px}
+.channel-name{font-size:14px;font-weight:800;letter-spacing:.7px}
+.celine .channel-name{color:#d5a0ff}.kond .channel-name{color:#75d8ff}
+.channel-number{font-size:12px;color:#91a0ba;font-weight:600}
+.hero{display:grid;grid-template-columns:minmax(0,1fr) 185px;gap:9px;align-items:center;min-height:0;min-width:0}
+.hero-info{min-width:0;display:flex;flex-direction:column;gap:12px}
+.eyebrow{font-size:14px;font-weight:700;letter-spacing:.6px;color:var(--muted)}
+.big-number{font-size:clamp(52px,4.6vw,74px);font-weight:800;letter-spacing:-.075em;line-height:1.12;white-space:nowrap}
 .odometer{font-family:Inter,sans-serif!important;font-variant-numeric:tabular-nums;line-height:1.15!important;vertical-align:middle}
-.right-panel{grid-column:2;grid-row:2/5;background:var(--panel);border:2px solid var(--purple);border-radius:12px;padding:11px;display:flex;flex-direction:column;gap:11px;min-width:0;min-height:0;overflow:hidden;box-shadow:0 0 24px #a855f72b}
-.right-heading,.stream-heading{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.section-heading{font-size:13px;font-weight:900;letter-spacing:1.2px;color:var(--purple)}
-.live-indicator,.stream-status{font-size:10px;font-weight:900;color:var(--green);white-space:nowrap}
-.my-channel{display:grid;grid-template-columns:86px minmax(0,1fr);gap:10px;align-items:center}
-.my-avatar{width:86px;height:86px;border-radius:50%;object-fit:cover;border:3px solid var(--purple);background:#1a2234}
-.my-name{font-size:21px;font-weight:900}.my-handle{font-size:13px;color:var(--muted);margin-top:2px}
-.my-count-label{font-size:10px;color:var(--muted);font-weight:900;letter-spacing:.8px;margin-top:7px}
-.my-count{font-size:clamp(28px,2.8vw,40px);font-weight:900;letter-spacing:-2px;line-height:1.1;white-space:nowrap}
-.my-api{display:flex;justify-content:flex-start;align-items:center;gap:12px;border-top:1px solid #ffffff25;padding-top:8px;min-width:0}
-.my-api-label{font-size:11px;color:var(--muted);font-weight:900;letter-spacing:.8px;white-space:nowrap}
-.my-api-count{font-size:32px;font-weight:900;letter-spacing:-1.5px;line-height:1.1;white-space:nowrap}
-.panel-divider{height:1px;background:#ffffff25;flex-shrink:0}
-.stream-heading span:first-child{font-size:12px;font-weight:900;letter-spacing:1px;color:var(--blue)}
-.stream-info{display:grid;grid-template-columns:150px minmax(0,1fr);gap:8px;align-items:center;min-width:0}
-.stream-thumb{width:150px;height:90px;object-fit:cover;border-radius:9px;border:2px solid #334155;background:#1a2234}
-.stream-details{min-width:0}.stream-title{font-size:15px;font-weight:900;line-height:1.3;overflow-wrap:anywhere}
+.hero-caption{font-size:13px;color:var(--muted);font-weight:600}
+.avatar-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;min-width:0}
+.avatar{width:100%;max-width:174px;aspect-ratio:1;object-fit:cover;border-radius:17px;border:3px solid var(--purple);background:#171d2b;box-shadow:0 0 28px #a855f755}
+.kond .avatar{border-color:var(--blue);box-shadow:0 0 28px #39c5ff44}
+.avatar-name{font-size:19px;font-weight:800;text-align:center;line-height:1.15}
+.avatar-handle{font-size:12px;color:var(--muted);font-weight:500}
+.api-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:8px;border-top:1px solid #ffffff20;padding-top:10px;min-width:0;min-height:0}
+.api-stat{min-width:0;background:#ffffff08;border:1px solid #ffffff0c;border-radius:8px;padding:9px 10px;display:flex;flex-direction:column;justify-content:center;gap:7px}
+.api-label{font-size:11px;font-weight:700;letter-spacing:.5px;color:#a5b7d2;white-space:nowrap}
+.api-value{font-size:clamp(17px,1.45vw,21px);font-weight:800;letter-spacing:-.5px;white-space:nowrap;overflow:visible}
+.api-stat.large-stat{padding:9px 11px;gap:8px;background:#ffffff0d}
+.api-stat.large-stat .api-label{font-size:13px;letter-spacing:.4px;color:#b8c9e4}
+.api-stat.large-stat .api-value{font-size:clamp(22px,1.8vw,28px);font-weight:700;letter-spacing:-.9px}
+.vs{position:absolute;z-index:5;left:50%;top:50%;transform:translate(-50%,-50%);width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#d18aff,#7723d5 65%,#42118a);border:4px solid #090b13;font-size:18px;font-weight:800;box-shadow:0 0 25px #a855f7a6}
+.difference{border:1px solid #a855f7;border-radius:12px;background:linear-gradient(100deg,#26113c,#171025 50%,#25113b);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:5px 17px;gap:8px;box-shadow:0 0 24px #a855f72b;overflow:hidden}
+.diff-label{font-size:14px;font-weight:800;color:#d5a0ff;letter-spacing:.6px}
+.diff-value{font-size:clamp(52px,4.6vw,74px);font-weight:800;color:#bd69ff;letter-spacing:-.075em;line-height:1.12;white-space:nowrap}
+.diff-status{text-align:right;font-size:12px;font-weight:700;color:#e0c5ff;white-space:nowrap}
+.sidebar{grid-column:2;grid-row:2;min-width:0;min-height:0;overflow:hidden;background:linear-gradient(155deg,#151326,#0e1421 60%);border:1px solid #a855f7;border-radius:14px;padding:13px;display:flex;flex-direction:column;gap:11px;box-shadow:0 0 25px #a855f722}
+.side-head,.stream-head{display:flex;justify-content:space-between;align-items:center;gap:5px}
+.side-title{font-size:14px;font-weight:800;color:#c78aff;letter-spacing:.6px}
+.live{font-size:11px;font-weight:700;color:var(--green);white-space:nowrap}
+.profile{display:grid;grid-template-columns:88px minmax(0,1fr);align-items:center;gap:12px}
+.my-avatar{width:86px;height:86px;object-fit:cover;border-radius:50%;border:3px solid var(--purple);box-shadow:0 0 16px #a855f755}
+.my-name{font-size:22px;font-weight:800}.my-handle{font-size:12px;color:var(--muted);margin-top:3px}
+.my-label{font-size:10px;font-weight:700;color:var(--muted);margin-top:7px}
+.my-count{font-size:39px;font-weight:800;letter-spacing:-1.5px;line-height:1.1}
+.api-line{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #ffffff20;border-bottom:1px solid #ffffff20}
+.api-line span{font-size:11px;color:var(--muted);font-weight:700}.api-line strong{font-size:30px;font-weight:800}
+.stream-head{display:flex;justify-content:space-between;align-items:center;gap:5px}
+.stream-head span:first-child{font-size:14px;color:var(--blue);font-weight:800;letter-spacing:.5px}
+.stream{display:grid;grid-template-columns:130px minmax(0,1fr);gap:10px;align-items:center}
+.thumb{width:130px;height:80px;object-fit:cover;border-radius:8px;border:1px solid #3d577b}
+.stream-title{font-size:14px;font-weight:700;line-height:1.35;overflow-wrap:anywhere}
 .stream-channel{font-size:11px;color:var(--muted);margin-top:5px}
-.stream-meta{font-size:10px;color:var(--muted);line-height:1.6;overflow-wrap:anywhere}
-.stream-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 10px;flex:1;align-content:space-evenly;min-height:0}
-.stream-stat{gap:4px}.stream-stat label{font-size:10px;font-weight:900;color:var(--blue);letter-spacing:.8px;white-space:nowrap}
-.stream-stat .value{font-size:clamp(30px,2.7vw,38px);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-1.5px;line-height:1.1}
-.stream-stat:first-child .value{color:var(--blue)}
-.stream-stat .odometer{font-family:Inter,sans-serif!important}
-.difference{grid-column:1;grid-row:3;background:linear-gradient(135deg,#28143d,#171025);border:2px solid #7541a5;border-radius:10px;padding:3px 12px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px;text-align:center;box-shadow:0 0 22px #a855f72b;min-width:0;overflow:hidden}
-.difference-label{font-size:13px;font-weight:900;color:#c084fc;letter-spacing:1.2px;text-align:left}
-.difference-value{font-size:clamp(44px,4.5vw,64px);font-weight:900;color:var(--purple);letter-spacing:-.075em;line-height:1.08;white-space:nowrap}
-.difference-status{font-size:11px;color:#c4b5fd;font-weight:900;text-align:right;white-space:nowrap}
-footer{grid-row:5;font-size:10px;color:var(--muted)}.live{color:var(--green);font-weight:900}
+.meta{font-size:10px;color:#a5b1c7;line-height:1.55;overflow-wrap:anywhere}
+.stream-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;flex:1;align-content:space-evenly;min-height:0}
+.stream-stat{background:#ffffff08;border:1px solid #ffffff0c;border-radius:8px;padding:11px;min-width:0}
+.stream-stat label{display:block;font-size:10px;color:var(--blue);font-weight:700;letter-spacing:.4px;margin-bottom:7px;white-space:nowrap}
+.stream-stat .value{font-size:clamp(29px,2.5vw,39px);font-weight:800;letter-spacing:-1px;white-space:nowrap;overflow:hidden}
+footer{grid-row:3;font-size:11px;color:var(--muted)}footer .live{color:var(--green)}
+@media(max-height:700px){.channel{grid-template-rows:30px minmax(0,1fr) 120px;padding:10px}.hero{grid-template-columns:minmax(0,1fr) 145px}.avatar{max-width:130px}.api-stat{padding:6px 8px}.api-stat.large-stat .api-value{font-size:clamp(20px,1.65vw,25px)}.sidebar{gap:7px;padding:9px}.my-avatar{width:68px;height:68px}.stream{grid-template-columns:105px minmax(0,1fr)}.thumb{width:105px;height:64px}}
 </style>
 </head>
 <body>
 <div class="container">
 <header><h1>RACE TO TOP 50: <span>CELINE</span></h1><div class="header-badge">GLOBAL TOP 50 MISSION</div></header>
+<main class="battle">
+<div class="versus">
 <section class="channel celine">
-<div class="api-row">
+<div class="channel-head"><span class="channel-name">01 · CELINE DEPT</span><span class="channel-number">CHALLENGER</span></div>
+<div class="hero"><div class="hero-info"><div class="eyebrow">LIVE ESTIMATED SUBSCRIBERS</div><div class="big-number odometer" id="celine-est-subs">0</div><div class="hero-caption">TARGET CHANNEL · TOP 51</div></div><div class="avatar-wrap"><img id="celine-avatar" class="avatar" alt="Celine Dept"><div class="avatar-name" id="celine-name">Celine Dept</div><div class="avatar-handle" id="celine-handle">@celinedept</div></div></div>
+<div class="api-grid">
 <div class="api-stat"><div class="api-label">API SUBSCRIBERS</div><div class="api-value odometer" id="celine-api-subs">0</div></div>
-<div class="api-stat"><div class="api-label">LIVE VIEWS</div><div class="api-value odometer" id="celine-views">0</div></div>
-<div class="api-stat"><div class="api-label">API VIEWS</div><div class="api-value odometer" id="celine-api-views">0</div></div>
-<div class="api-stat"><div class="api-label">VIDEOS</div><div class="api-value odometer" id="celine-videos">0</div></div>
-</div>
-<div class="channel-main">
-<div class="identity"><img id="celine-avatar" class="avatar" alt="Celine Dept"><div class="identity-info"><div class="name" id="celine-name">Celine Dept</div><div class="handle" id="celine-handle">@celinedept</div><div class="tag">TARGET CHANNEL · TOP 51</div></div></div>
-<div class="primary-counter"><div class="counter-label">LIVE ESTIMATED SUBSCRIBERS</div><div class="count odometer" id="celine-est-subs">0</div></div>
+<div class="api-stat large-stat"><div class="api-label">LIVE VIEWS</div><div class="api-value odometer" id="celine-views">0</div></div>
+<div class="api-stat large-stat"><div class="api-label">API VIEWS</div><div class="api-value odometer" id="celine-api-views">0</div></div>
+<div class="api-stat large-stat"><div class="api-label">VIDEOS</div><div class="api-value odometer" id="celine-videos">0</div></div>
 </div>
 </section>
-<div class="difference"><div class="difference-label">LIVE SUBSCRIBER DIFFERENCE</div><div class="difference-value odometer" id="sub-diff">0</div><div class="difference-status" id="gap-status">Connecting...</div></div>
-<section class="channel kondzilla">
-<div class="api-row">
+<div class="vs">VS</div>
+<section class="channel kond">
+<div class="channel-head"><span class="channel-name">02 · CANAL KONDZILLA</span><span class="channel-number">COMPARISON</span></div>
+<div class="hero"><div class="hero-info"><div class="eyebrow">LIVE ESTIMATED SUBSCRIBERS</div><div class="big-number odometer" id="kondzilla-est-subs">0</div><div class="hero-caption">COMPARISON CHANNEL</div></div><div class="avatar-wrap"><img id="kondzilla-avatar" class="avatar" alt="Canal KondZilla"><div class="avatar-name" id="kondzilla-name">Canal KondZilla</div><div class="avatar-handle" id="kondzilla-handle">@kondzilla</div></div></div>
+<div class="api-grid">
 <div class="api-stat"><div class="api-label">API SUBSCRIBERS</div><div class="api-value odometer" id="kondzilla-api-subs">0</div></div>
-<div class="api-stat"><div class="api-label">LIVE VIEWS</div><div class="api-value odometer" id="kondzilla-views">0</div></div>
-<div class="api-stat"><div class="api-label">API VIEWS</div><div class="api-value odometer" id="kondzilla-api-views">0</div></div>
-<div class="api-stat"><div class="api-label">VIDEOS</div><div class="api-value odometer" id="kondzilla-videos">0</div></div>
-</div>
-<div class="channel-main">
-<div class="identity"><img id="kondzilla-avatar" class="avatar" alt="Canal KondZilla"><div class="identity-info"><div class="name" id="kondzilla-name">Canal KondZilla</div><div class="handle" id="kondzilla-handle">@kondzilla</div><div class="tag">COMPARISON CHANNEL</div></div></div>
-<div class="primary-counter"><div class="counter-label">LIVE ESTIMATED SUBSCRIBERS</div><div class="count odometer" id="kondzilla-est-subs">0</div></div>
+<div class="api-stat large-stat"><div class="api-label">LIVE VIEWS</div><div class="api-value odometer" id="kondzilla-views">0</div></div>
+<div class="api-stat large-stat"><div class="api-label">API VIEWS</div><div class="api-value odometer" id="kondzilla-api-views">0</div></div>
+<div class="api-stat large-stat"><div class="api-label">VIDEOS</div><div class="api-value odometer" id="kondzilla-videos">0</div></div>
 </div>
 </section>
-<aside class="right-panel">
-<div class="right-heading"><div class="section-heading">MY CHANNEL · VYSTATS</div><div class="live-indicator">● LIVE</div></div>
-<div class="my-channel"><img id="vystats-avatar" class="my-avatar" alt="VYStats"><div><div class="my-name" id="vystats-name">VYStats</div><div class="my-handle" id="vystats-handle">@VYStats</div><div class="my-count-label">ESTIMATED SUBSCRIBERS</div><div class="my-count odometer" id="vystats-est-subs">0</div></div></div>
-<div class="my-api"><div class="my-api-label">API SUBSCRIBERS</div><div class="my-api-count odometer" id="vystats-api-subs">0</div></div>
-<div class="panel-divider"></div>
-<div class="stream-heading"><span>MY LIVESTREAM</span><span class="stream-status" id="stream-status">● LIVE PERFORMANCE</span></div>
-<div class="stream-info"><img id="stream-thumb" class="stream-thumb" alt="My livestream thumbnail"><div class="stream-details"><div class="stream-title" id="stream-title">Loading livestream...</div><div class="stream-channel" id="stream-channel">Loading channel...</div></div></div>
-<div class="stream-meta"><span>VIDEO ID: <span id="stream-id">B8iHWmFwaHY</span></span><br><span>UPLOAD DATE: <span id="stream-date">—</span></span><span id="stream-extra-info"></span></div>
+</div>
+<div class="difference"><div class="diff-label">LIVE SUBSCRIBER DIFFERENCE</div><div class="diff-value odometer" id="sub-diff">0</div><div class="diff-status" id="gap-status">Connecting...</div></div>
+</main>
+<aside class="sidebar">
+<div class="side-head"><div class="side-title">MY CHANNEL · VYSTATS</div><div class="live">● LIVE</div></div>
+<div class="profile"><img id="vystats-avatar" class="my-avatar" alt="VYStats"><div><div class="my-name" id="vystats-name">VYStats</div><div class="my-handle" id="vystats-handle">@VYStats</div><div class="my-label">ESTIMATED SUBSCRIBERS</div><div class="my-count odometer" id="vystats-est-subs">0</div></div></div>
+<div class="api-line"><span>API SUBSCRIBERS</span><strong class="odometer" id="vystats-api-subs">0</strong></div>
+<div class="stream-head"><span>MY LIVESTREAM</span><span class="live" id="stream-status">● LIVE PERFORMANCE</span></div>
+<div class="stream"><img id="stream-thumb" class="thumb" alt="Livestream thumbnail"><div><div class="stream-title" id="stream-title">Loading livestream...</div><div class="stream-channel" id="stream-channel">Loading channel...</div></div></div>
+<div class="meta">VIDEO ID: <span id="stream-id">B8iHWmFwaHY</span><br>UPLOAD DATE: <span id="stream-date">—</span><br><span id="stream-extra-info"></span></div>
 <div class="stream-grid" id="stream-grid">
 <div class="stream-stat"><label>VIEWERS WATCHING</label><div class="value odometer" id="stream-viewers">0</div></div>
 <div class="stream-stat"><label>TOTAL VIEWS</label><div class="value odometer" id="stream-views">0</div></div>
@@ -111,82 +121,19 @@ footer{grid-row:5;font-size:10px;color:var(--muted)}.live{color:var(--green);fon
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
 <script>
-const $=id=>document.getElementById(id),C={},dynamicStats={};
-let lastValidStream=null;
-const E=["celine-est-subs","celine-api-subs","celine-views","celine-api-views","celine-videos","kondzilla-est-subs","kondzilla-api-subs","kondzilla-views","kondzilla-api-views","kondzilla-videos","vystats-est-subs","vystats-api-subs","sub-diff","stream-viewers","stream-views","stream-est-views","stream-likes"];
-function makeOdometer(el,value=0){return window.Odometer&&el?new Odometer({el,value,format:"(,ddd)",duration:450}):null}
-if(window.Odometer)E.forEach(id=>C[id]=makeOdometer($(id)));
-const fmt=v=>Number(v??0).toLocaleString("en-US");
-const uV=(id,v)=>{if(v===null||v===undefined||v==="")return;const n=Number(v);if(!Number.isFinite(n))return;if(!C[id]&&window.Odometer)C[id]=makeOdometer($(id),0);if(C[id])C[id].update(n);else if($(id))$(id).textContent=fmt(n)};
-const setText=(id,v)=>$(id).textContent=v??"—";
-function render(k,d){
-if(!d)return;
-if(d.name)setText(k+"-name",d.name);
-if(d.handle)setText(k+"-handle",d.handle);
-if(d.avatar&&!$(k+"-avatar").src.includes("/api/avatar/"+k))$(k+"-avatar").src="/api/avatar/"+k;
-[["est-subs","estimatedSubscriberCount"],["api-subs","apiSubscriberCount"],["views","viewCount"],["api-views","apiViewCount"],["videos","videoCount"]].forEach(([f,p])=>uV(k+"-"+f,d[p]));
-}
-function renderVystats(d){
-if(!d)return;
-if(d.name)setText("vystats-name",d.name);
-if(d.handle)setText("vystats-handle",d.handle);
-if(d.avatar&&!$("vystats-avatar").src.includes("/api/avatar/vystats"))$("vystats-avatar").src="/api/avatar/vystats";
-uV("vystats-est-subs",d.estimatedSubscriberCount);
-uV("vystats-api-subs",d.apiSubscriberCount);
-}
-function renderDynamicStats(stats){
-const grid=$("stream-grid"),keep=new Set();
-Object.entries(stats).forEach(([k,v])=>{
-if(["viewerCount","viewCount","estimatedViewCount","likeCount"].includes(k)||v===null||v===undefined||typeof v==="object")return;
-const key="dynamic-"+k;keep.add(key);
-let item=dynamicStats[key];
-if(!item){
-const wrap=document.createElement("div"),label=document.createElement("label"),value=document.createElement("div");
-wrap.className="stream-stat dynamic-stat";label.textContent=k.replace(/([A-Z])/g," $1").toUpperCase();value.className="value";wrap.append(label,value);grid.append(wrap);
-item=dynamicStats[key]={wrap,value,odometer:null};
-}
-item.wrap.style.display="";
-const numeric=typeof v==="number"||(typeof v==="string"&&v.trim()!==""&&Number.isFinite(Number(v)));
-if(numeric){
-item.value.classList.add("odometer");
-if(!item.odometer)item.odometer=makeOdometer(item.value,0);
-if(item.odometer)item.odometer.update(Number(v));else item.value.textContent=fmt(v);
-}else{
-if(item.odometer){item.odometer=null;item.value.classList.remove("odometer")}
-item.value.textContent=String(v);
-}
-});
-Object.entries(dynamicStats).forEach(([key,item])=>{if(!keep.has(key))item.wrap.style.display="none"});
-}
-function renderStream(s){
-if(s)lastValidStream=s;else if(lastValidStream)s=lastValidStream;else return;
-const i=s.info||{},st=s.stats||{},ch=i.channel||{};
-if(i.title)setText("stream-title",i.title);
-if(ch.name)setText("stream-channel",ch.name);
-if(i.id)setText("stream-id",i.id);
-if(i.uploadDate){const date=new Date(i.uploadDate);setText("stream-date",Number.isNaN(date.getTime())?"—":date.toLocaleString())}
-if(i.thumbnail){const im=$("stream-thumb");if(im.src!==i.thumbnail)im.src=i.thumbnail}
-setText("stream-status","● LIVE PERFORMANCE");
-[["stream-viewers","viewerCount"],["stream-views","viewCount"],["stream-est-views","estimatedViewCount"],["stream-likes","likeCount"]].forEach(([id,key])=>uV(id,st[key]));
-const extra=Object.entries(i).filter(([k,v])=>!["id","title","thumbnail","uploadDate","channel"].includes(k)&&v!==null&&typeof v!=="object").map(([k,v])=>k+": "+v);
-if(ch.id)extra.push("CHANNEL ID: "+ch.id);
-$("stream-extra-info").textContent=extra.join(" · ");
-renderDynamicStats(st);
-}
-async function fS(){
-try{
-const r=await fetch("/api/stats",{cache:"no-store"});
-if(!r.ok)throw Error("Stats request failed: "+r.status);
-const d=await r.json();
-render("celine",d.celine);render("kondzilla",d.kondzilla);renderVystats(d.vystats);renderStream(d.stream);
-if(d.celine&&d.kondzilla){
-const a=Number(d.celine.estimatedSubscriberCount),b=Number(d.kondzilla.estimatedSubscriberCount);
-if(Number.isFinite(a)&&Number.isFinite(b)){uV("sub-diff",Math.abs(a-b));setText("gap-status",a>b?"Celine is ahead":a<b?"Celine is behind":"Channels are tied")}
-}
-setText("updated",d.lastUpdated?"Updated "+new Date(d.lastUpdated).toLocaleTimeString():"Waiting...");
-}catch(e){setText("updated","Connection error (showing last known stats)");if(lastValidStream)renderStream(lastValidStream);console.error("[Dashboard]",e)}
-}
-fS();setInterval(fS,5000);
+const $=id=>document.getElementById(id),meters={},dynamic={};let lastStream=null;
+const ids=["celine-est-subs","celine-api-subs","celine-views","celine-api-views","celine-videos","kondzilla-est-subs","kondzilla-api-subs","kondzilla-views","kondzilla-api-views","kondzilla-videos","vystats-est-subs","vystats-api-subs","sub-diff","stream-viewers","stream-views","stream-est-views","stream-likes"];
+function meter(el){return window.Odometer&&el?new Odometer({el,value:0,format:"(,ddd)",duration:450}):null}
+ids.forEach(id=>meters[id]=meter($(id)));
+const fmt=n=>Number(n).toLocaleString("en-US");
+function num(id,v){if(v==null||v==="")return;let n=Number(v);if(!Number.isFinite(n))return;if(!meters[id])meters[id]=meter($(id));if(meters[id])meters[id].update(n);else if($(id))$(id).textContent=fmt(n)}
+function txt(id,v){if($(id))$(id).textContent=v??"—"}
+function renderChannel(k,d){if(!d)return;if(d.name)txt(k+"-name",d.name);if(d.handle)txt(k+"-handle",d.handle);if(d.avatar)$(k+"-avatar").src="/api/avatar/"+k;[["est-subs","estimatedSubscriberCount"],["api-subs","apiSubscriberCount"],["views","viewCount"],["api-views","apiViewCount"],["videos","videoCount"]].forEach(([f,p])=>num(k+"-"+f,d[p]))}
+function renderVystats(d){if(!d)return;if(d.name)txt("vystats-name",d.name);if(d.handle)txt("vystats-handle",d.handle);if(d.avatar)$("vystats-avatar").src="/api/avatar/vystats";num("vystats-est-subs",d.estimatedSubscriberCount);num("vystats-api-subs",d.apiSubscriberCount)}
+function renderDynamic(s){const grid=$("stream-grid"),keep=new Set();Object.entries(s).forEach(([k,v])=>{if(["viewerCount","viewCount","estimatedViewCount","likeCount"].includes(k)||v==null||typeof v==="object")return;let key="dynamic-"+k;keep.add(key);let x=dynamic[key];if(!x){let w=document.createElement("div"),l=document.createElement("label"),e=document.createElement("div");w.className="stream-stat";l.textContent=k.replace(/([A-Z])/g," $1").toUpperCase();e.className="value odometer";w.append(l,e);grid.append(w);x=dynamic[key]={w,e,m:meter(e)}}x.w.style.display="";let n=typeof v==="number"||(typeof v==="string"&&v.trim()!==""&&Number.isFinite(Number(v)));if(n){if(!x.m){x.e.classList.add("odometer");x.m=meter(x.e)}if(x.m)x.m.update(Number(v));else x.e.textContent=fmt(v)}else{x.m=null;x.e.classList.remove("odometer");x.e.textContent=String(v)}});Object.entries(dynamic).forEach(([k,x])=>{if(!keep.has(k))x.w.style.display="none"})}
+function renderStream(s){if(s)lastStream=s;else s=lastStream;if(!s)return;const i=s.info||{},st=s.stats||{},ch=i.channel||{};if(i.title)txt("stream-title",i.title);if(ch.name)txt("stream-channel",ch.name);if(i.id)txt("stream-id",i.id);if(i.uploadDate){let d=new Date(i.uploadDate);txt("stream-date",Number.isNaN(d.getTime())?"—":d.toLocaleString())}if(i.thumbnail&&$("stream-thumb").src!==i.thumbnail)$("stream-thumb").src=i.thumbnail;[["stream-viewers","viewerCount"],["stream-views","viewCount"],["stream-est-views","estimatedViewCount"],["stream-likes","likeCount"]].forEach(([id,k])=>num(id,st[k]));let extra=Object.entries(i).filter(([k,v])=>!["id","title","thumbnail","uploadDate","channel"].includes(k)&&v!=null&&typeof v!=="object").map(([k,v])=>k+": "+v);if(ch.id)extra.push("CHANNEL ID: "+ch.id);txt("stream-extra-info",extra.join(" · "));renderDynamic(st)}
+async function update(){try{let r=await fetch("/api/stats",{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);let d=await r.json();renderChannel("celine",d.celine);renderChannel("kondzilla",d.kondzilla);renderVystats(d.vystats);renderStream(d.stream);if(d.celine&&d.kondzilla){let a=Number(d.celine.estimatedSubscriberCount),b=Number(d.kondzilla.estimatedSubscriberCount);if(Number.isFinite(a)&&Number.isFinite(b)){num("sub-diff",Math.abs(a-b));txt("gap-status",a>b?"Celine is ahead":a<b?"Celine is behind":"Channels are tied")}}txt("updated",d.lastUpdated?"Updated "+new Date(d.lastUpdated).toLocaleTimeString():"Waiting...")}catch(e){txt("updated","Connection error · showing last stats");if(lastStream)renderStream(lastStream);console.error("[Dashboard]",e)}}
+update();setInterval(update,5000);
 </script>
 </body>
 </html>
