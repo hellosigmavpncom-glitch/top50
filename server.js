@@ -5,7 +5,7 @@ const chs={
   kondzilla:{id:'UCffDXn7ycAzwL2LDlbyWOTw',name:'Canal KondZilla',handle:'@kondzilla'},
   vystats:{id:'UCnKrmx7XhDqbiMD3aSBwz_g',name:'VYStats',handle:'@VYStats'}
 };
-const STREAM_ID='B8iHWmFwaHY';
+const STREAM_ID='Nr1IWBNNQFA';
 let cache={celine:null,kondzilla:null,vystats:null,stream:null,lastUpdated:null},busy=false;
 app.use((req,res,next)=>{res.setHeader("Cache-Control","no-store");next();});
 async function fetchCh(k,ch){
