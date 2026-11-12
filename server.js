@@ -1,6 +1,6 @@
 const app=require('express')(),path=require('path'),PORT=process.env.PORT||3000;
 const chs={celine:{id:'UC1a2ZCw7tugRZYRMnecNj3A',name:'Celine Dept'},kondzilla:{id:'UCffDXn7ycAzwL2LDlbyWOTw',name:'Canal KondZilla'}};
-const STREAM_ID='B8iHWmFwaHY'; // Replace with your target livestream ID
+const STREAM_ID='B8iHWmFwaHY';
 let cache={celine:null,kondzilla:null,stream:null,lastUpdated:null},busy=false;
 app.use((req,res,next)=>{res.setHeader("Cache-Control","no-store");next();});
 async function fetchCh(k,ch){
@@ -44,5 +44,5 @@ app.get("/api/avatar/:key",async(req,res)=>{
     res.set("Content-Type",r.headers.get("content-type")||"image/jpeg").send(Buffer.from(await r.arrayBuffer()));
   }catch{res.redirect(fb);}
 });
-app.use(require('express').static(__dirname));
+app.use(require('express').static(path.join(__dirname,"public")));
 app.listen(PORT,()=>{console.log(`[RUN] Port ${PORT}`);update();setInterval(update,5000);});
