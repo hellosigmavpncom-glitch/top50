@@ -84,7 +84,234 @@ footer{display:flex;justify-content:space-between;align-items:center;color:#737c
 </header>
 <section class="stream-box">
 <div class="stream-header">
-<div class="stream-heading">MY YOUTUBE LIVESTREAM · BASEPOINT API</div>
+<div class="stream-heading">STREAM STATS</div>
+<div class="stream-status" id="stream-status">● LIVE PERFORMANCE</div>
+</div>
+<div class="stream-info">
+<img id="stream-thumb" class="stream-thumb" alt="Livestream thumbnail">
+<div class="stream-details">
+<div class="stream-title" id="stream-title">Loading livestream statistics...</div>
+<div class="stream-channel" id="stream-channel">Loading channel info...</div>
+</div>
+</div>
+<div class="stream-meta">
+<span><b>VIDEO ID:</b> <span id="stream-id">B8iHWmFwaHY</span></span>
+<span><b>UPLOAD DATE:</b> <span id="stream-date">—</span></span>
+<span id="stream-extra-info"></span>
+</div>
+<div class="stream-grid" id="stream-grid">
+<div class="stream-stat"><label>VIEWERS WATCHING</label><div class="value" id="stream-viewers">0</div></div>
+<div class="stream-stat"><label>TOTAL VIEWS</label><div class="value" id="stream-views">0</div></div>
+<div class="stream-stat"><label>ESTIMATED VIEWS</label><div class="value" id="stream-est-views">0</div></div>
+<div class="stream-stat"><label>LIKES</label><div class="value" id="stream-likes">0</div></div>
+</div>
+</section>
+<section class="channel celine">
+<div class="channel-main">
+<div class="identity">
+<img id="celine-avatar" class="avatar" alt="Celine Dept">
+<div class="identity-info">
+<div class="name" id="celine-name">Celine Dept</div>
+<div class="handle" id="celine-handle">@celinedept</div>
+<div class="tag">TARGET CHANNEL · TOP 51 (ROAD TO 50)</div>
+</div>
+</div>
+<div class="primary-counter">
+<div class="counter-label">LIVE ESTIMATED SUBSCRIBERS (MIXERNO SPACE API)</div>
+<div id="celine-est-subs" class="count odometer">0</div>
+</div>
+</div>
+<div class="stats">
+<div class="stat"><label>API SUBS</label><div id="celine-api-subs" class="odometer">0</div></div>
+<div class="stat"><label>LIVE VIEWS</label><div id="celine-views" class="odometer">0</div></div>
+<div class="stat"><label>API VIEWS</label><div id="celine-api-views" class="odometer">0</div></div>
+<div class="stat"><label>VIDEOS</label><div id="celine-videos" class="odometer">0</div></div>
+</div>
+</section>
+<section class="bottom">
+<div>
+<div class="gap-label">LIVE SUBSCRIBER DIFFERENCE</div>
+<div class="gap-value odometer" id="sub-diff">0</div>
+</div>
+<div class="gap-status" id="gap-status">Connecting...</div>
+</section>
+<section class="channel kondzilla">
+<div class="channel-main">
+<div class="identity">
+<img id="kondzilla-avatar" class="avatar" alt="Canal KondZilla">
+<div class="identity-info">
+<div class="name" id="kondzilla-name">Canal KondZilla</div>
+<div class="handle" id="kondzilla-handle">@kondzilla</div>
+<div class="tag">COMPARISON CHANNEL</div>
+</div>
+</div>
+<div class="primary-counter">
+<div class="counter-label">LIVE ESTIMATED SUBSCRIBERS (MIXERNO SPACE API)</div>
+<div id="kondzilla-est-subs" class="count odometer">0</div>
+</div>
+</div>
+<div class="stats">
+<div class="stat"><label>API SUBS</label><div id="kondzilla-api-subs" class="odometer">0</div></div>
+<div class="stat"><label>LIVE VIEWS</label><div id="kondzilla-views" class="odometer">0</div></div>
+<div class="stat"><label>API VIEWS</label><div id="kondzilla-api-views" class="odometer">0</div></div>
+<div class="stat"><label>VIDEOS</label><div id="kondzilla-videos" class="odometer">0</div></div>
+</div>
+</section>
+<footer>
+<div><span class="live">● LIVE</span> &nbsp; MIXERNO & BASEPOINT API</div>
+<div id="updated">Connecting...</div>
+</footer>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
+<script>
+const $=id=>document.getElementById(id),C={};
+let lastValidStream=null;
+const E=["celine-est-subs","celine-api-subs","celine-views","celine-api-views","celine-videos","kondzilla-est-subs","kondzilla-api-subs","kondzilla-views","kondzilla-api-views","kondzilla-videos","sub-diff"];
+if(window.Odometer)E.forEach(id=>C[id]=new Odometer({el:$(id),value:0,format:"(,ddd)",duration:500}));
+const fmt=v=>Number(v??0).toLocaleString("en-US");
+const uV=(id,v)=>{if(v===null||v===undefined||v==="")return;const n=Number(v);if(Number.isFinite(n))(C[id]?C[id].update(n):$(id).textContent=fmt(n))};
+const render=(k,d)=>{
+if(!d)return;
+if(d.name)$(k+"-name").textContent=d.name;
+if(d.handle)$(k+"-handle").textContent=d.handle;
+if(d.avatar&&!$(k+"-avatar").src.includes("/api/avatar/"+k))$(k+"-avatar").src="/api/avatar/"+k;
+[["est-subs","estimatedSubscriberCount"],["api-subs","apiSubscriberCount"],["views","viewCount"],["api-views","apiViewCount"],["videos","videoCount"]].forEach(([f,p])=>uV(`${k}-${f}`,d[p]));
+};
+const setText=(id,v)=>$(id).textContent=v??"—";
+function renderStream(s){
+if(s){lastValidStream=s;}else if(lastValidStream){s=lastValidStream;}else{return;}
+const i=s.info||{},st=s.stats||{},ch=i.channel||{};
+if(i.title)setText("stream-title",i.title);
+if(ch.name)setText("stream-channel",ch.name);
+if(i.id)setText("stream-id",i.id);
+if(i.uploadDate)setText("stream-date",new Date(i.uploadDate).toLocaleString());
+if(i.thumbnail){const im=$("stream-thumb");if(im.src!==i.thumbnail)im.src=i.thumbnail;}
+setText("stream-status","● LIVE PERFORMANCE");
+$("stream-status").style.color="#4ade80";
+[["stream-viewers","viewerCount"],["stream-views","viewCount"],["stream-est-views","estimatedViewCount"],["stream-likes","likeCount"]].forEach(([id,key])=>setText(id,fmt(st[key])));
+const extra=$("stream-extra-info");
+const infoExtra=Object.entries(i).filter(([k,v])=>!["id","title","thumbnail","uploadDate","channel"].includes(k)&&v!==null&&typeof v!=="object").map(([k,v])=>k+": "+v);
+if(ch.id)infoExtra.push("CHANNEL ID: "+ch.id);
+extra.textContent=infoExtra.join(" · ");
+let grid=$("stream-grid"),old=grid.querySelectorAll(".dynamic-stat");old.forEach(x=>x.remove());
+Object.entries(st).filter(([k,v])=>!["viewerCount","viewCount","estimatedViewCount","likeCount"].includes(k)&&v!==null&&typeof v!=="object").forEach(([k,v])=>{
+const item=document.createElement("div");item.className="stream-stat dynamic-stat";
+const label=document.createElement("label");label.textContent=k.replace(/([A-Z])/g," $1").toUpperCase();
+const value=document.createElement("div");value.className="value";value.textContent=typeof v==="number"?fmt(v):String(v);
+item.append(label,value);grid.appendChild(item);
+});
+}
+async function fS(){
+try{
+const r=await fetch("/api/stats",{cache:"no-store"});
+if(!r.ok)throw Error("Stats request failed: "+r.status);
+const d=await r.json();
+render("celine",d.celine);render("kondzilla",d.kondzilla);
+renderStream(d.stream);
+if(d.celine&&d.kondzilla){
+const a=Number(d.celine.estimatedSubscriberCount),b=Number(d.kondzilla.estimatedSubscriberCount);
+if(Number.isFinite(a)&&Number.isFinite(b)){
+uV("sub-diff",Math.abs(a-b));
+$("gap-status").textContent=a>b?"Celine is ahead":a<b?"Celine is behind":"Channels are tied";
+}
+}
+$("updated").textContent=d.lastUpdated?"Updated "+new Date(d.lastUpdated).toLocaleTimeString():"Waiting...";
+}catch(e){
+$("updated").textContent="Connection error (showing last known stats)";
+if(lastValidStream)renderStream(lastValidStream);
+console.error("[Dashboard]",e);
+}
+}
+fS();setInterval(fS,5000);
+</script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Race to Top 50 | Live Overlay</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/themes/odometer-theme-minimal.min.css">
+<style>
+:root{--bg:#07090e;--card:#0e1320;--border:#1f283d;--purple:#a855f7;--muted:#8993a8;--white:#f8f9ff;--accent:#38bdf8}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--white);font-family:Inter,sans-serif;padding:4px 8px}
+.container{width:100%;max-width:1400px;height:100%;margin:auto;display:grid;grid-template-rows:16px minmax(150px,1fr) minmax(200px,1.5fr) 52px minmax(200px,1.5fr) 12px;gap:3px}
+header{display:flex;align-items:center;justify-content:space-between;min-width:0}
+h1{font-size:14px;font-weight:900}
+h1 span,.gap-value{color:var(--purple)}
+.badge{font-size:8px;font-weight:800;letter-spacing:1px;color:var(--purple);border:1px solid #7541a5;background:#28143d;padding:2px 6px;border-radius:5px;white-space:nowrap}
+.channel{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;display:flex;flex-direction:column;justify-content:space-between;min-height:0;min-width:0}
+.channel.celine{border:2px solid var(--purple);box-shadow:0 0 16px #a855f733}
+.channel-main{display:flex;align-items:center;justify-content:space-between;gap:18px;flex:1;min-height:0}
+.identity{display:flex;align-items:center;gap:14px;flex:0 0 45%;min-width:0}
+.avatar{width:170px;height:170px;min-width:170px;max-width:170px;flex-shrink:0;border-radius:14px;object-fit:cover;background:#1a2234;border:3px solid #475569;box-shadow:0 0 16px #0009}
+.celine .avatar{border-color:var(--purple);box-shadow:0 0 22px #a855f777}
+.identity-info{min-width:0}
+.name{font-size:clamp(22px,2.4vw,32px);font-weight:900;line-height:1.15;overflow-wrap:anywhere}
+.handle{font-size:13px;color:var(--muted);margin-top:2px}
+.tag{font-size:9px;font-weight:800;color:var(--purple);letter-spacing:1px;margin-top:2px}
+.primary-counter{flex:1;min-width:0}
+.counter-label,.stat label,.gap-label{font-size:9px;font-weight:800;color:var(--muted);letter-spacing:1px}
+.count{font-size:clamp(48px,5.2vw,75px);font-weight:900;letter-spacing:-.055em;line-height:1.12;white-space:nowrap}
+.odometer{font-family:Inter,sans-serif!important;font-variant-numeric:tabular-nums;line-height:1.15!important;vertical-align:middle}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:center;border-top:1px solid #ffffff18;padding-top:6px;gap:10px;min-width:0}
+.stat{display:flex;flex-direction:column;min-width:0;overflow:visible}
+.stat label{font-size:10px;font-weight:800;white-space:nowrap}
+.stat .odometer{font-size:clamp(19px,2vw,26px);font-weight:900;color:var(--white);white-space:nowrap;letter-spacing:-.035em}
+.stream-box{background:var(--card);border:2px solid var(--accent);border-radius:10px;padding:7px 12px;display:flex;flex-direction:column;justify-content:space-between;min-height:0;box-shadow:0 0 16px #38bdf828;gap:4px}
+.stream-header{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.stream-heading{font-size:9px;font-weight:900;letter-spacing:1px;color:var(--accent)}
+.stream-status{font-size:9px;font-weight:800;color:#4ade80}
+.stream-info{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.stream-thumb{width:90px;height:54px;min-width:90px;object-fit:cover;border-radius:6px;background:#1a2234;border:1px solid #334155}
+.stream-details{min-width:0;flex:1}
+.stream-title{font-size:15px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stream-channel{font-size:10px;color:var(--muted);margin-top:2px}
+.stream-meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:9px;color:var(--muted);min-width:0}
+.stream-meta span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48%}
+.stream-meta b{color:#cbd5e1}
+.stream-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;border-top:1px solid #ffffff18;padding-top:5px}
+.stream-stat{display:flex;flex-direction:column;min-width:0}
+.stream-stat label{font-size:9px;font-weight:800;color:var(--accent);letter-spacing:.8px;white-space:nowrap}
+.stream-stat .value{font-size:clamp(20px,2.5vw,32px);font-weight:900;color:var(--white);white-space:nowrap;letter-spacing:-.04em;line-height:1.15;overflow:hidden;text-overflow:clip}
+.stream-stat:first-child .value{color:var(--accent)}
+.stream-extra{display:none}
+.bottom{display:flex;align-items:center;justify-content:space-between;background:#131022;border:1px solid #59377f;border-radius:7px;padding:5px 12px;min-height:0}
+.gap-value{font-size:28px;font-weight:900;line-height:1.1}
+.gap-status,footer{font-size:9px;color:var(--muted)}
+footer{display:flex;justify-content:space-between;align-items:center;color:#737c91}
+.live{color:#4ade80;font-weight:800}
+@media(max-height:720px){
+.container{grid-template-rows:16px minmax(130px,1fr) minmax(170px,1.5fr) 46px minmax(170px,1.5fr) 10px;gap:2px}
+.avatar{width:140px;height:140px;min-width:140px;max-width:140px}
+.channel{padding:6px 10px}
+.count{font-size:clamp(38px,4.5vw,58px)}
+.stats{padding-top:4px}
+.stat .odometer{font-size:clamp(16px,1.7vw,22px)}
+.stream-thumb{width:72px;height:42px;min-width:72px}
+.stream-stat .value{font-size:clamp(17px,2vw,24px)}
+}
+@media(max-width:850px){
+.identity{flex-basis:38%;gap:8px}
+.avatar{width:130px;height:130px;min-width:130px;max-width:130px}
+.name{font-size:19px}
+.count{font-size:clamp(34px,4.5vw,52px)}
+.stats{gap:4px}
+.stat .odometer{font-size:clamp(13px,1.6vw,19px)}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>RACE TO TOP 50: <span>CELINE</span></h1>
+<div class="badge">GLOBAL TOP 50 MISSION</div>
+</header>
+<section class="stream-box">
+<div class="stream-header">
+<div class="stream-heading">STREAM STATS</div>
 <div class="stream-status" id="stream-status">● LIVE PERFORMANCE</div>
 </div>
 <div class="stream-info">
