@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -50,6 +51,7 @@ h1 span,.gap-value{color:var(--purple)}
 .stream-stat label{font-size:9px;font-weight:800;color:var(--accent);letter-spacing:.8px;white-space:nowrap}
 .stream-stat .value{font-size:clamp(20px,2.5vw,32px);font-weight:900;color:var(--white);white-space:nowrap;letter-spacing:-.04em;line-height:1.15;overflow:hidden;text-overflow:clip}
 .stream-stat:first-child .value{color:var(--accent)}
+.stream-stat .odometer{font-family:Inter,sans-serif!important}
 .stream-extra{display:none}
 .bottom{display:flex;align-items:center;justify-content:space-between;background:#131022;border:1px solid #59377f;border-radius:7px;padding:5px 12px;min-height:0}
 .gap-value{font-size:28px;font-weight:900;line-height:1.1}
@@ -100,10 +102,10 @@ footer{display:flex;justify-content:space-between;align-items:center;color:#737c
 <span id="stream-extra-info"></span>
 </div>
 <div class="stream-grid" id="stream-grid">
-<div class="stream-stat"><label>VIEWERS WATCHING</label><div class="value" id="stream-viewers">0</div></div>
-<div class="stream-stat"><label>TOTAL VIEWS</label><div class="value" id="stream-views">0</div></div>
-<div class="stream-stat"><label>ESTIMATED VIEWS</label><div class="value" id="stream-est-views">0</div></div>
-<div class="stream-stat"><label>LIKES</label><div class="value" id="stream-likes">0</div></div>
+<div class="stream-stat"><label>VIEWERS WATCHING</label><div class="value odometer" id="stream-viewers">0</div></div>
+<div class="stream-stat"><label>TOTAL VIEWS</label><div class="value odometer" id="stream-views">0</div></div>
+<div class="stream-stat"><label>ESTIMATED VIEWS</label><div class="value odometer" id="stream-est-views">0</div></div>
+<div class="stream-stat"><label>LIKES</label><div class="value odometer" id="stream-likes">0</div></div>
 </div>
 </section>
 <section class="channel celine">
@@ -164,12 +166,25 @@ footer{display:flex;justify-content:space-between;align-items:center;color:#737c
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
 <script>
-const $=id=>document.getElementById(id),C={};
+const $=id=>document.getElementById(id),C={},dynamicStats={};
 let lastValidStream=null;
-const E=["celine-est-subs","celine-api-subs","celine-views","celine-api-views","celine-videos","kondzilla-est-subs","kondzilla-api-subs","kondzilla-views","kondzilla-api-views","kondzilla-videos","sub-diff"];
-if(window.Odometer)E.forEach(id=>C[id]=new Odometer({el:$(id),value:0,format:"(,ddd)",duration:500}));
+const E=["celine-est-subs","celine-api-subs","celine-views","celine-api-views","celine-videos","kondzilla-est-subs","kondzilla-api-subs","kondzilla-views","kondzilla-api-views","kondzilla-videos","sub-diff","stream-viewers","stream-views","stream-est-views","stream-likes"];
+const makeOdometer=(id)=>{
+if(!window.Odometer||C[id])return;
+const el=$(id);
+if(el)C[id]=new Odometer({el,value:0,format:"(,ddd)",duration:500});
+};
+E.forEach(makeOdometer);
 const fmt=v=>Number(v??0).toLocaleString("en-US");
-const uV=(id,v)=>{if(v===null||v===undefined||v==="")return;const n=Number(v);if(Number.isFinite(n))(C[id]?C[id].update(n):$(id).textContent=fmt(n))};
+const uV=(id,v)=>{
+if(v===null||v===undefined||v==="")return;
+const n=Number(v);
+if(Number.isFinite(n)){
+if(!C[id])makeOdometer(id);
+if(C[id])C[id].update(n);
+else $(id).textContent=fmt(n);
+}
+};
 const render=(k,d)=>{
 if(!d)return;
 if(d.name)$(k+"-name").textContent=d.name;
@@ -178,8 +193,34 @@ if(d.avatar&&!$(k+"-avatar").src.includes("/api/avatar/"+k))$(k+"-avatar").src="
 [["est-subs","estimatedSubscriberCount"],["api-subs","apiSubscriberCount"],["views","viewCount"],["api-views","apiViewCount"],["videos","videoCount"]].forEach(([f,p])=>uV(`${k}-${f}`,d[p]));
 };
 const setText=(id,v)=>$(id).textContent=v??"—";
+function renderDynamicStats(st){
+const grid=$("stream-grid");
+Object.values(dynamicStats).forEach(x=>x.item.style.display="none");
+Object.entries(st).filter(([k,v])=>!["viewerCount","viewCount","estimatedViewCount","likeCount"].includes(k)&&v!==null&&typeof v!=="object").forEach(([k,v])=>{
+let entry=dynamicStats[k];
+if(!entry){
+const item=document.createElement("div");item.className="stream-stat dynamic-stat";
+const label=document.createElement("label");label.textContent=k.replace(/([A-Z])/g," $1").toUpperCase();
+const value=document.createElement("div");value.className="value";
+item.append(label,value);grid.appendChild(item);
+entry=dynamicStats[k]={item,value,odometer:null};
+}
+entry.item.style.display="flex";
+if(typeof v==="number"&&Number.isFinite(v)){
+if(!entry.odometer&&window.Odometer)entry.odometer=new Odometer({el:entry.value,value:0,format:"(,ddd)",duration:500});
+if(entry.odometer)entry.odometer.update(v);
+else entry.value.textContent=fmt(v);
+entry.value.classList.add("odometer");
+}else{
+entry.value.textContent=String(v);
+entry.value.classList.remove("odometer");
+}
+});
+}
 function renderStream(s){
-if(s){lastValidStream=s;}else if(lastValidStream){s=lastValidStream;}else{return;}
+if(s)lastValidStream=s;
+else if(lastValidStream)s=lastValidStream;
+else return;
 const i=s.info||{},st=s.stats||{},ch=i.channel||{};
 if(i.title)setText("stream-title",i.title);
 if(ch.name)setText("stream-channel",ch.name);
@@ -188,18 +229,12 @@ if(i.uploadDate)setText("stream-date",new Date(i.uploadDate).toLocaleString());
 if(i.thumbnail){const im=$("stream-thumb");if(im.src!==i.thumbnail)im.src=i.thumbnail;}
 setText("stream-status","● LIVE PERFORMANCE");
 $("stream-status").style.color="#4ade80";
-[["stream-viewers","viewerCount"],["stream-views","viewCount"],["stream-est-views","estimatedViewCount"],["stream-likes","likeCount"]].forEach(([id,key])=>setText(id,fmt(st[key])));
+[["stream-viewers","viewerCount"],["stream-views","viewCount"],["stream-est-views","estimatedViewCount"],["stream-likes","likeCount"]].forEach(([id,key])=>uV(id,st[key]));
 const extra=$("stream-extra-info");
 const infoExtra=Object.entries(i).filter(([k,v])=>!["id","title","thumbnail","uploadDate","channel"].includes(k)&&v!==null&&typeof v!=="object").map(([k,v])=>k+": "+v);
 if(ch.id)infoExtra.push("CHANNEL ID: "+ch.id);
 extra.textContent=infoExtra.join(" · ");
-let grid=$("stream-grid"),old=grid.querySelectorAll(".dynamic-stat");old.forEach(x=>x.remove());
-Object.entries(st).filter(([k,v])=>!["viewerCount","viewCount","estimatedViewCount","likeCount"].includes(k)&&v!==null&&typeof v!=="object").forEach(([k,v])=>{
-const item=document.createElement("div");item.className="stream-stat dynamic-stat";
-const label=document.createElement("label");label.textContent=k.replace(/([A-Z])/g," $1").toUpperCase();
-const value=document.createElement("div");value.className="value";value.textContent=typeof v==="number"?fmt(v):String(v);
-item.append(label,value);grid.appendChild(item);
-});
+renderDynamicStats(st);
 }
 async function fS(){
 try{
