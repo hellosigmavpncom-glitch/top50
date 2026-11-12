@@ -35,26 +35,28 @@ h1 span,.gap-value{color:var(--purple)}
 .stat{display:flex;flex-direction:column;min-width:0;overflow:visible}
 .stat label{font-size:10px;font-weight:800;white-space:nowrap}
 .stat .odometer{font-size:clamp(16px,2vw,26px);font-weight:900;color:var(--white);white-space:nowrap;letter-spacing:-.035em}
-.stream-box{background:var(--card);border:2px solid var(--accent);border-radius:10px;padding:9px 13px;display:flex;flex-direction:column;justify-content:space-between;min-height:0;min-width:0;box-shadow:0 0 16px #38bdf828;gap:6px}
+
+/* STREAM PANEL */
+.stream-box{background:var(--card);border:2px solid var(--accent);border-radius:10px;padding:7px 12px;display:grid;grid-template-rows:auto minmax(0,1fr) auto auto;min-height:0;min-width:0;overflow:hidden;box-shadow:0 0 16px #38bdf828;gap:4px}
 .stream-header{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
 .stream-heading{font-size:11px;font-weight:900;letter-spacing:1px;color:var(--accent)}
 .stream-status{font-size:10px;font-weight:800;color:#4ade80}
-.stream-info{display:flex;align-items:center;gap:12px;min-width:0;flex:1}
-.stream-thumb{width:190px;height:114px;min-width:190px;flex-shrink:0;object-fit:cover;border-radius:8px;background:#1a2234;border:2px solid #334155}
+.stream-info{display:flex;align-items:center;gap:12px;min-width:0;min-height:0}
+.stream-thumb{width:210px;height:126px;min-width:210px;flex-shrink:0;object-fit:cover;border-radius:8px;background:#1a2234;border:2px solid #334155}
 .stream-details{min-width:0;flex:1}
-.stream-title{font-size:19px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.stream-channel{font-size:12px;color:var(--muted);margin-top:3px}
-.stream-meta{display:flex;flex-wrap:wrap;gap:5px 14px;font-size:11px;color:var(--muted);min-width:0}
+.stream-title{font-size:clamp(15px,1.5vw,20px);font-weight:900;line-height:1.2;overflow-wrap:anywhere}
+.stream-channel{font-size:11px;color:var(--muted);margin-top:4px}
+.stream-meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:10px;color:var(--muted);min-width:0;overflow:hidden}
 .stream-meta span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48%}
 .stream-meta b{color:#cbd5e1}
-.stream-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;border-top:1px solid #ffffff18;padding-top:7px}
+.stream-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;border-top:1px solid #ffffff18;padding-top:5px;min-width:0}
 .stream-stat{display:flex;flex-direction:column;min-width:0}
-.stream-stat label{font-size:11px;font-weight:900;color:var(--accent);letter-spacing:.7px;white-space:nowrap}
-.stream-stat .value{font-size:clamp(23px,2.9vw,38px);font-weight:900;color:var(--white);white-space:nowrap;letter-spacing:-.04em;line-height:1.2;overflow:hidden}
+.stream-stat label{font-size:10px;font-weight:900;color:var(--accent);letter-spacing:.6px;white-space:nowrap}
+.stream-stat .value{font-size:clamp(21px,2.5vw,34px);font-weight:900;color:var(--white);white-space:nowrap;letter-spacing:-.04em;line-height:1.15;overflow:hidden}
 .stream-stat:first-child .value{color:var(--accent)}
 .stream-extra{display:none}
 
-/* VYStats: protected rows prevent the API count from disappearing */
+/* VYSTATS */
 .vystats-box{background:var(--card);border:2px solid var(--purple);border-radius:10px;padding:7px 10px;display:grid;grid-template-rows:auto 54px auto auto minmax(34px,1fr) auto;justify-items:center;align-items:center;gap:2px;min-width:0;min-height:0;overflow:hidden;box-shadow:0 0 16px #a855f733;text-align:center}
 .vystats-heading{font-size:10px;font-weight:900;color:var(--purple);letter-spacing:1px;white-space:nowrap}
 .vystats-avatar{width:54px;height:54px;flex-shrink:0;border-radius:50%;object-fit:cover;background:#1a2234;border:3px solid var(--purple)}
@@ -78,9 +80,9 @@ footer{color:#737c91}
 .count{font-size:clamp(38px,4.5vw,58px)}
 .stats{padding-top:4px}
 .stat .odometer{font-size:clamp(16px,1.7vw,22px)}
-.stream-thumb{width:155px;height:93px;min-width:155px}
-.stream-stat .value{font-size:clamp(20px,2.5vw,30px)}
-.stream-title{font-size:17px}
+.stream-thumb{width:180px;height:108px;min-width:180px}
+.stream-stat .value{font-size:clamp(19px,2.2vw,28px)}
+.stream-meta{font-size:9px}
 .vystats-avatar{width:48px;height:48px}
 .vystats-box{grid-template-rows:auto 48px auto auto minmax(30px,1fr) auto}
 .vystats-count{font-size:clamp(20px,2vw,27px)}
@@ -93,10 +95,10 @@ footer{color:#737c91}
 .count{font-size:clamp(30px,4.5vw,52px)}
 .stats{gap:4px}
 .stat .odometer{font-size:clamp(13px,1.6vw,19px)}
-.stream-thumb{width:130px;height:78px;min-width:130px}
-.stream-title{font-size:16px}
+.stream-thumb{width:145px;height:87px;min-width:145px}
+.stream-title{font-size:15px}
 .stream-stat label{font-size:9px}
-.stream-stat .value{font-size:clamp(18px,2.5vw,30px)}
+.stream-stat .value{font-size:clamp(17px,2.2vw,27px)}
 .vystats-api-label{font-size:9px}
 }
 @media(max-width:600px){
@@ -110,6 +112,7 @@ html,body{overflow:auto;height:auto;min-height:100%}
 .avatar{width:115px;height:115px;min-width:115px}
 .count{font-size:clamp(24px,6vw,40px)}
 .stats{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:8px}
+.stream-box{grid-template-rows:auto auto auto auto}
 .stream-thumb{width:140px;height:84px;min-width:140px}
 .stream-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
@@ -121,7 +124,10 @@ html,body{overflow:auto;height:auto;min-height:100%}
 <div class="top-area">
 <section class="stream-box">
 <div class="stream-header"><div class="stream-heading">STREAM STATS</div><div class="stream-status" id="stream-status">● LIVE PERFORMANCE</div></div>
-<div class="stream-info"><img id="stream-thumb" class="stream-thumb" alt="Livestream thumbnail"><div class="stream-details"><div class="stream-title" id="stream-title">Loading livestream statistics...</div><div class="stream-channel" id="stream-channel">Loading channel info...</div></div></div>
+<div class="stream-info">
+<img id="stream-thumb" class="stream-thumb" alt="Livestream thumbnail">
+<div class="stream-details"><div class="stream-title" id="stream-title">Loading livestream statistics...</div><div class="stream-channel" id="stream-channel">Loading channel info...</div></div>
+</div>
 <div class="stream-meta">
 <span><b>VIDEO ID:</b> <span id="stream-id">B8iHWmFwaHY</span></span>
 <span><b>UPLOAD DATE:</b> <span id="stream-date">—</span></span>
