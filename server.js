@@ -44,5 +44,5 @@ app.get("/api/avatar/:key",async(req,res)=>{
     res.set("Content-Type",r.headers.get("content-type")||"image/jpeg").send(Buffer.from(await r.arrayBuffer()));
   }catch{res.redirect(fb);}
 });
-app.use(require('express').static(path.join(__dirname,"public")));
+app.use(require('express').static(__dirname));
 app.listen(PORT,()=>{console.log(`[RUN] Port ${PORT}`);update();setInterval(update,5000);});
