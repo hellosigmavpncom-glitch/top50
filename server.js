@@ -1,6 +1,6 @@
 const app=require('express')(),path=require('path'),PORT=process.env.PORT||3000;
 const chs={celine:{id:'UC1a2ZCw7tugRZYRMnecNj3A',name:'Celine Dept'},kondzilla:{id:'UCffDXn7ycAzwL2LDlbyWOTw',name:'Canal KondZilla'}};
-const STREAM_ID='B8iHWmFwaHY';
+const STREAM_ID='Nr1IWBNNQFA';
 let cache={celine:null,kondzilla:null,stream:null,lastUpdated:null},busy=false;
 app.use((req,res,next)=>{res.setHeader("Cache-Control","no-store");next();});
 async function fetchCh(k,ch){
