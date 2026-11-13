@@ -85,7 +85,7 @@ footer .live{color:var(--green)}
 .music-marquee{position:absolute;top:2px;left:100%;white-space:nowrap;font-size:11px;font-weight:700;color:#f0e7ff;will-change:transform;animation:music-scroll 18s linear infinite}
 @keyframes music-scroll{from{transform:translateX(0)}to{transform:translateX(-100%)}}
 
-/* Smaller canvas: reclaim space without shrinking the whole dashboard */
+/* Compact layout for OBS zoom */
 @media(max-height:700px){
 .container{padding:6px 8px;gap:5px;grid-template-rows:31px minmax(0,1fr) 12px}
 .battle{grid-template-rows:minmax(0,1fr) 61px;gap:6px}
@@ -106,7 +106,8 @@ footer .live{color:var(--green)}
 .difference{padding:2px 9px}
 .diff-value{font-size:39px}
 }
-@media(max-width:1050px){
+/* Changed from 1050px to 1200px for 110% OBS zoom */
+@media(max-width:1200px){
 .container{grid-template-columns:minmax(0,1fr) 270px}
 .hero{grid-template-columns:minmax(0,1fr) 112px}
 .avatar{max-width:108px}
