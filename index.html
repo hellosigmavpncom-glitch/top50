@@ -44,20 +44,21 @@ h1 span{color:var(--purple)}
 .api-value{font-size:clamp(19px,1.7vw,25px);font-weight:800;letter-spacing:-.5px;white-space:nowrap;overflow:visible}
 .api-stat.large-stat{padding:10px 11px;gap:7px;background:#ffffff0d}
 .api-stat.large-stat .api-label{font-size:12px;letter-spacing:.3px;color:#b8c9e4}
-.api-stat.large-stat .api-value,
-.api-stat.large-stat .api-value .odometer-digit,
-.api-stat.large-stat .api-value .odometer-digit-spacer,
-.api-stat.large-stat .api-value .odometer-value,
-.api-stat.large-stat .api-value .odometer-formatting-mark,
-.api-stat.large-stat .api-value .odometer-inside{
+/* Consistent typography for ALL six channel statistics */
+.api-stat .api-value,
+.api-stat .api-value .odometer-digit,
+.api-stat .api-value .odometer-digit-spacer,
+.api-stat .api-value .odometer-value,
+.api-stat .api-value .odometer-formatting-mark,
+.api-stat .api-value .odometer-inside{
 font-family:Inter,sans-serif!important;
 font-size:36px!important;
 font-weight:800!important;
 line-height:1.05!important;
 letter-spacing:-1.2px!important
 }
-.api-stat.large-stat .api-value .odometer-digit-inner,
-.api-stat.large-stat .api-value .odometer-ribbon-inner{font-family:Inter,sans-serif!important;font-weight:800!important}
+.api-stat .api-value .odometer-digit-inner,
+.api-stat .api-value .odometer-ribbon-inner{font-family:Inter,sans-serif!important;font-weight:800!important}
 .vs{position:absolute;z-index:5;left:50%;top:50%;transform:translate(-50%,-50%);width:47px;height:47px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#d18aff,#7723d5 65%,#42118a);border:3px solid #090b13;font-size:16px;font-weight:800;box-shadow:0 0 22px #a855f7a6}
 .difference{border:1px solid #a855f7;border-radius:11px;background:linear-gradient(100deg,#26113c,#171025 50%,#25113b);display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;padding:4px 14px;gap:8px;box-shadow:0 0 24px #a855f72b;overflow:hidden}
 .diff-label{font-size:13px;font-weight:800;color:#d5a0ff;letter-spacing:.5px}
