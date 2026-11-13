@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -27,7 +28,7 @@ header{overflow:hidden}
 .hero{display:grid;grid-template-columns:minmax(0,1fr) 145px;gap:8px;align-items:center;min-height:0;min-width:0}
 .hero-info{min-width:0;display:flex;flex-direction:column;gap:11px}
 .eyebrow{font-size:13px;font-weight:700;letter-spacing:.5px;color:var(--muted)}
-.big-number{font-size:clamp(45px,4.3vw,61px);font-weight:800;letter-spacing:-.075em;line-height:1.15;white-space:nowrap}
+.big-number{font-size:clamp(48px,4.8vw,68px);font-weight:800;letter-spacing:-.075em;line-height:1.15;white-space:nowrap}
 .odometer{font-family:Inter,sans-serif!important;font-variant-numeric:tabular-nums;line-height:1.15!important;vertical-align:middle}
 .hero-caption{font-size:11px;color:var(--muted);font-weight:600}
 .avatar-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;min-width:0}
@@ -38,7 +39,7 @@ header{overflow:hidden}
 .api-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:8px;border-top:1px solid #ffffff20;padding-top:9px;min-width:0;min-height:0}
 .api-stat{min-width:0;overflow:hidden;background:#ffffff08;border:1px solid #ffffff0c;border-radius:8px;padding:10px 11px;display:flex;flex-direction:column;justify-content:center;gap:7px}
 .api-label{font-size:11px;font-weight:700;letter-spacing:.4px;color:#a5b7d2;white-space:nowrap}
-.api-value{font-size:clamp(19px,1.7vw,25px);font-weight:800;letter-spacing:-.5px;white-space:nowrap;overflow:visible}
+.api-value{font-size:clamp(24px,2vw,30px);font-weight:800;letter-spacing:-.8px;white-space:nowrap;overflow:visible}
 .api-stat.large-stat{padding:10px 11px;gap:7px;background:#ffffff0d}
 .api-stat.large-stat .api-label{font-size:12px;letter-spacing:.3px;color:#b8c9e4}
 .api-stat.large-stat .api-value{font-size:clamp(24px,2vw,30px);font-weight:700;letter-spacing:-.8px}
@@ -73,7 +74,7 @@ header{overflow:hidden}
 .stream-stat .value{font-size:clamp(26px,2.4vw,35px);font-weight:800;letter-spacing:-1px;white-space:nowrap;overflow:hidden}
 footer{grid-row:3;font-size:10px;color:var(--muted)}
 footer .live{color:var(--green)}
-/* Single right-to-left NCS ticker */
+/* NCS ticker: starts fully outside right, crosses entire window, exits left */
 .music-player{width:100%;height:31px;display:flex;align-items:center;gap:10px;padding:3px 12px;background:#160e25;border:1px solid #63358a;border-radius:7px;overflow:hidden}
 .mission-tag{font-size:9px;letter-spacing:.7px;color:#d8a5ff;white-space:nowrap;border-right:1px solid #ffffff25;padding-right:10px;flex:none}
 .music-info{display:flex;align-items:center;gap:9px;min-width:0;flex:1;overflow:hidden}
@@ -84,15 +85,15 @@ footer .live{color:var(--green)}
 .equalizer i:nth-child(4){height:15px;animation-delay:.1s}
 @keyframes eq{from{transform:scaleY(.35);opacity:.6}to{transform:scaleY(1);opacity:1}}
 .music-window{height:22px;flex:1;min-width:0;overflow:hidden;position:relative}
-.music-marquee{position:absolute;top:2px;left:0;white-space:nowrap;font-size:11px;font-weight:700;color:#f0e7ff;will-change:transform;animation:music-scroll 18s linear infinite}
-@keyframes music-scroll{0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}
+.music-marquee{position:absolute;top:2px;left:100%;transform:translateX(0);white-space:nowrap;font-size:11px;font-weight:700;color:#f0e7ff;will-change:transform;animation:music-scroll 18s linear infinite}
+@keyframes music-scroll{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}
 @media(max-height:700px){
 .container{padding:7px 10px;gap:6px;grid-template-rows:33px minmax(0,1fr) 14px}
 .battle{grid-template-rows:minmax(0,1fr) 68px;gap:7px}
 .channel{grid-template-rows:28px minmax(0,1fr) 132px;padding:9px;gap:6px}
 .hero{grid-template-columns:minmax(0,1fr) 119px}
 .avatar{max-width:110px}
-.big-number{font-size:clamp(39px,4vw,53px)}
+.big-number{font-size:clamp(43px,4.4vw,59px)}
 .hero-info{gap:7px}
 .sidebar{gap:7px;padding:9px}
 .my-avatar{width:65px;height:65px}
@@ -159,7 +160,7 @@ function renderVystats(d){if(!d)return;if(d.name)txt("vystats-name",d.name);if(d
 function renderDynamic(s){const grid=$("stream-grid"),keep=new Set();Object.entries(s).forEach(([k,v])=>{if(["viewerCount","viewCount","estimatedViewCount","likeCount"].includes(k)||v==null||typeof v==="object")return;let key="dynamic-"+k;keep.add(key);let x=dynamic[key];if(!x){let w=document.createElement("div"),l=document.createElement("label"),e=document.createElement("div");w.className="stream-stat";l.textContent=k.replace(/([A-Z])/g," $1").toUpperCase();e.className="value odometer";w.append(l,e);grid.append(w);x=dynamic[key]={w,e,m:meter(e)}}x.w.style.display="";let n=typeof v==="number"||(typeof v==="string"&&v.trim()!==""&&Number.isFinite(Number(v)));if(n){if(!x.m){x.e.classList.add("odometer");x.m=meter(x.e)}if(x.m)x.m.update(Number(v));else x.e.textContent=fmt(v)}else{x.m=null;x.e.classList.remove("odometer");x.e.textContent=String(v)}});Object.entries(dynamic).forEach(([k,x])=>{if(!keep.has(k))x.w.style.display="none"})}
 function renderStream(s){if(s)lastStream=s;else s=lastStream;if(!s)return;const i=s.info||{},st=s.stats||{},ch=i.channel||{};if(i.title)txt("stream-title",i.title);if(ch.name)txt("stream-channel",ch.name);if(i.id)txt("stream-id",i.id);if(i.uploadDate){let d=new Date(i.uploadDate);txt("stream-date",Number.isNaN(d.getTime())?"—":d.toLocaleString())}if(i.thumbnail&&$("stream-thumb").src!==i.thumbnail)$("stream-thumb").src=i.thumbnail;[["stream-viewers","viewerCount"],["stream-views","viewCount"],["stream-est-views","estimatedViewCount"],["stream-likes","likeCount"]].forEach(([id,k])=>num(id,st[k]));let extra=Object.entries(i).filter(([k,v])=>!["id","title","thumbnail","uploadDate","channel"].includes(k)&&v!=null&&typeof v!=="object").map(([k,v])=>k+": "+v);if(ch.id)extra.push("CHANNEL ID: "+ch.id);txt("stream-extra-info",extra.join(" · "));renderDynamic(st)}
 async function update(){try{let r=await fetch("/api/stats",{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);let d=await r.json();renderChannel("celine",d.celine);renderChannel("kondzilla",d.kondzilla);renderVystats(d.vystats);renderStream(d.stream);if(d.celine&&d.kondzilla){let a=Number(d.celine.estimatedSubscriberCount),b=Number(d.kondzilla.estimatedSubscriberCount);if(Number.isFinite(a)&&Number.isFinite(b)){num("sub-diff",Math.abs(a-b));txt("gap-status",a>b?"Celine is ahead":a<b?"Celine is behind":"Channels are tied")}}txt("updated",d.lastUpdated?"Updated "+new Date(d.lastUpdated).toLocaleTimeString():"Waiting...")}catch(e){txt("updated","Connection error · showing last stats");if(lastStream)renderStream(lastStream);console.error("[Dashboard]",e)}}
-async function updateMusic(){try{let r=await fetch("/api/music",{cache:"no-store"});if(!r.ok)return;let m=await r.json(),song=[m.artist,m.title].filter(Boolean).join(" — ");if(song&&$("music-marquee").textContent!==song){$("music-marquee").textContent=song;$("music-marquee").style.animation="none";void $("music-marquee").offsetWidth;$("music-marquee").style.animation=""}}catch(e){}}
+async function updateMusic(){try{let r=await fetch("/api/music",{cache:"no-store"});if(!r.ok)return;let m=await r.json(),song=[m.artist,m.title].filter(Boolean).join(" — ");if(song&&$("music-marquee").textContent!==song){let el=$("music-marquee");el.textContent=song;el.style.animation="none";void el.offsetWidth;el.style.animation="music-scroll 18s linear infinite"}}catch(e){}}
 update();updateMusic();setInterval(update,5000);setInterval(updateMusic,2000);
 </script>
 </body>
