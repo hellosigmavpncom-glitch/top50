@@ -6,13 +6,8 @@ const chs={
 };
 const STREAM_ID="Nr1IWBNNQFA";
 let cache={celine:null,kondzilla:null,vystats:null,stream:null,lastUpdated:null},busy=false;
-app.use((req,res,next)=>{res.setHeader("Cache-Control","no-store");next();});
 
-// Serve music from /music in the project root. No public folder needed.
-app.use("/music",express.static(path.join(__dirname,"music"),{
-  fallthrough:false,
-  setHeaders(res){res.setHeader("Cache-Control","public, max-age=86400");}
-}));
+app.use((req,res,next)=>{res.setHeader("Cache-Control","no-store");next();});
 
 async function fetchCh(k,ch){
   try{
@@ -64,4 +59,5 @@ app.get("/api/avatar/:key",async(req,res)=>{
 });
 
 app.get("/",(_,res)=>res.sendFile(path.join(__dirname,"index.html")));
+
 app.listen(PORT,()=>{console.log(`[RUN] Port ${PORT}`);update();setInterval(update,5000);});
