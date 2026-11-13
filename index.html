@@ -33,7 +33,7 @@ header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:s
 .api-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:10px;border-top:1px solid #ffffff20;padding-top:11px;min-width:0;min-height:0}
 .api-stat{min-width:0;min-height:0;overflow:hidden;background:#ffffff0a;border:1px solid #ffffff12;border-radius:13px;padding:12px 14px;display:flex;flex-direction:column;justify-content:center;gap:12px}
 .api-label{font-size:17px;font-weight:800;letter-spacing:.4px;color:#c6d7f0;white-space:nowrap}
-.api-value{font-size:clamp(30px,2.7vw,44px);font-weight:800;letter-spacing:-1.8px;white-space:nowrap;overflow:hidden;line-height:1.12!important;min-width:0;max-width:100%}
+.api-value{font-size:clamp(30px,2.7vw,44px);font-weight:800;letter-spacing:-1.8px;white-space:nowrap;overflow:visible;line-height:1.12!important;min-width:0;max-width:none;width:111.12%;transform:scaleX(.9);transform-origin:left center}
 .vs{position:absolute;z-index:5;left:50%;top:50%;transform:translate(-50%,-50%);width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#d18aff,#7723d5 65%,#42118a);border:4px solid #090b13;font-size:19px;font-weight:800;box-shadow:0 0 22px #a855f7a6}
 .difference{border:1px solid #a855f7;border-radius:15px;background:linear-gradient(100deg,#26113c,#171025 50%,#25113b);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,auto) minmax(0,1fr);align-items:center;padding:0 18px;gap:10px;box-shadow:0 0 24px #a855f72b;overflow:hidden;min-height:0}
 .diff-label{font-size:16px;font-weight:800;color:#d5a0ff;letter-spacing:.5px}
