@@ -12,18 +12,14 @@
 html,body{width:100%;height:100%;overflow:hidden}
 body{font-family:Inter,sans-serif;background:var(--bg);color:var(--white);font-weight:600}
 .container{height:100%;width:100%;padding:14px 16px;display:grid;grid-template-columns:minmax(0,1fr) 390px;grid-template-rows:52px minmax(0,1fr) 20px;gap:11px;background:radial-gradient(ellipse at 28% 35%,#29123c55,transparent 48%),radial-gradient(ellipse at 75% 55%,#102a4455,transparent 48%),#070910}
-header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;min-width:0}
-header{overflow:hidden}
+header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;min-width:0}header{overflow:hidden}
 .battle{grid-column:1;grid-row:2;display:grid;grid-template-rows:minmax(0,1fr) 130px;gap:11px;min-width:0;min-height:0}
 .versus{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;position:relative;min-width:0;min-height:0}
 .channel{position:relative;overflow:hidden;min-width:0;min-height:0;background:linear-gradient(145deg,#171329,#0e1320 60%);border:1px solid #8d45c9;border-radius:19px;padding:16px;display:grid;grid-template-rows:42px minmax(0,1fr) 260px;gap:10px;box-shadow:inset 0 0 35px #a855f70b,0 8px 28px #0007}
 .channel:before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#8b35dd,#e0a5ff)}
-.channel.kond{background:linear-gradient(145deg,#101d30,#0e1320 65%);border-color:#277eb3}
-.channel.kond:before{background:linear-gradient(90deg,#168bc5,#71ddff)}
+.channel.kond{background:linear-gradient(145deg,#101d30,#0e1320 65%);border-color:#277eb3}.channel.kond:before{background:linear-gradient(90deg,#168bc5,#71ddff)}
 .channel-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff20;padding-bottom:8px;min-width:0;gap:8px}
-.channel-name{font-size:18px;font-weight:800;letter-spacing:.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.celine .channel-name{color:#d5a0ff}
-.kond .channel-name{color:#75d8ff}
+.channel-name{font-size:18px;font-weight:800;letter-spacing:.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.celine .channel-name{color:#d5a0ff}.kond .channel-name{color:#75d8ff}
 .channel-number{font-size:13px;color:#91a0ba;font-weight:600;white-space:nowrap}
 .hero{display:grid;grid-template-columns:minmax(0,1fr) 170px;gap:12px;align-items:center;min-height:0;min-width:0}
 .hero-info{min-width:0;display:flex;flex-direction:column;gap:14px}
@@ -32,107 +28,65 @@ header{overflow:hidden}
 .odometer{font-family:Inter,sans-serif!important;font-variant-numeric:tabular-nums;line-height:1.15!important;vertical-align:middle}
 .hero-caption{font-size:14px;color:var(--muted);font-weight:600}
 .avatar-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;min-width:0}
-.avatar{width:100%;max-width:155px;aspect-ratio:1;object-fit:cover;border-radius:19px;border:3px solid var(--purple);background:#171d2b;box-shadow:0 0 24px #a855f755}
-.kond .avatar{border-color:var(--blue);box-shadow:0 0 24px #39c5ff44}
-.avatar-name{font-size:18px;font-weight:800;text-align:center;line-height:1.15;overflow-wrap:anywhere}
-.avatar-handle{font-size:13px;color:var(--muted);font-weight:500}
+.avatar{width:100%;max-width:155px;aspect-ratio:1;object-fit:cover;border-radius:19px;border:3px solid var(--purple);background:#171d2b;box-shadow:0 0 24px #a855f755}.kond .avatar{border-color:var(--blue);box-shadow:0 0 24px #39c5ff44}
+.avatar-name{font-size:18px;font-weight:800;text-align:center;line-height:1.15;overflow-wrap:anywhere}.avatar-handle{font-size:13px;color:var(--muted);font-weight:500}
 .api-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:10px;border-top:1px solid #ffffff20;padding-top:11px;min-width:0;min-height:0}
 .api-stat{min-width:0;min-height:0;overflow:hidden;background:#ffffff0a;border:1px solid #ffffff12;border-radius:13px;padding:12px 14px;display:flex;flex-direction:column;justify-content:center;gap:12px}
 .api-label{font-size:17px;font-weight:800;letter-spacing:.4px;color:#c6d7f0;white-space:nowrap}
-.api-value{font-size:clamp(38px,3.4vw,54px);font-weight:800;letter-spacing:-1.8px;white-space:nowrap;overflow:hidden;line-height:1.12!important}
-.api-stat.large-stat{background:#ffffff0e}
+.api-value{font-size:clamp(30px,2.7vw,44px);font-weight:800;letter-spacing:-1.8px;white-space:nowrap;overflow:hidden;line-height:1.12!important;min-width:0;max-width:100%}
 .vs{position:absolute;z-index:5;left:50%;top:50%;transform:translate(-50%,-50%);width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#d18aff,#7723d5 65%,#42118a);border:4px solid #090b13;font-size:19px;font-weight:800;box-shadow:0 0 22px #a855f7a6}
 .difference{border:1px solid #a855f7;border-radius:15px;background:linear-gradient(100deg,#26113c,#171025 50%,#25113b);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,auto) minmax(0,1fr);align-items:center;padding:0 18px;gap:10px;box-shadow:0 0 24px #a855f72b;overflow:hidden;min-height:0}
 .diff-label{font-size:16px;font-weight:800;color:#d5a0ff;letter-spacing:.5px}
 .diff-value{font-size:clamp(80px,8vw,128px);font-weight:800;color:#bd69ff;letter-spacing:-.075em;line-height:1!important;white-space:nowrap;overflow:hidden;min-width:0}
-.diff-value.odometer{line-height:1!important}
 .diff-status{text-align:right;font-size:14px;font-weight:700;color:#e0c5ff;white-space:nowrap}
 .sidebar{grid-column:2;grid-row:2;min-width:0;min-height:0;overflow:hidden;background:linear-gradient(155deg,#151326,#0e1421 60%);border:1px solid #a855f7;border-radius:18px;padding:15px;display:flex;flex-direction:column;gap:12px;box-shadow:0 0 25px #a855f722}
 .side-head,.stream-head{display:flex;justify-content:space-between;align-items:center;gap:5px}
-.side-title{font-size:17px;font-weight:800;color:#c78aff;letter-spacing:.4px}
-.live{font-size:13px;font-weight:700;color:var(--green);white-space:nowrap}
+.side-title{font-size:17px;font-weight:800;color:#c78aff;letter-spacing:.4px}.live{font-size:13px;font-weight:700;color:var(--green);white-space:nowrap}
 .profile{display:grid;grid-template-columns:94px minmax(0,1fr);align-items:center;gap:13px;min-width:0}
 .my-avatar{width:92px;height:92px;object-fit:cover;border-radius:50%;border:3px solid var(--purple);box-shadow:0 0 16px #a855f755}
-.my-name{font-size:22px;font-weight:800;overflow-wrap:anywhere}
-.my-handle{font-size:13px;color:var(--muted);margin-top:4px}
-.my-label{font-size:14px;font-weight:800;color:var(--muted);margin-top:7px}
-.my-count{font-size:43px;font-weight:800;letter-spacing:-1.5px;line-height:1.1;white-space:nowrap;overflow:hidden}
+.my-name{font-size:22px;font-weight:800;overflow-wrap:anywhere}.my-handle{font-size:13px;color:var(--muted);margin-top:4px}.my-label{font-size:14px;font-weight:800;color:var(--muted);margin-top:7px}
+.my-count{font-size:43px;font-weight:800;letter-spacing:-1.5px;line-height:1.1;white-space:nowrap;overflow:hidden;min-width:0}
 .api-line{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-top:1px solid #ffffff20;border-bottom:1px solid #ffffff20;min-width:0}
-.api-line span{font-size:15px;color:var(--muted);font-weight:800;white-space:nowrap}
-.api-line strong{font-size:44px;font-weight:800;white-space:nowrap;letter-spacing:-1px;overflow:hidden;min-width:0}
+.api-line span{font-size:15px;color:var(--muted);font-weight:800;white-space:nowrap}.api-line strong{font-size:40px;font-weight:800;white-space:nowrap;letter-spacing:-1px;overflow:hidden;min-width:0}
 .stream-head span:first-child{font-size:17px;color:var(--blue);font-weight:800;letter-spacing:.3px}
 .stream{display:grid;grid-template-columns:125px minmax(0,1fr);gap:12px;align-items:center;min-width:0}
 .thumb{width:125px;height:79px;object-fit:cover;border-radius:10px;border:1px solid #3d577b}
-.stream-title{font-size:15px;font-weight:700;line-height:1.35;overflow-wrap:anywhere}
-.stream-channel{font-size:13px;color:var(--muted);margin-top:5px}
+.stream-title{font-size:15px;font-weight:700;line-height:1.35;overflow-wrap:anywhere}.stream-channel{font-size:13px;color:var(--muted);margin-top:5px}
 .meta{font-size:13px;color:#a5b1c7;line-height:1.5;overflow-wrap:anywhere;max-height:48px;overflow:hidden}
 .stream-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:9px;flex:1;align-content:stretch;min-height:0;min-width:0}
 .stream-stat{background:#ffffff09;border:1px solid #ffffff12;border-radius:11px;padding:10px;min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:8px}
 .stream-stat label{display:block;font-size:15px;color:var(--blue);font-weight:800;letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.stream-stat .value{font-size:clamp(32px,2.6vw,43px);font-weight:800;letter-spacing:-1.5px;white-space:nowrap;overflow:hidden;line-height:1.12!important;min-width:0}
-footer{grid-row:3;font-size:12px;color:var(--muted)}
-footer .live{color:var(--green)}
+.stream-stat .value{font-size:clamp(24px,2vw,34px);font-weight:800;letter-spacing:-1.5px;white-space:nowrap;overflow:hidden;line-height:1.12!important;min-width:0;max-width:100%}
+footer{grid-row:3;font-size:12px;color:var(--muted)}footer .live{color:var(--green)}
 .music-player{width:100%;height:46px;display:flex;align-items:center;gap:14px;padding:5px 17px;background:#160e25;border:1px solid #63358a;border-radius:10px;overflow:hidden}
 .mission-tag{font-size:13px;letter-spacing:.7px;color:#d8a5ff;white-space:nowrap;border-right:1px solid #ffffff25;padding-right:14px;flex:none}
 .music-info{display:flex;align-items:center;gap:11px;min-width:0;flex:1;overflow:hidden}
-.equalizer{height:19px;display:flex;align-items:center;gap:3px;flex:none}
-.equalizer i{display:block;width:3px;height:6px;border-radius:3px;background:#c78aff;animation:eq .7s ease-in-out infinite alternate}
-.equalizer i:nth-child(2){height:13px;animation-delay:.2s}
-.equalizer i:nth-child(3){height:9px;animation-delay:.4s}
-.equalizer i:nth-child(4){height:15px;animation-delay:.1s}
+.equalizer{height:19px;display:flex;align-items:center;gap:3px;flex:none}.equalizer i{display:block;width:3px;height:6px;border-radius:3px;background:#c78aff;animation:eq .7s ease-in-out infinite alternate}
+.equalizer i:nth-child(2){height:13px;animation-delay:.2s}.equalizer i:nth-child(3){height:9px;animation-delay:.4s}.equalizer i:nth-child(4){height:15px;animation-delay:.1s}
 @keyframes eq{from{transform:scaleY(.35);opacity:.6}to{transform:scaleY(1);opacity:1}}
 .music-window{height:26px;flex:1;min-width:0;overflow:hidden;position:relative}
 .music-marquee{position:absolute;top:3px;left:100%;white-space:nowrap;font-size:14px;font-weight:700;color:#f0e7ff;will-change:transform;animation:music-scroll 18s linear infinite}
 @keyframes music-scroll{from{transform:translateX(0)}to{transform:translateX(-100%)}}
 @media(max-height:760px){
-.container{padding:8px 10px;gap:7px;grid-template-rows:38px minmax(0,1fr) 15px}
-.battle{grid-template-rows:minmax(0,1fr) 105px;gap:8px}
-.channel{grid-template-rows:34px minmax(0,1fr) 190px;padding:10px;gap:7px}
-.hero{grid-template-columns:minmax(0,1fr) 120px}
-.avatar{max-width:110px}
-.big-number{font-size:clamp(38px,3.5vw,54px)}
-.hero-info{gap:8px}
-.api-value{font-size:clamp(30px,2.8vw,42px)}
-.sidebar{gap:7px;padding:9px}
-.my-avatar{width:65px;height:65px}
-.profile{grid-template-columns:68px minmax(0,1fr)}
-.my-count{font-size:34px}
-.api-line strong{font-size:34px}
-.stream{grid-template-columns:90px minmax(0,1fr)}
-.thumb{width:90px;height:57px}
-.stream-stat{padding:6px}
-.stream-stat .value{font-size:29px}
-.stream-stat label{font-size:12px}
-.difference{padding:0 12px}
-.diff-value{font-size:clamp(65px,7vw,95px)}
+.container{padding:8px 10px;gap:7px;grid-template-rows:38px minmax(0,1fr) 15px}.battle{grid-template-rows:minmax(0,1fr) 105px;gap:8px}
+.channel{grid-template-rows:34px minmax(0,1fr) 190px;padding:10px;gap:7px}.hero{grid-template-columns:minmax(0,1fr) 120px}.avatar{max-width:110px}
+.big-number{font-size:clamp(38px,3.5vw,54px)}.hero-info{gap:8px}.api-value{font-size:clamp(26px,2.4vw,38px)}
+.sidebar{gap:7px;padding:9px}.my-avatar{width:65px;height:65px}.profile{grid-template-columns:68px minmax(0,1fr)}.my-count{font-size:34px}.api-line strong{font-size:32px}
+.stream{grid-template-columns:90px minmax(0,1fr)}.thumb{width:90px;height:57px}.stream-stat{padding:6px}.stream-stat .value{font-size:25px}.stream-stat label{font-size:12px}
+.difference{padding:0 12px}.diff-value{font-size:clamp(65px,7vw,95px)}
 }
 @media(max-width:1100px){
-.container{grid-template-columns:minmax(0,1fr) 320px;padding:9px;gap:8px}
-.channel{padding:10px;grid-template-rows:34px minmax(0,1fr) 190px}
-.hero{grid-template-columns:minmax(0,1fr) 115px}
-.avatar{max-width:105px}
-.big-number{font-size:clamp(34px,3.5vw,48px)}
-.api-value{font-size:clamp(27px,2.7vw,38px)}
-.api-label{font-size:13px}
-.sidebar{padding:10px;gap:8px}
-.my-avatar{width:68px;height:68px}
-.profile{grid-template-columns:70px minmax(0,1fr)}
-.my-count{font-size:34px}
-.api-line strong{font-size:34px}
-.stream-stat .value{font-size:28px}
-.stream-stat label{font-size:12px}
-.diff-value{font-size:clamp(60px,7vw,90px)}
+.container{grid-template-columns:minmax(0,1fr) 320px;padding:9px;gap:8px}.channel{padding:10px;grid-template-rows:34px minmax(0,1fr) 190px}
+.hero{grid-template-columns:minmax(0,1fr) 115px}.avatar{max-width:105px}.big-number{font-size:clamp(34px,3.5vw,48px)}
+.api-value{font-size:clamp(24px,2.4vw,36px)}.api-label{font-size:13px}.sidebar{padding:10px;gap:8px}
+.my-avatar{width:68px;height:68px}.profile{grid-template-columns:70px minmax(0,1fr)}.my-count{font-size:34px}.api-line strong{font-size:32px}
+.stream-stat .value{font-size:25px}.stream-stat label{font-size:12px}.diff-value{font-size:clamp(60px,7vw,90px)}
 }
 </style>
 </head>
 <body>
 <div class="container">
-<header>
-<div class="music-player">
-<span class="mission-tag">NCS · NOW PLAYING</span>
-<div class="music-info"><span class="equalizer"><i></i><i></i><i></i><i></i></span><div class="music-window"><div class="music-marquee" id="music-marquee">Waiting for VLC...</div></div></div>
-</div>
-</header>
+<header><div class="music-player"><span class="mission-tag">NCS · NOW PLAYING</span><div class="music-info"><span class="equalizer"><i></i><i></i><i></i><i></i></span><div class="music-window"><div class="music-marquee" id="music-marquee">Waiting for VLC...</div></div></div></div></header>
 <main class="battle">
 <div class="versus">
 <section class="channel celine">
@@ -143,8 +97,7 @@ footer .live{color:var(--green)}
 <div class="api-stat"><div class="api-label">LIVE VIEWS</div><div class="api-value odometer" id="celine-views">0</div></div>
 <div class="api-stat"><div class="api-label">API VIEWS</div><div class="api-value odometer" id="celine-api-views">0</div></div>
 <div class="api-stat"><div class="api-label">VIDEOS</div><div class="api-value odometer" id="celine-videos">0</div></div>
-</div>
-</section>
+</div></section>
 <div class="vs">VS</div>
 <section class="channel kond">
 <div class="channel-head"><span class="channel-name">02 · CANAL KONDZILLA</span><span class="channel-number">COMPARISON</span></div>
@@ -154,8 +107,7 @@ footer .live{color:var(--green)}
 <div class="api-stat"><div class="api-label">LIVE VIEWS</div><div class="api-value odometer" id="kondzilla-views">0</div></div>
 <div class="api-stat"><div class="api-label">API VIEWS</div><div class="api-value odometer" id="kondzilla-api-views">0</div></div>
 <div class="api-stat"><div class="api-label">VIDEOS</div><div class="api-value odometer" id="kondzilla-videos">0</div></div>
-</div>
-</section>
+</div></section>
 </div>
 <div class="difference"><div class="diff-label">LIVE SUBSCRIBER DIFFERENCE</div><div class="diff-value odometer" id="sub-diff">0</div><div class="diff-status" id="gap-status">Connecting...</div></div>
 </main>
@@ -171,30 +123,24 @@ footer .live{color:var(--green)}
 <div class="stream-stat"><label>TOTAL VIEWS</label><div class="value odometer" id="stream-views">0</div></div>
 <div class="stream-stat"><label>ESTIMATED VIEWS</label><div class="value odometer" id="stream-est-views">0</div></div>
 <div class="stream-stat"><label>LIKES</label><div class="value odometer" id="stream-likes">0</div></div>
-</div>
-</aside>
+</div></aside>
 <footer><div><span class="live">● LIVE</span> &nbsp; MIXERNO & BASEPOINT API</div><div id="updated">Connecting...</div></footer>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
 <script>
-const $=id=>document.getElementById(id),meters={},dynamic={};let lastStream=null;
+const $=id=>document.getElementById(id),meters={},dynamic={},lastValues={};
+let lastStream=null,updating=false;
 const ids=["celine-est-subs","celine-api-subs","celine-views","celine-api-views","celine-videos","kondzilla-est-subs","kondzilla-api-subs","kondzilla-views","kondzilla-api-views","kondzilla-videos","vystats-est-subs","vystats-api-subs","sub-diff","stream-viewers","stream-views","stream-est-views","stream-likes"];
 function meter(el){return window.Odometer&&el?new Odometer({el,value:0,format:"(,ddd)",duration:450}):null}
 ids.forEach(id=>meters[id]=meter($(id)));
 const fmt=n=>Number(n).toLocaleString("en-US");
-function fitNumber(el,max,min=19){if(!el)return;el.style.fontSize=max+"px";let size=max;while(size>min&&el.scrollWidth>el.clientWidth+2){size--;el.style.fontSize=size+"px"}}
-function fitAllNumbers(){document.querySelectorAll(".api-value").forEach(el=>fitNumber(el,54,22));document.querySelectorAll(".stream-stat .value").forEach(el=>fitNumber(el,43,19));fitNumber($("vystats-est-subs"),43,23);fitNumber($("vystats-api-subs"),44,22)}
-function scheduleFit(){requestAnimationFrame(()=>requestAnimationFrame(fitAllNumbers))}
-const resizeObserver=new ResizeObserver(scheduleFit);
-function observeSizes(){document.querySelectorAll(".api-value,.stream-stat .value,.my-count,.api-line strong").forEach(el=>resizeObserver.observe(el))}
-observeSizes();
-const num=(id,v)=>{if(v==null||v==="")return;let n=Number(v);if(!Number.isFinite(n))return;if(!meters[id])meters[id]=meter($(id));if(meters[id])meters[id].update(n);else if($(id))$(id).textContent=fmt(n);scheduleFit()};
+function num(id,v){if(v==null||v==="")return;let n=Number(v);if(!Number.isFinite(n)||lastValues[id]===n)return;lastValues[id]=n;if(!meters[id])meters[id]=meter($(id));if(meters[id])meters[id].update(n);else if($(id))$(id).textContent=fmt(n)}
 function txt(id,v){if($(id))$(id).textContent=v??"—"}
 function renderChannel(k,d){if(!d)return;if(d.name)txt(k+"-name",d.name);if(d.handle)txt(k+"-handle",d.handle);if(d.avatar)$(k+"-avatar").src="/api/avatar/"+k;[["est-subs","estimatedSubscriberCount"],["api-subs","apiSubscriberCount"],["views","viewCount"],["api-views","apiViewCount"],["videos","videoCount"]].forEach(([f,p])=>num(k+"-"+f,d[p]))}
 function renderVystats(d){if(!d)return;if(d.name)txt("vystats-name",d.name);if(d.handle)txt("vystats-handle",d.handle);if(d.avatar)$("vystats-avatar").src="/api/avatar/vystats";num("vystats-est-subs",d.estimatedSubscriberCount);num("vystats-api-subs",d.apiSubscriberCount)}
-function renderDynamic(s){const grid=$("stream-grid"),keep=new Set();let count=0;Object.entries(s).forEach(([k,v])=>{if(["viewerCount","viewCount","estimatedViewCount","likeCount"].includes(k)||v==null||typeof v==="object"||count>=4)return;count++;let key="dynamic-"+k;keep.add(key);let x=dynamic[key];if(!x){let w=document.createElement("div"),l=document.createElement("label"),e=document.createElement("div");w.className="stream-stat";l.textContent=k.replace(/([A-Z])/g," $1").toUpperCase();e.className="value odometer";w.append(l,e);grid.append(w);x=dynamic[key]={w,e,m:meter(e)};resizeObserver.observe(e)}x.w.style.display="";let n=typeof v==="number"||(typeof v==="string"&&v.trim()!==""&&Number.isFinite(Number(v)));if(n){if(!x.m){x.e.classList.add("odometer");x.m=meter(x.e)}if(x.m)x.m.update(Number(v));else x.e.textContent=fmt(v)}else{x.m=null;x.e.classList.remove("odometer");x.e.textContent=String(v)}fitNumber(x.e,43,19)});Object.entries(dynamic).forEach(([k,x])=>{if(!keep.has(k))x.w.style.display="none"});scheduleFit()}
+function renderDynamic(s){const grid=$("stream-grid"),keep=new Set();let count=0;Object.entries(s).forEach(([k,v])=>{if(["viewerCount","viewCount","estimatedViewCount","likeCount"].includes(k)||v==null||typeof v==="object"||count>=4)return;count++;let key="dynamic-"+k;keep.add(key);let x=dynamic[key];if(!x){let w=document.createElement("div"),l=document.createElement("label"),e=document.createElement("div");w.className="stream-stat";l.textContent=k.replace(/([A-Z])/g," $1").toUpperCase();e.className="value odometer";w.append(l,e);grid.append(w);x=dynamic[key]={w,e,m:meter(e),last:undefined}}x.w.style.display="";let n=typeof v==="number"||(typeof v==="string"&&v.trim()!==""&&Number.isFinite(Number(v)));if(n){let value=Number(v);if(x.last!==value){if(!x.m)x.m=meter(x.e);if(x.m)x.m.update(value);else x.e.textContent=fmt(value);x.last=value}}else{let value=String(v);if(x.last!==value){x.m=null;x.e.classList.remove("odometer");x.e.textContent=value;x.last=value}}});Object.entries(dynamic).forEach(([k,x])=>{if(!keep.has(k))x.w.style.display="none"})}
 function renderStream(s){if(s)lastStream=s;else s=lastStream;if(!s)return;const i=s.info||{},st=s.stats||{},ch=i.channel||{};if(i.title)txt("stream-title",i.title);if(ch.name)txt("stream-channel",ch.name);if(i.id)txt("stream-id",i.id);if(i.uploadDate){let d=new Date(i.uploadDate);txt("stream-date",Number.isNaN(d.getTime())?"—":d.toLocaleString())}if(i.thumbnail&&$("stream-thumb").src!==i.thumbnail)$("stream-thumb").src=i.thumbnail;[["stream-viewers","viewerCount"],["stream-views","viewCount"],["stream-est-views","estimatedViewCount"],["stream-likes","likeCount"]].forEach(([id,k])=>num(id,st[k]));let extra=Object.entries(i).filter(([k,v])=>!["id","title","thumbnail","uploadDate","channel"].includes(k)&&v!=null&&typeof v!=="object").map(([k,v])=>k+": "+v);if(ch.id)extra.push("CHANNEL ID: "+ch.id);txt("stream-extra-info",extra.join(" · "));renderDynamic(st)}
-async function update(){try{let r=await fetch("/api/stats",{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);let d=await r.json();renderChannel("celine",d.celine);renderChannel("kondzilla",d.kondzilla);renderVystats(d.vystats);renderStream(d.stream);if(d.celine&&d.kondzilla){let a=Number(d.celine.estimatedSubscriberCount),b=Number(d.kondzilla.estimatedSubscriberCount);if(Number.isFinite(a)&&Number.isFinite(b)){num("sub-diff",Math.abs(a-b));txt("gap-status",a>b?"Celine is ahead":a<b?"Celine is behind":"Channels are tied")}}txt("updated",d.lastUpdated?"Updated "+new Date(d.lastUpdated).toLocaleTimeString():"Waiting...");scheduleFit()}catch(e){txt("updated","Connection error · showing last stats");if(lastStream)renderStream(lastStream);console.error("[Dashboard]",e)}}
+async function update(){if(updating)return;updating=true;try{let r=await fetch("/api/stats",{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);let d=await r.json();renderChannel("celine",d.celine);renderChannel("kondzilla",d.kondzilla);renderVystats(d.vystats);renderStream(d.stream);if(d.celine&&d.kondzilla){let a=Number(d.celine.estimatedSubscriberCount),b=Number(d.kondzilla.estimatedSubscriberCount);if(Number.isFinite(a)&&Number.isFinite(b)){num("sub-diff",Math.abs(a-b));txt("gap-status",a>b?"Celine is ahead":a<b?"Celine is behind":"Channels are tied")}}txt("updated",d.lastUpdated?"Updated "+new Date(d.lastUpdated).toLocaleTimeString():"Waiting...")}catch(e){txt("updated","Connection error · showing last stats");if(lastStream)renderStream(lastStream);console.error("[Dashboard]",e)}finally{updating=false}}
 async function updateMusic(){try{let r=await fetch("/api/music",{cache:"no-store"});if(!r.ok)return;let m=await r.json(),song=[m.artist,m.title].filter(Boolean).join(" — ");if(song&&$("music-marquee").textContent!==song){let el=$("music-marquee");el.textContent=song;el.style.animation="none";void el.offsetWidth;el.style.animation="music-scroll 18s linear infinite"}}catch(e){}}
 update();updateMusic();setInterval(update,5000);setInterval(updateMusic,2000);
 </script>
