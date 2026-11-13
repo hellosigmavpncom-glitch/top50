@@ -42,9 +42,9 @@ header{overflow:hidden}
 .api-value,.api-stat.large-stat .api-value{display:block;max-width:100%;min-width:0;font-size:clamp(13px,1.45vw,19px);font-weight:800;letter-spacing:-.55px;white-space:nowrap;overflow:hidden}
 .api-stat.large-stat{padding:5px 7px;gap:4px;background:#ffffff0d}
 .vs{position:absolute;z-index:5;left:50%;top:50%;transform:translate(-50%,-50%);width:43px;height:43px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#d18aff,#7723d5 65%,#42118a);border:3px solid #090b13;font-size:15px;font-weight:800;box-shadow:0 0 22px #a855f7a6}
-.difference{border:1px solid #a855f7;border-radius:11px;background:linear-gradient(100deg,#26113c,#171025 50%,#25113b);display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;padding:3px 12px;gap:7px;box-shadow:0 0 24px #a855f72b;overflow:hidden}
+.difference{border:1px solid #a855f7;border-radius:11px;background:linear-gradient(100deg,#26113c,#171025 50%,#25113b);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,auto) minmax(0,1fr);align-items:center;padding:3px 12px;gap:7px;box-shadow:0 0 24px #a855f72b;overflow:hidden}
 .diff-label{font-size:12px;font-weight:800;color:#d5a0ff;letter-spacing:.4px;min-width:0}
-.diff-value{font-size:clamp(30px,3.3vw,44px);font-weight:800;color:#bd69ff;letter-spacing:-.075em;line-height:1.12;white-space:nowrap;min-width:0}
+.diff-value{font-size:clamp(38px,4.5vw,58px);font-weight:800;color:#bd69ff;letter-spacing:-.085em;line-height:1.12;white-space:nowrap;min-width:0;text-align:center}
 .diff-status{text-align:right;font-size:10px;font-weight:700;color:#e0c5ff;white-space:nowrap;min-width:0}
 .sidebar{grid-column:2;grid-row:2;min-width:0;min-height:0;overflow:hidden;background:linear-gradient(155deg,#151326,#0e1421 60%);border:1px solid #a855f7;border-radius:13px;padding:10px;display:flex;flex-direction:column;gap:8px;box-shadow:0 0 25px #a855f722}
 .side-head,.stream-head{display:flex;justify-content:space-between;align-items:center;gap:5px}
@@ -105,8 +105,10 @@ footer .live{color:var(--green)}
 .thumb{width:82px;height:52px}
 .stream-stat{padding:5px}
 .stream-stat .value{font-size:20px}
-.difference{padding:2px 9px}
-.diff-value{font-size:34px}
+.difference{padding:2px 9px;gap:5px}
+.diff-label{font-size:11px}
+.diff-value{font-size:clamp(35px,4vw,48px)}
+.diff-status{font-size:9px}
 }
 
 /* OBS zoom width adjustment */
@@ -117,6 +119,8 @@ footer .live{color:var(--green)}
 .big-number{font-size:clamp(26px,2.95vw,38px);letter-spacing:-.08em}
 .api-value,.api-stat.large-stat .api-value{font-size:clamp(12px,1.3vw,16px);letter-spacing:-.5px}
 .api-stat{padding:4px 6px}
+.difference{grid-template-columns:minmax(0,1fr) minmax(0,auto) minmax(0,1fr);gap:5px}
+.diff-value{font-size:clamp(35px,4vw,49px)}
 }
 
 /* Extra protection for narrower OBS viewports */
@@ -134,6 +138,9 @@ footer .live{color:var(--green)}
 .api-label{font-size:8px}
 .api-value,.api-stat.large-stat .api-value{font-size:clamp(11px,1.15vw,14px)}
 .vs{width:35px;height:35px;font-size:12px}
+.diff-label{font-size:10px}
+.diff-value{font-size:clamp(31px,3.6vw,42px)}
+.diff-status{font-size:8px}
 }
 </style>
 </head>
