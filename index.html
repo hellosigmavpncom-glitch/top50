@@ -26,8 +26,8 @@ header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:s
 .channel-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff20;padding-bottom:6px;gap:8px;min-width:0}
 .channel-name{font-size:16px;font-weight:800;letter-spacing:.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .celine .channel-name{color:#d5a0ff}.kond .channel-name{color:#75d8ff}.channel-number{font-size:10px;color:#91a0ba;white-space:nowrap}
-.channel-content{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(76px,.7fr) minmax(0,1.8fr);gap:8px;min-width:0;min-height:0}
-.hero{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);grid-template-rows:1fr;align-items:center;gap:12px;min-width:0;min-height:0}
+.channel-content{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:12px;min-width:0;min-height:0;align-items:stretch}
+.hero{display:grid;grid-template-rows:80px minmax(0,1fr);min-width:0;min-height:0}
 .identity{display:flex;align-items:center;gap:12px;min-width:0}
 .avatar{width:76px;height:76px;object-fit:cover;border-radius:9px;border:2px solid var(--purple);background:#171d2b;box-shadow:0 0 15px #a855f755;flex:none}
 .kond .avatar{border-color:var(--blue);box-shadow:0 0 15px #39c5ff44}
@@ -39,10 +39,10 @@ header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:s
 .odometer{font-family:Inter,sans-serif!important;font-variant-numeric:tabular-nums;line-height:1.05!important;vertical-align:middle}
 .odometer-digit-inner{overflow:hidden!important}.odometer-ribbon-inner{line-height:1.05!important}.odometer-digit{vertical-align:baseline!important}
 .hero-caption{font-size:11px;color:var(--muted);margin-top:5px}
-.api-grid{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:repeat(4,minmax(0,1fr));gap:6px;min-width:0;min-height:0}
-.api-stat{min-width:0;min-height:0;overflow:hidden;background:#ffffff0b;border:1px solid #ffffff16;border-radius:9px;padding:3px 14px;display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px}
-.api-label{flex:none;width:145px;font-size:12px;font-weight:800;letter-spacing:.3px;color:#c6d7f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.api-value,.api-value.odometer{display:block;flex:1;min-width:0;width:100%;max-width:100%;font-size:var(--large-number)!important;font-weight:800!important;letter-spacing:-.075em!important;line-height:1!important;white-space:nowrap;text-align:right;overflow:visible}
+.api-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:7px;min-width:0;min-height:0}
+.api-stat{min-width:0;min-height:0;overflow:hidden;background:#ffffff0b;border:1px solid #ffffff16;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;justify-content:center;gap:7px}
+.api-label{font-size:12px;font-weight:800;letter-spacing:.3px;color:#c6d7f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.api-value,.api-value.odometer{display:block;min-width:0;width:100%;max-width:100%;font-size:clamp(17px,1.8vw,24px)!important;font-weight:800!important;letter-spacing:-1.1px!important;line-height:1!important;white-space:nowrap;text-align:left;overflow:hidden}
 .difference{min-height:82px;border:1px solid #a855f7;border-radius:12px;background:linear-gradient(100deg,#26113c,#171025 50%,#25113b);display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;padding:0 18px;gap:10px;box-shadow:0 0 20px #a855f72b;overflow:hidden}
 .diff-label{font-size:13px;font-weight:800;color:#d5a0ff;letter-spacing:.5px}
 .diff-value{justify-self:center;align-self:center;display:flex;align-items:center;justify-content:center;font-size:var(--large-number);font-weight:800;color:#bd69ff;letter-spacing:-.075em;line-height:1!important;white-space:nowrap;overflow:visible;padding:0}
@@ -72,20 +72,21 @@ footer{font-size:10px;color:var(--muted)}footer .live{color:var(--green)}
 .container{padding:4px 10px 7px;grid-template-rows:32px minmax(0,1fr) 13px;gap:6px}
 .versus{grid-template-rows:minmax(0,1fr) 70px minmax(0,1fr);gap:6px}
 .channel{padding:7px 11px;grid-template-rows:23px minmax(0,1fr);gap:5px}
-.channel-content{grid-template-rows:minmax(70px,.7fr) minmax(0,1.8fr);gap:5px}
-.hero{gap:8px}.avatar{width:76px;height:76px}.avatar-name{font-size:15px}
+.hero{grid-template-rows:76px minmax(0,1fr)}
+.avatar{width:76px;height:76px}.avatar-name{font-size:15px}
 .big-number{font-size:clamp(53px,6vw,83px)}
-.api-grid{gap:4px}.api-stat{padding:2px 10px}.api-label{font-size:10px;width:130px}
+.api-grid{gap:4px}.api-stat{padding:6px 8px}.api-label{font-size:10px}
 .sidebar{padding:7px;gap:6px}.profile{grid-template-columns:50px minmax(0,1fr)}.my-avatar{width:48px;height:48px}
 .my-count{font-size:27px}.api-line{padding:5px 0}.api-line strong{font-size:21px}
 .stream{grid-template-columns:70px minmax(0,1fr)}.thumb{width:70px;height:45px}.stream-stat{padding:5px 8px}
 }
 @media(max-width:1000px){
 .container{grid-template-columns:minmax(0,1fr) 300px;padding:4px 8px 8px;gap:7px}
-.channel-content{grid-template-rows:minmax(70px,.7fr) minmax(0,1.8fr);gap:6px}
-.hero{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:7px}
+.channel-content{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:7px}
+.hero{grid-template-rows:76px minmax(0,1fr)}
 .big-number{font-size:clamp(48px,6vw,76px)}
-.api-stat{padding:2px 8px}.api-label{font-size:10px;width:125px}.sidebar{padding:7px;gap:6px}
+.api-stat{padding:6px 8px}.api-label{font-size:10px}.api-value,.api-value.odometer{font-size:clamp(16px,1.7vw,21px)!important}
+.sidebar{padding:7px;gap:6px}
 }
 </style></head><body><div class="container">
 <header><div class="music-player"><span class="mission-tag">NCS · NOW PLAYING</span><div class="music-info"><span class="equalizer"><i></i><i></i><i></i><i></i></span><div class="music-window"><div class="music-marquee" id="music-marquee">Waiting for VLC...</div></div></div></div></header>
