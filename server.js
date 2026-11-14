@@ -6,11 +6,23 @@ const chs={
  kondzilla:{id:"UCffDXn7ycAzwL2LDlbyWOTw",name:"Canal KondZilla",handle:"@kondzilla"},
  vystats:{id:"UCnKrmx7XhDqbiMD3aSBwz_g",name:"VYStats",handle:"@VYStats"}
 };
+const headers={
+ "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36 Edg/157.0.0.0",
+ "Accept":"text/html,application/xhtml+xml,application/json;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+ "Accept-Language":"en-US,en;q=0.9","Cache-Control":"no-cache","Pragma":"no-cache",
+ "Sec-CH-UA":'"Microsoft Edge";v="157", "Chromium";v="157", "Not_A Brand";v="99"',
+ "Sec-CH-UA-Mobile":"?0","Sec-CH-UA-Platform":'"Windows"',
+ "Sec-Fetch-Dest":"empty","Sec-Fetch-Mode":"cors","Sec-Fetch-Site":"cross-site"
+};
 let cache={celine:null,kondzilla:null,vystats:null,stream:null,lastUpdated:null},music={title:"Waiting for VLC...",artist:""},busy=false;
 const sources={};
 app.use(express.json({limit:"2kb"}));
 app.use((q,s,n)=>{s.setHeader("Cache-Control","no-store");n()});
-const get=async u=>{let r=await fetch(u,{signal:AbortSignal.timeout(10000),headers:{"User-Agent":"Mozilla/5.0"}});if(!r.ok)throw Error("HTTP "+r.status);return r.json()};
+const get=async u=>{
+ let r=await fetch(u,{signal:AbortSignal.timeout(10000),headers:{...headers,Referer:new URL(u).origin+"/"}});
+ if(!r.ok)throw Error("HTTP "+r.status);
+ return r.json();
+};
 const n=v=>Number(String(v??0).replace(/,/g,""))||0;
 
 async function social(ch){
@@ -44,9 +56,10 @@ async function fetchCh(k,ch){
 }
 async function avatar(k,ch){
  try{
-  let r=await fetch(`https://www.youtube.com/channel/${ch.id}`,{signal:AbortSignal.timeout(12000),headers:{"User-Agent":"Mozilla/5.0"}});
+  let h={...headers,Referer:"https://www.youtube.com/",Accept:"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8","Sec-Fetch-Dest":"document","Sec-Fetch-Mode":"navigate","Sec-Fetch-Site":"none","Upgrade-Insecure-Requests":"1"};
+  let r=await fetch(`https://www.youtube.com/channel/${ch.id}`,{signal:AbortSignal.timeout(12000),headers:h});
   if(!r.ok)throw Error("YouTube "+r.status);
-  let h=await r.text(),m=h.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i)||h.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+  let html=await r.text(),m=html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i)||html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
   if(m)cache[k]={...cache[k],avatar:m[1].replace(/&amp;/g,"&")};
  }catch(e){console.log(`[${k}] Avatar: ${e.message}`)}
 }
@@ -74,9 +87,10 @@ app.post("/api/music",(q,r)=>{
 app.get("/api/avatar/:key",async(q,r)=>{
  let url=cache[q.params.key]?.avatar;if(!url)return r.sendStatus(404);
  try{
-  let x=await fetch(url,{signal:AbortSignal.timeout(8000),headers:{"User-Agent":"Mozilla/5.0","Referer":"https://www.youtube.com/"}});
-  if(!x.ok)throw Error();r.set("Content-Type",x.headers.get("content-type")||"image/jpeg").send(Buffer.from(await x.arrayBuffer()));
- }catch{r.sendStatus(502)}
+  let x=await fetch(url,{signal:AbortSignal.timeout(8000),headers:{...headers,Referer:"https://www.youtube.com/","Accept":"image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8","Sec-Fetch-Dest":"image","Sec-Fetch-Mode":"no-cors","Sec-Fetch-Site":"cross-site"}});
+  if(!x.ok)throw Error("HTTP "+x.status);
+  r.set("Content-Type",x.headers.get("content-type")||"image/jpeg").send(Buffer.from(await x.arrayBuffer()));
+ }catch(e){console.log("[Avatar proxy]",e.message);r.sendStatus(502)}
 });
 app.get("/",(_,r)=>r.sendFile(path.join(__dirname,"index.html")));
 app.listen(PORT,()=>{
