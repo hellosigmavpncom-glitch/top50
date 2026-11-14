@@ -70,7 +70,8 @@ header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:s
 .thumb{width:100px;height:68px;object-fit:cover;border-radius:7px;border:1px solid #3d577b}
 .stream-title{font-size:16px;font-weight:800;line-height:1.3;overflow-wrap:anywhere}
 .stream-channel{font-size:13px;color:var(--muted);margin-top:5px}
-.meta{font-size:10px;color:#b7c4da;line-height:1.35;overflow-wrap:anywhere;max-height:34px;overflow:hidden}
+.meta{flex:none;font-size:13px;color:#d0dced;line-height:1.45;overflow-wrap:anywhere;white-space:normal;padding:9px 10px;background:#ffffff09;border:1px solid #39c5ff55;border-radius:8px;min-width:0}
+.meta strong{color:#9be5ff;font-weight:800}
 .stream-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:6px;flex:1;min-height:0;min-width:0}
 .stream-stat{background:linear-gradient(135deg,#ffffff0c,#ffffff05);border:1px solid #39c5ff55;border-radius:8px;padding:7px 9px;min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:5px}
 .stream-stat label{font-size:clamp(12px,4.5cqi,16px);color:#9be5ff;font-weight:800;letter-spacing:.3px;white-space:normal;overflow-wrap:anywhere;line-height:1.1}
@@ -95,7 +96,7 @@ footer{font-size:11px;color:#b7c4da}footer .live{color:var(--green)}
 <div class="api-line"><span>API SUBSCRIBERS</span><strong class="odometer" id="vystats-api-subs">0</strong></div>
 <div class="stream-head"><span>MY LIVESTREAM</span><span class="live" id="stream-status">● LIVE PERFORMANCE</span></div>
 <div class="stream"><img id="stream-thumb" class="thumb" alt="Livestream thumbnail"><div><div class="stream-title" id="stream-title">Loading livestream...</div><div class="stream-channel" id="stream-channel">Loading channel...</div></div></div>
-<div class="meta">VIDEO ID: <span id="stream-id">Nr1IWBNNQFA</span><br>UPLOAD DATE: <span id="stream-date">—</span><br><span id="stream-extra-info"></span></div>
+<div class="meta"><strong>VIDEO ID:</strong> <span id="stream-id">Nr1IWBNNQFA</span><br><strong>UPLOAD DATE:</strong> <span id="stream-date">—</span><br><span id="stream-extra-info"></span></div>
 <div class="stream-grid" id="stream-grid">
 <div class="stream-stat"><label>VIEWERS WATCHING</label><div class="value odometer" id="stream-viewers">0</div></div>
 <div class="stream-stat"><label>TOTAL VIEWS</label><div class="value odometer" id="stream-views">0</div></div>
