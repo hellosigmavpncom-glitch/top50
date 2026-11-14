@@ -18,8 +18,8 @@ header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:s
 .equalizer i{width:3px;height:6px;border-radius:3px;background:#c78aff;animation:eq .7s ease-in-out infinite alternate}
 .equalizer i:nth-child(2){height:13px;animation-delay:.2s}.equalizer i:nth-child(3){height:9px;animation-delay:.4s}.equalizer i:nth-child(4){height:15px;animation-delay:.1s}
 @keyframes eq{to{transform:scaleY(1);opacity:1}}
-.music-window{height:24px;flex:1;min-width:0;overflow:hidden;position:relative}
-.music-marquee{position:absolute;top:3px;left:100%;width:max-content;white-space:nowrap;font-size:13px;color:#f0e7ff;animation:music-scroll 18s linear infinite}
+.music-window{height:28px;flex:1;min-width:0;overflow:hidden;position:relative}
+.music-marquee{position:absolute;top:2px;left:100%;width:max-content;white-space:nowrap;font-size:21px;line-height:24px;font-weight:800;color:#f0e7ff;animation:music-scroll 18s linear infinite}
 @keyframes music-scroll{from{transform:translateX(0)}to{transform:translateX(calc(-100% - 100vw))}}
 .battle,.versus{min-width:0;min-height:0}
 .versus{height:100%;display:grid;grid-template-rows:minmax(0,1fr) 108px minmax(0,1fr);gap:8px}
