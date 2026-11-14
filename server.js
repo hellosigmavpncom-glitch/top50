@@ -6,22 +6,25 @@ const chs={
  kondzilla:{id:"UCffDXn7ycAzwL2LDlbyWOTw",name:"Canal KondZilla",handle:"@kondzilla"},
  vystats:{id:"UCnKrmx7XhDqbiMD3aSBwz_g",name:"VYStats",handle:"@VYStats"}
 };
-const headers={
+const browserHeaders={
  "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36 Edg/157.0.0.0",
- "Accept":"text/html,application/xhtml+xml,application/json;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
- "Accept-Language":"en-US,en;q=0.9","Cache-Control":"no-cache","Pragma":"no-cache",
- "Sec-CH-UA":'"Microsoft Edge";v="157", "Chromium";v="157", "Not_A Brand";v="99"',
- "Sec-CH-UA-Mobile":"?0","Sec-CH-UA-Platform":'"Windows"',
- "Sec-Fetch-Dest":"empty","Sec-Fetch-Mode":"cors","Sec-Fetch-Site":"cross-site"
+ "Accept":"application/json,text/plain,*/*",
+ "Accept-Language":"en-US,en;q=0.9",
+ "Cache-Control":"no-cache","Pragma":"no-cache"
 };
-let cache={celine:null,kondzilla:null,vystats:null,stream:null,lastUpdated:null},music={title:"Waiting for VLC...",artist:""},busy=false;
+let cache={celine:null,kondzilla:null,vystats:null,stream:null,lastUpdated:null};
+let music={title:"Waiting for VLC...",artist:""},busy=false;
 const sources={};
 app.use(express.json({limit:"2kb"}));
 app.use((q,s,n)=>{s.setHeader("Cache-Control","no-store");n()});
+
 const get=async u=>{
- let r=await fetch(u,{signal:AbortSignal.timeout(10000),headers:{...headers,Referer:new URL(u).origin+"/"}});
- if(!r.ok)throw Error("HTTP "+r.status);
- return r.json();
+ let host=new URL(u).hostname;
+ let ref=host.includes("socialcounts")?"https://socialcounts.org/":host.includes("mixerno")?"https://mixerno.space/":"https://basepoint.live/";
+ let r=await fetch(u,{signal:AbortSignal.timeout(10000),headers:{...browserHeaders,Referer:ref}});
+ let body=await r.text();
+ if(!r.ok)throw Error(`HTTP ${r.status}: ${body.slice(0,180)}`);
+ try{return JSON.parse(body)}catch{throw Error("Invalid JSON response")}
 };
 const n=v=>Number(String(v??0).replace(/,/g,""))||0;
 
@@ -31,8 +34,10 @@ async function social(ch){
  return{id:ch.id,name:ch.name,handle:ch.handle,estimatedSubscriberCount:n(c.estimation.subscriberCount),apiSubscriberCount:n(c.api?.subscriberCount),viewCount:n(c.estimation.viewCount),apiViewCount:n(c.api?.viewCount),videoCount:n(c.estimation.videoCount)};
 }
 async function mixerno(ch){
- let d=await get(`https://mixerno.space/api/youtube-channel-counter/user/${ch.id}`),gc=k=>d.counts?.find(x=>x.value===k)?.count??0,gu=k=>d.user?.find(x=>x.value===k)?.count??"";
- let sub=n(gc("subscribers"));if(!sub)throw Error("Missing Mixerno subscribers");
+ let d=await get(`https://mixerno.space/api/youtube-channel-counter/user/${ch.id}`);
+ let gc=k=>d.counts?.find(x=>x.value===k)?.count??0,gu=k=>d.user?.find(x=>x.value===k)?.count??"";
+ let sub=n(gc("subscribers"));
+ if(!sub)throw Error("Missing Mixerno subscribers");
  return{id:ch.id,name:gu("name")||ch.name,handle:ch.handle,estimatedSubscriberCount:sub,apiSubscriberCount:n(gc("apisubscribers")),viewCount:n(gc("views")),apiViewCount:n(gc("apiviews")),videoCount:n(gc("videos"))};
 }
 function choose(key,a,b){
@@ -56,11 +61,13 @@ async function fetchCh(k,ch){
 }
 async function avatar(k,ch){
  try{
-  let h={...headers,Referer:"https://www.youtube.com/",Accept:"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8","Sec-Fetch-Dest":"document","Sec-Fetch-Mode":"navigate","Sec-Fetch-Site":"none","Upgrade-Insecure-Requests":"1"};
+  let h={...browserHeaders,Accept:"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",Referer:"https://www.youtube.com/"};
   let r=await fetch(`https://www.youtube.com/channel/${ch.id}`,{signal:AbortSignal.timeout(12000),headers:h});
-  if(!r.ok)throw Error("YouTube "+r.status);
-  let html=await r.text(),m=html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i)||html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+  if(!r.ok)throw Error("YouTube HTTP "+r.status);
+  let html=await r.text();
+  let m=html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i)||html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
   if(m)cache[k]={...cache[k],avatar:m[1].replace(/&amp;/g,"&")};
+  else throw Error("Avatar metadata not found");
  }catch(e){console.log(`[${k}] Avatar: ${e.message}`)}
 }
 const fetchStream=()=>get(`https://api.basepoint.live/youtube/stream/${STREAM_ID}`);
@@ -78,16 +85,19 @@ async function update(){
 app.get("/api/stats",(_,r)=>r.json(cache));
 app.get("/api/music",(_,r)=>r.json(music));
 app.post("/api/music",(q,r)=>{
- let a=Buffer.from(process.env.MUSIC_TOKEN||""),b=Buffer.from(String(q.headers.authorization||"").replace(/^Bearer\s+/i,""));
+ let a=Buffer.from(process.env.MUSIC_TOKEN||"");
+ let b=Buffer.from(String(q.headers.authorization||"").replace(/^Bearer\s+/i,""));
  if(!a.length||!b.length||a.length!==b.length||!crypto.timingSafeEqual(a,b))return r.sendStatus(401);
  let title=String(q.body?.title||"").trim(),artist=String(q.body?.artist||"").trim();
  if(!title||title.length>300||artist.length>150)return r.sendStatus(400);
- music={title,artist,updatedAt:new Date().toISOString()};r.json({ok:true});
+ music={title,artist,updatedAt:new Date().toISOString()};
+ r.json({ok:true});
 });
 app.get("/api/avatar/:key",async(q,r)=>{
- let url=cache[q.params.key]?.avatar;if(!url)return r.sendStatus(404);
+ let url=cache[q.params.key]?.avatar;
+ if(!url)return r.sendStatus(404);
  try{
-  let x=await fetch(url,{signal:AbortSignal.timeout(8000),headers:{...headers,Referer:"https://www.youtube.com/","Accept":"image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8","Sec-Fetch-Dest":"image","Sec-Fetch-Mode":"no-cors","Sec-Fetch-Site":"cross-site"}});
+  let x=await fetch(url,{signal:AbortSignal.timeout(8000),headers:{...browserHeaders,Accept:"image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",Referer:"https://www.youtube.com/"}});
   if(!x.ok)throw Error("HTTP "+x.status);
   r.set("Content-Type",x.headers.get("content-type")||"image/jpeg").send(Buffer.from(await x.arrayBuffer()));
  }catch(e){console.log("[Avatar proxy]",e.message);r.sendStatus(502)}
