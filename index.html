@@ -8,7 +8,7 @@
 :root{--bg:#070910;--purple:#b45cff;--blue:#39c5ff;--white:#f7f8ff;--muted:#a5b1c7;--green:#42ed9b;--large-number:clamp(64px,6vw,90px)}
 *{box-sizing:border-box;margin:0;padding:0}html,body{width:100%;height:100%;overflow:hidden}
 body{font-family:Inter,sans-serif;background:var(--bg);color:var(--white);font-weight:600}
-.container{width:100%;height:100%;padding:12px 15px;display:grid;grid-template-columns:minmax(0,1fr) 360px;grid-template-rows:40px minmax(0,1fr) 17px;gap:9px;background:radial-gradient(ellipse at 25% 30%,#29123c55,transparent 48%),radial-gradient(ellipse at 75% 55%,#102a4455,transparent 48%),#070910}
+.container{width:100%;height:100%;padding:7px 15px 12px;display:grid;grid-template-columns:minmax(0,1fr) 360px;grid-template-rows:40px minmax(0,1fr) 17px;gap:9px;background:radial-gradient(ellipse at 25% 30%,#29123c55,transparent 48%),radial-gradient(ellipse at 75% 55%,#102a4455,transparent 48%),#070910}
 header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;min-width:0}
 .music-player{width:100%;height:100%;display:flex;align-items:center;gap:12px;padding:5px 15px;background:#160e25;border:1px solid #63358a;border-radius:9px;overflow:hidden}
 .mission-tag{font-size:12px;letter-spacing:.7px;color:#d8a5ff;white-space:nowrap;border-right:1px solid #ffffff25;padding-right:13px}
@@ -43,7 +43,7 @@ header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:s
 .api-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:7px;min-width:0;min-height:0}
 .api-stat{container-type:inline-size;min-width:0;min-height:0;overflow:hidden;background:#ffffff0b;border:1px solid #ffffff16;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;justify-content:center;gap:7px}
 .api-label{font-size:12px;font-weight:800;letter-spacing:.3px;color:#c6d7f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.api-value{font-size:clamp(12px,10cqi,30px);font-weight:800;letter-spacing:-.045em;white-space:nowrap;overflow:hidden;line-height:1.1!important;min-width:0;width:100%}
+.api-value{font-size:clamp(15px,12.5cqi,23px);font-weight:800;letter-spacing:-.045em;white-space:nowrap;overflow:hidden;line-height:1.1!important;min-width:0;width:100%}
 .difference{min-height:82px;border:1px solid #a855f7;border-radius:12px;background:linear-gradient(100deg,#26113c,#171025 50%,#25113b);display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;padding:0 18px;gap:10px;box-shadow:0 0 20px #a855f72b;overflow:hidden}
 .diff-label{font-size:13px;font-weight:800;color:#d5a0ff;letter-spacing:.5px}
 .diff-value{justify-self:center;align-self:center;display:flex;align-items:center;justify-content:center;font-size:var(--large-number);font-weight:800;color:#bd69ff;letter-spacing:-.075em;line-height:1!important;white-space:nowrap;overflow:visible;padding:0}
@@ -70,19 +70,20 @@ header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:s
 footer{font-size:10px;color:var(--muted)}footer .live{color:var(--green)}
 @media(max-height:760px){
 :root{--large-number:clamp(54px,5vw,76px)}
-.container{padding:7px 10px;grid-template-rows:32px minmax(0,1fr) 13px;gap:6px}
+.container{padding:5px 10px 7px;grid-template-rows:32px minmax(0,1fr) 13px;gap:6px}
 .versus{grid-template-rows:minmax(0,1fr) 70px minmax(0,1fr);gap:6px}
 .channel{padding:7px 11px;grid-template-rows:23px minmax(0,1fr);gap:5px}
 .channel-content{gap:9px}.hero{grid-template-rows:80px minmax(0,1fr)}
 .avatar{width:76px;height:76px}.avatar-name{font-size:15px}
 .big-number{font-size:clamp(53px,6vw,83px)}
 .api-stat{padding:6px 8px;gap:4px}.api-label{font-size:10px}
+.api-value{font-size:clamp(14px,12cqi,21px)}
 .sidebar{padding:7px;gap:6px}.profile{grid-template-columns:50px minmax(0,1fr)}.my-avatar{width:48px;height:48px}
 .my-count{font-size:27px}.api-line{padding:5px 0}.api-line strong{font-size:21px}
 .stream{grid-template-columns:70px minmax(0,1fr)}.thumb{width:70px;height:45px}.stream-stat{padding:5px 8px}
 }
 @media(max-width:1000px){
-.container{grid-template-columns:minmax(0,1fr) 300px;padding:8px;gap:7px}
+.container{grid-template-columns:minmax(0,1fr) 300px;padding:6px 8px 8px;gap:7px}
 .channel-content{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:8px}
 .big-number{font-size:clamp(48px,6vw,76px)}
 .api-stat{padding:6px}.api-label{font-size:10px}.sidebar{padding:7px;gap:6px}
@@ -103,11 +104,11 @@ footer{font-size:10px;color:var(--muted)}footer .live{color:var(--green)}
 <div class="api-line"><span>API SUBSCRIBERS</span><strong class="odometer" id="vystats-api-subs">0</strong></div>
 <div class="stream-head"><span>MY LIVESTREAM</span><span class="live" id="stream-status">● LIVE PERFORMANCE</span></div>
 <div class="stream"><img id="stream-thumb" class="thumb" alt="Livestream thumbnail"><div><div class="stream-title" id="stream-title">Loading livestream...</div><div class="stream-channel" id="stream-channel">Loading channel...</div></div></div>
-<div class="meta">VIDEO ID: <span id="stream-id">B8iHWmFwaHY</span><br>UPLOAD DATE: <span id="stream-date">—</span><br><span id="stream-extra-info"></span></div>
+<div class="meta">VIDEO ID: <span id="stream-id">Nr1IWBNNQFA</span><br>UPLOAD DATE: <span id="stream-date">—</span><br><span id="stream-extra-info"></span></div>
 <div class="stream-grid" id="stream-grid">
 <div class="stream-stat"><label>VIEWERS WATCHING</label><div class="value odometer" id="stream-viewers">0</div></div><div class="stream-stat"><label>TOTAL VIEWS</label><div class="value odometer" id="stream-views">0</div></div><div class="stream-stat"><label>ESTIMATED VIEWS</label><div class="value odometer" id="stream-est-views">0</div></div><div class="stream-stat"><label>LIKES</label><div class="value odometer" id="stream-likes">0</div></div>
 </div></aside>
-<footer><div><span class="live">● LIVE</span> &nbsp; MIXERNO & BASEPOINT API</div><div id="updated">Connecting...</div></footer></div>
+<footer><div><span class="live">● LIVE</span> &nbsp; FLASHCOUNTS & BASEPOINT API</div><div id="updated">Connecting...</div></footer></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
 <script>
 const $=id=>document.getElementById(id),meters={},dynamic={},lastValues={};let lastStream=null,updating=false;
