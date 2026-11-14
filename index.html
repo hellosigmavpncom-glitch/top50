@@ -7,11 +7,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/themes/odometer-theme-minimal.min.css">
 <style>
-:root{--bg:#070910;--purple:#b45cff;--blue:#39c5ff;--white:#f7f8ff;--muted:#a5b1c7;--green:#42ed9b}
+:root{--bg:#070910;--purple:#b45cff;--blue:#39c5ff;--white:#f7f8ff;--muted:#a5b1c7;--green:#42ed9b;--large-number:clamp(64px,6vw,90px)}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:100%;height:100%;overflow:hidden}
 body{font-family:Inter,sans-serif;background:var(--bg);color:var(--white);font-weight:600}
-.container{width:100%;height:100%;padding:12px 15px;display:grid;grid-template-columns:minmax(0,1fr) 310px;grid-template-rows:40px minmax(0,1fr) 17px;gap:9px;background:radial-gradient(ellipse at 25% 30%,#29123c55,transparent 48%),radial-gradient(ellipse at 75% 55%,#102a4455,transparent 48%),#070910}
+.container{width:100%;height:100%;padding:12px 15px;display:grid;grid-template-columns:minmax(0,1fr) 360px;grid-template-rows:40px minmax(0,1fr) 17px;gap:9px;background:radial-gradient(ellipse at 25% 30%,#29123c55,transparent 48%),radial-gradient(ellipse at 75% 55%,#102a4455,transparent 48%),#070910}
 header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;min-width:0}
 .music-player{width:100%;height:100%;display:flex;align-items:center;gap:12px;padding:5px 15px;background:#160e25;border:1px solid #63358a;border-radius:9px;overflow:hidden}
 .mission-tag{font-size:12px;letter-spacing:.7px;color:#d8a5ff;white-space:nowrap;border-right:1px solid #ffffff25;padding-right:13px}
@@ -45,9 +45,7 @@ header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:s
 .eyebrow{font-size:12px;font-weight:800;letter-spacing:.6px;color:var(--muted);margin-bottom:4px}
 .big-number{font-size:clamp(66px,7.3vw,118px);font-weight:800;letter-spacing:-.085em;line-height:1.05;white-space:nowrap;min-width:0;overflow:visible}
 .odometer{font-family:Inter,sans-serif!important;font-variant-numeric:tabular-nums;line-height:1.05!important;vertical-align:middle}
-.odometer-digit-inner{overflow:hidden!important}
-.odometer-ribbon-inner{line-height:1.05!important}
-.odometer-digit{vertical-align:baseline!important}
+.odometer-digit-inner{overflow:hidden!important}.odometer-ribbon-inner{line-height:1.05!important}.odometer-digit{vertical-align:baseline!important}
 .hero-caption{font-size:11px;color:var(--muted);margin-top:5px}
 .api-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:7px;min-width:0;min-height:0}
 .api-stat{min-width:0;min-height:0;overflow:hidden;background:#ffffff0b;border:1px solid #ffffff16;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;justify-content:center;gap:7px}
@@ -55,7 +53,7 @@ header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:s
 .api-value{font-size:clamp(25px,2.4vw,38px);font-weight:800;letter-spacing:-1.5px;white-space:nowrap;overflow:hidden;line-height:1.1!important;min-width:0}
 .difference{min-height:82px;border:1px solid #a855f7;border-radius:12px;background:linear-gradient(100deg,#26113c,#171025 50%,#25113b);display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;padding:0 18px;gap:10px;box-shadow:0 0 20px #a855f72b;overflow:hidden}
 .diff-label{font-size:13px;font-weight:800;color:#d5a0ff;letter-spacing:.5px}
-.diff-value{justify-self:center;align-self:center;display:flex;align-items:center;justify-content:center;font-size:clamp(64px,6vw,90px);font-weight:800;color:#bd69ff;letter-spacing:-.075em;line-height:1!important;white-space:nowrap;overflow:visible;padding:0}
+.diff-value{justify-self:center;align-self:center;display:flex;align-items:center;justify-content:center;font-size:var(--large-number);font-weight:800;color:#bd69ff;letter-spacing:-.075em;line-height:1!important;white-space:nowrap;overflow:visible;padding:0}
 .diff-status{text-align:right;font-size:12px;font-weight:700;color:#e0c5ff;white-space:nowrap}
 .sidebar{min-width:0;min-height:0;overflow:hidden;background:linear-gradient(155deg,#151326,#0e1421 60%);border:1px solid #a855f7;border-radius:13px;padding:10px;display:flex;flex-direction:column;gap:9px}
 .side-head,.stream-head{display:flex;justify-content:space-between;align-items:center;gap:5px}
@@ -69,43 +67,38 @@ header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:s
 .api-line{display:flex;align-items:center;justify-content:space-between;gap:7px;padding:8px 0;border-top:1px solid #ffffff20;border-bottom:1px solid #ffffff20;min-width:0}
 .api-line span{font-size:11px;color:var(--muted);font-weight:800;white-space:nowrap}
 .api-line strong{font-size:25px;font-weight:800;white-space:nowrap;overflow:hidden;min-width:0}
-.stream-head{display:flex;justify-content:space-between;align-items:center;gap:5px}
 .stream-head span:first-child{font-size:13px;color:var(--blue);font-weight:800}
 .stream{display:grid;grid-template-columns:90px minmax(0,1fr);gap:9px;align-items:center;min-width:0}
 .thumb{width:90px;height:58px;object-fit:cover;border-radius:7px;border:1px solid #3d577b}
 .stream-title{font-size:12px;font-weight:700;line-height:1.3;overflow-wrap:anywhere}
 .stream-channel{font-size:10px;color:var(--muted);margin-top:4px}
 .meta{font-size:10px;color:#a5b1c7;line-height:1.5;overflow-wrap:anywhere;max-height:43px;overflow:hidden}
-.stream-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:7px;flex:1;min-height:0;min-width:0}
-.stream-stat{background:#ffffff09;border:1px solid #ffffff12;border-radius:8px;padding:8px;min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:6px}
+.stream-grid{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:repeat(4,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:7px;flex:1;min-height:0;min-width:0}
+.stream-stat{background:#ffffff09;border:1px solid #ffffff12;border-radius:8px;padding:8px 12px;min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:8px}
 .stream-stat label{font-size:10px;color:var(--blue);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.stream-stat .value{font-size:clamp(32px,2.7vw,42px);font-weight:800;letter-spacing:-1.5px;white-space:nowrap;overflow:hidden;line-height:1.05!important;min-width:0}
+.stream-stat .value{font-size:var(--large-number);font-weight:800;letter-spacing:-.075em;white-space:nowrap;overflow:hidden;line-height:1!important;min-width:0}
 footer{font-size:10px;color:var(--muted)}
 footer .live{color:var(--green)}
 @media(max-height:760px){
+:root{--large-number:clamp(54px,5vw,76px)}
 .container{padding:7px 10px;grid-template-rows:32px minmax(0,1fr) 13px;gap:6px}
 .versus{grid-template-rows:minmax(0,1fr) 70px minmax(0,1fr);gap:6px}
 .channel{padding:7px 11px;grid-template-rows:23px minmax(0,1fr);gap:5px}
-.channel-content{gap:9px}
-.hero{grid-template-rows:56px minmax(0,1fr)}
-.avatar{width:50px;height:50px}
-.avatar-name{font-size:15px}
+.channel-content{gap:9px}.hero{grid-template-rows:56px minmax(0,1fr)}
+.avatar{width:50px;height:50px}.avatar-name{font-size:15px}
 .big-number{font-size:clamp(53px,6vw,83px)}
 .api-stat{padding:6px 8px;gap:4px}.api-label{font-size:10px}.api-value{font-size:clamp(22px,2vw,31px)}
-.sidebar{padding:7px;gap:6px}
-.profile{grid-template-columns:50px minmax(0,1fr)}.my-avatar{width:48px;height:48px}
+.sidebar{padding:7px;gap:6px}.profile{grid-template-columns:50px minmax(0,1fr)}.my-avatar{width:48px;height:48px}
 .my-count{font-size:27px}.api-line{padding:5px 0}.api-line strong{font-size:21px}
 .stream{grid-template-columns:70px minmax(0,1fr)}.thumb{width:70px;height:45px}
-.stream-stat{padding:5px}.stream-stat .value{font-size:clamp(28px,2.5vw,38px)}
-.diff-value{font-size:clamp(54px,5vw,76px)}
+.stream-stat{padding:5px 8px}
 }
 @media(max-width:1000px){
-.container{grid-template-columns:minmax(0,1fr) 260px;padding:8px;gap:7px}
+.container{grid-template-columns:minmax(0,1fr) 300px;padding:8px;gap:7px}
 .channel-content{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:8px}
 .big-number{font-size:clamp(48px,6vw,76px)}
 .api-stat{padding:6px}.api-label{font-size:10px}.api-value{font-size:clamp(19px,2vw,29px)}
 .sidebar{padding:7px;gap:6px}
-.stream-stat .value{font-size:clamp(27px,2.6vw,40px)}
 }
 </style>
 </head>
@@ -123,7 +116,8 @@ footer .live{color:var(--green)}
 <div class="api-stat"><div class="api-label">TOTAL VIEWS</div><div class="api-value odometer" id="celine-views">0</div></div>
 <div class="api-stat"><div class="api-label">API VIEWS</div><div class="api-value odometer" id="celine-api-views">0</div></div>
 <div class="api-stat"><div class="api-label">VIDEOS</div><div class="api-value odometer" id="celine-videos">0</div></div>
-</div></div></section>
+</div></div>
+</section>
 <div class="difference"><div class="diff-label">LIVE SUBSCRIBER DIFFERENCE</div><div class="diff-value odometer" id="sub-diff">0</div><div class="diff-status" id="gap-status">Connecting...</div></div>
 <section class="channel kond">
 <div class="channel-head"><span class="channel-name">02 · CANAL KONDZILLA</span><span class="channel-number">COMPARISON</span></div>
@@ -135,7 +129,8 @@ footer .live{color:var(--green)}
 <div class="api-stat"><div class="api-label">TOTAL VIEWS</div><div class="api-value odometer" id="kondzilla-views">0</div></div>
 <div class="api-stat"><div class="api-label">API VIEWS</div><div class="api-value odometer" id="kondzilla-api-views">0</div></div>
 <div class="api-stat"><div class="api-label">VIDEOS</div><div class="api-value odometer" id="kondzilla-videos">0</div></div>
-</div></div></section>
+</div></div>
+</section>
 </div></main>
 <aside class="sidebar">
 <div class="side-head"><div class="side-title">MY CHANNEL · VYSTATS</div><div class="live">● LIVE</div></div>
@@ -149,7 +144,8 @@ footer .live{color:var(--green)}
 <div class="stream-stat"><label>TOTAL VIEWS</label><div class="value odometer" id="stream-views">0</div></div>
 <div class="stream-stat"><label>ESTIMATED VIEWS</label><div class="value odometer" id="stream-est-views">0</div></div>
 <div class="stream-stat"><label>LIKES</label><div class="value odometer" id="stream-likes">0</div></div>
-</div></aside>
+</div>
+</aside>
 <footer><div><span class="live">● LIVE</span> &nbsp; MIXERNO & BASEPOINT API</div><div id="updated">Connecting...</div></footer>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
@@ -162,65 +158,62 @@ ids.forEach(id=>meters[id]=meter($(id)));
 const fmt=n=>Math.round(n).toLocaleString("en-US");
 function toNum(v){if(v==null||v==="")return NaN;return typeof v==="string"?Number(v.replace(/[,\s]/g,"")):Number(v)}
 function num(id,v){
- let n=toNum(v),el=$(id);if(!el||!Number.isFinite(n)||lastValues[id]===n)return;
- lastValues[id]=n;
- if(!meters[id])meters[id]=meter(el);
- if(meters[id])meters[id].update(n);else el.textContent=fmt(n)
+let n=toNum(v),el=$(id);if(!el||!Number.isFinite(n)||lastValues[id]===n)return;
+lastValues[id]=n;if(!meters[id])meters[id]=meter(el);
+if(meters[id])meters[id].update(n);else el.textContent=fmt(n)
 }
 function txt(id,v){if($(id))$(id).textContent=v??"—"}
 function renderChannel(k,d){
- if(!d)return;
- if(d.name)txt(k+"-name",d.name);if(d.handle)txt(k+"-handle",d.handle);
- if(d.avatar)$(k+"-avatar").src="/api/avatar/"+k;
- [["est-subs","estimatedSubscriberCount"],["api-subs","apiSubscriberCount"],["views","viewCount"],["api-views","apiViewCount"],["videos","videoCount"]].forEach(([f,p])=>num(k+"-"+f,d[p]))
+if(!d)return;if(d.name)txt(k+"-name",d.name);if(d.handle)txt(k+"-handle",d.handle);
+if(d.avatar)$(k+"-avatar").src="/api/avatar/"+k;
+[["est-subs","estimatedSubscriberCount"],["api-subs","apiSubscriberCount"],["views","viewCount"],["api-views","apiViewCount"],["videos","videoCount"]].forEach(([f,p])=>num(k+"-"+f,d[p]))
 }
 function renderVystats(d){
- if(!d)return;if(d.name)txt("vystats-name",d.name);if(d.handle)txt("vystats-handle",d.handle);
- if(d.avatar)$("vystats-avatar").src="/api/avatar/vystats";
- num("vystats-est-subs",d.estimatedSubscriberCount);num("vystats-api-subs",d.apiSubscriberCount)
+if(!d)return;if(d.name)txt("vystats-name",d.name);if(d.handle)txt("vystats-handle",d.handle);
+if(d.avatar)$("vystats-avatar").src="/api/avatar/vystats";
+num("vystats-est-subs",d.estimatedSubscriberCount);num("vystats-api-subs",d.apiSubscriberCount)
 }
 function renderDynamic(s){
- const grid=$("stream-grid"),keep=new Set();let count=0;
- Object.entries(s).forEach(([k,v])=>{
-  if(["viewerCount","viewCount","estimatedViewCount","likeCount"].includes(k)||v==null||typeof v==="object"||count>=4)return;
-  count++;let key="dynamic-"+k;keep.add(key);let x=dynamic[key];
-  if(!x){let w=document.createElement("div"),l=document.createElement("label"),e=document.createElement("div");w.className="stream-stat";l.textContent=k.replace(/([A-Z])/g," $1").toUpperCase();e.className="value odometer";w.append(l,e);grid.append(w);x=dynamic[key]={w,e,m:meter(e),last:undefined}}
-  x.w.style.display="";
-  let n=toNum(v);
-  if(Number.isFinite(n)){if(x.last!==n){x.e.classList.add("odometer");if(!x.m)x.m=meter(x.e);if(x.m)x.m.update(n);else x.e.textContent=fmt(n);x.last=n}}
-  else{let value=String(v);if(x.last!==value){x.m=null;x.e.classList.remove("odometer");x.e.textContent=value;x.last=value}}
- });
- Object.entries(dynamic).forEach(([k,x])=>{if(!keep.has(k))x.w.style.display="none"})
+const grid=$("stream-grid"),keep=new Set();let count=0;
+Object.entries(s).forEach(([k,v])=>{
+if(["viewerCount","viewCount","estimatedViewCount","likeCount"].includes(k)||v==null||typeof v==="object"||count>=4)return;
+count++;let key="dynamic-"+k;keep.add(key);let x=dynamic[key];
+if(!x){let w=document.createElement("div"),l=document.createElement("label"),e=document.createElement("div");w.className="stream-stat";l.textContent=k.replace(/([A-Z])/g," $1").toUpperCase();e.className="value odometer";w.append(l,e);grid.append(w);x=dynamic[key]={w,e,m:meter(e),last:undefined}}
+x.w.style.display="";let n=toNum(v);
+if(Number.isFinite(n)){if(x.last!==n){if(!x.m)x.m=meter(x.e);if(x.m)x.m.update(n);else x.e.textContent=fmt(n);x.last=n}}
+else{let value=String(v);if(x.last!==value){x.m=null;x.e.classList.remove("odometer");x.e.textContent=value;x.last=value}}
+});
+Object.entries(dynamic).forEach(([k,x])=>{if(!keep.has(k))x.w.style.display="none"})
 }
 function renderStream(s){
- if(s)lastStream=s;else s=lastStream;if(!s)return;
- const i=s.info||{},st=s.stats||{},ch=i.channel||{};
- if(i.title)txt("stream-title",i.title);if(ch.name)txt("stream-channel",ch.name);if(i.id)txt("stream-id",i.id);
- if(i.uploadDate){let d=new Date(i.uploadDate);txt("stream-date",Number.isNaN(d.getTime())?"—":d.toLocaleString())}
- if(i.thumbnail&&$("stream-thumb").src!==i.thumbnail)$("stream-thumb").src=i.thumbnail;
- [["stream-viewers","viewerCount"],["stream-views","viewCount"],["stream-est-views","estimatedViewCount"],["stream-likes","likeCount"]].forEach(([id,k])=>num(id,st[k]));
- let extra=Object.entries(i).filter(([k,v])=>!["id","title","thumbnail","uploadDate","channel"].includes(k)&&v!=null&&typeof v!=="object").map(([k,v])=>k+": "+v);
- if(ch.id)extra.push("CHANNEL ID: "+ch.id);txt("stream-extra-info",extra.join(" · "));renderDynamic(st)
+if(s)lastStream=s;else s=lastStream;if(!s)return;
+const i=s.info||{},st=s.stats||{},ch=i.channel||{};
+if(i.title)txt("stream-title",i.title);if(ch.name)txt("stream-channel",ch.name);if(i.id)txt("stream-id",i.id);
+if(i.uploadDate){let d=new Date(i.uploadDate);txt("stream-date",Number.isNaN(d.getTime())?"—":d.toLocaleString())}
+if(i.thumbnail&&$("stream-thumb").src!==i.thumbnail)$("stream-thumb").src=i.thumbnail;
+[["stream-viewers","viewerCount"],["stream-views","viewCount"],["stream-est-views","estimatedViewCount"],["stream-likes","likeCount"]].forEach(([id,k])=>num(id,st[k]));
+let extra=Object.entries(i).filter(([k,v])=>!["id","title","thumbnail","uploadDate","channel"].includes(k)&&v!=null&&typeof v!=="object").map(([k,v])=>k+": "+v);
+if(ch.id)extra.push("CHANNEL ID: "+ch.id);txt("stream-extra-info",extra.join(" · "));renderDynamic(st)
 }
 async function update(){
- if(updating)return;updating=true;
- try{
-  let r=await fetch("/api/stats",{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);
-  let d=await r.json();renderChannel("celine",d.celine);renderChannel("kondzilla",d.kondzilla);renderVystats(d.vystats);renderStream(d.stream);
-  if(d.celine&&d.kondzilla){
-   let a=toNum(d.celine.estimatedSubscriberCount),b=toNum(d.kondzilla.estimatedSubscriberCount);
-   if(Number.isFinite(a)&&Number.isFinite(b)){num("sub-diff",Math.abs(a-b));txt("gap-status",a>b?"Celine is ahead":a<b?"Celine is behind":"Channels are tied")}
-  }
-  txt("updated",d.lastUpdated?"Updated "+new Date(d.lastUpdated).toLocaleTimeString():"Waiting...")
- }catch(e){txt("updated","Connection error · showing last stats");if(lastStream)renderStream(lastStream);console.error("[Dashboard]",e)}
- finally{updating=false}
+if(updating)return;updating=true;
+try{
+let r=await fetch("/api/stats",{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);
+let d=await r.json();renderChannel("celine",d.celine);renderChannel("kondzilla",d.kondzilla);renderVystats(d.vystats);renderStream(d.stream);
+if(d.celine&&d.kondzilla){
+let a=toNum(d.celine.estimatedSubscriberCount),b=toNum(d.kondzilla.estimatedSubscriberCount);
+if(Number.isFinite(a)&&Number.isFinite(b)){num("sub-diff",Math.abs(a-b));txt("gap-status",a>b?"Celine is ahead":a<b?"Celine is behind":"Channels are tied")}
+}
+txt("updated",d.lastUpdated?"Updated "+new Date(d.lastUpdated).toLocaleTimeString():"Waiting...")
+}catch(e){txt("updated","Connection error · showing last stats");if(lastStream)renderStream(lastStream);console.error("[Dashboard]",e)}
+finally{updating=false}
 }
 async function updateMusic(){
- try{
-  let r=await fetch("/api/music",{cache:"no-store"});if(!r.ok)return;
-  let m=await r.json(),song=[m.artist,m.title].filter(Boolean).join(" — ");
-  if(song&&$("music-marquee").textContent!==song){let el=$("music-marquee");el.textContent=song;el.style.animation="none";void el.offsetWidth;el.style.animation="music-scroll 18s linear infinite"}
- }catch(e){}
+try{
+let r=await fetch("/api/music",{cache:"no-store"});if(!r.ok)return;
+let m=await r.json(),song=[m.artist,m.title].filter(Boolean).join(" — ");
+if(song&&$("music-marquee").textContent!==song){let el=$("music-marquee");el.textContent=song;el.style.animation="none";void el.offsetWidth;el.style.animation="music-scroll 18s linear infinite"}
+}catch(e){}
 }
 update();updateMusic();setInterval(update,5000);setInterval(updateMusic,2000);
 </script>
