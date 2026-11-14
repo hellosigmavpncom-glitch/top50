@@ -39,16 +39,18 @@ header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:s
 .kond .avatar{border-color:var(--blue)}
 .avatar-name{font-size:18px;font-weight:800;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .avatar-handle{font-size:12px;color:var(--muted);margin-top:5px}
-.api-grid{display:grid;grid-template-columns:1fr;grid-template-rows:repeat(4,minmax(0,1fr));gap:5px;min-width:0;min-height:0}
-.api-stat{min-width:0;min-height:0;overflow:hidden;background:#ffffff09;border:1px solid #ffffff20;border-radius:8px;padding:3px 7px;display:grid;grid-template-rows:auto minmax(0,1fr);gap:3px}
-.api-label-card{background:#253047;border:1px solid #ffffff20;border-radius:5px;padding:3px 7px;display:flex;align-items:center;min-width:0}
-.api-label{font-size:15px;font-weight:800;letter-spacing:.4px;color:#e2edff;white-space:nowrap}
-.api-value-card{background:#ffffff0b;border:1px solid #ffffff16;border-radius:5px;display:flex;align-items:center;padding:1px 8px;min-width:0;overflow:hidden}
-.api-value{font-size:36px;font-weight:800;letter-spacing:-1.5px;line-height:1;white-space:nowrap;text-align:left;min-width:0;color:#fff}
+
+/* API STATISTICS: TWO COLUMNS, TWO ROWS */
+.api-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:7px;min-width:0;min-height:0}
+.api-stat{container-type:inline-size;min-width:0;min-height:0;overflow:hidden;background:#ffffff09;border:1px solid #ffffff20;border-radius:9px;padding:7px 9px;display:flex;flex-direction:column;justify-content:center;gap:7px}
+.api-label{font-size:11px;font-weight:800;letter-spacing:.3px;color:#e2edff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.api-value{display:block;font-size:clamp(17px,18cqw,28px);font-weight:800;letter-spacing:-1.2px;line-height:1.1!important;white-space:nowrap;text-align:left;min-width:0;color:#fff;width:122%;transform:scaleX(.82);transform-origin:left center;overflow:visible}
+
+/* ESTIMATED SUBSCRIBERS: SIZE BASED ON AVAILABLE WIDTH */
 .subscriber-card{display:flex;align-items:center;justify-content:flex-start;padding:10px 35px;background:linear-gradient(125deg,#ffffff12,#ffffff04);border-radius:12px}
-.hero-number{width:100%;min-width:0}
+.hero-number{width:100%;min-width:0;container-type:inline-size}
 .eyebrow{font-size:20px;font-weight:800;letter-spacing:1.2px;color:#c1cde1;margin-bottom:12px}
-.big-number{font-size:140px;font-weight:800;letter-spacing:-7px;line-height:1.08;white-space:nowrap}
+.big-number{font-size:clamp(70px,16cqw,140px);font-weight:800;letter-spacing:-.055em;line-height:1.08;white-space:nowrap;max-width:100%}
 .odometer{font-family:Inter,sans-serif!important;font-variant-numeric:tabular-nums;line-height:1.05!important;vertical-align:middle}
 .odometer-digit-inner{overflow:hidden!important}.odometer-ribbon-inner{line-height:1.05!important}.odometer-digit{vertical-align:baseline!important}
 .hero-caption{font-size:14px;color:#b8c5dc;margin-top:18px;letter-spacing:.6px}
@@ -82,17 +84,17 @@ footer{font-size:11px;color:#b7c4da}footer .live{color:var(--green)}
 <header><div class="music-player"><span class="mission-tag">NCS · NOW PLAYING</span><div class="music-info"><span class="equalizer"><i></i><i></i><i></i><i></i></span><div class="music-window"><div class="music-marquee" id="music-marquee">Waiting for VLC...</div></div></div></div></header>
 <main class="battle"><div class="versus">
 <section class="channel celine"><div class="channel-head"><span class="channel-name">RACE TO TOP 50: CELINE</span><span class="channel-number">01 · CHALLENGER</span></div><div class="channel-content"><div class="left-stack"><div class="avatar-card"><img id="celine-avatar" class="avatar" alt="Celine Dept"><div><div class="avatar-name" id="celine-name">Celine Dept</div><div class="avatar-handle" id="celine-handle">@celinedept</div></div></div><div class="api-grid">
-<div class="api-stat"><div class="api-label-card"><div class="api-label">API SUBSCRIBERS</div></div><div class="api-value-card"><div class="api-value odometer" id="celine-api-subs">0</div></div></div>
-<div class="api-stat"><div class="api-label-card"><div class="api-label">TOTAL VIEWS</div></div><div class="api-value-card"><div class="api-value odometer" id="celine-views">0</div></div></div>
-<div class="api-stat"><div class="api-label-card"><div class="api-label">API VIEWS</div></div><div class="api-value-card"><div class="api-value odometer" id="celine-api-views">0</div></div></div>
-<div class="api-stat"><div class="api-label-card"><div class="api-label">VIDEOS</div></div><div class="api-value-card"><div class="api-value odometer" id="celine-videos">0</div></div></div>
+<div class="api-stat"><div class="api-label">API SUBSCRIBERS</div><div class="api-value odometer" id="celine-api-subs">0</div></div>
+<div class="api-stat"><div class="api-label">TOTAL VIEWS</div><div class="api-value odometer" id="celine-views">0</div></div>
+<div class="api-stat"><div class="api-label">API VIEWS</div><div class="api-value odometer" id="celine-api-views">0</div></div>
+<div class="api-stat"><div class="api-label">VIDEOS</div><div class="api-value odometer" id="celine-videos">0</div></div>
 </div></div><div class="subscriber-card"><div class="hero-number"><div class="eyebrow">LIVE ESTIMATED SUBSCRIBERS</div><div class="big-number odometer" id="celine-est-subs">0</div><div class="hero-caption">TARGET CHANNEL · TOP 51</div></div></div></div></section>
 <div class="difference"><div class="diff-label">LIVE SUBSCRIBER DIFFERENCE</div><div class="diff-value odometer" id="sub-diff">0</div><div class="diff-status" id="gap-status">Connecting...</div></div>
 <section class="channel kond"><div class="channel-head"><span class="channel-name">02 · CANAL KONDZILLA</span><span class="channel-number">COMPARISON</span></div><div class="channel-content"><div class="left-stack"><div class="avatar-card"><img id="kondzilla-avatar" class="avatar" alt="Canal KondZilla"><div><div class="avatar-name" id="kondzilla-name">Canal KondZilla</div><div class="avatar-handle" id="kondzilla-handle">@kondzilla</div></div></div><div class="api-grid">
-<div class="api-stat"><div class="api-label-card"><div class="api-label">API SUBSCRIBERS</div></div><div class="api-value-card"><div class="api-value odometer" id="kondzilla-api-subs">0</div></div></div>
-<div class="api-stat"><div class="api-label-card"><div class="api-label">TOTAL VIEWS</div></div><div class="api-value-card"><div class="api-value odometer" id="kondzilla-views">0</div></div></div>
-<div class="api-stat"><div class="api-label-card"><div class="api-label">API VIEWS</div></div><div class="api-value-card"><div class="api-value odometer" id="kondzilla-api-views">0</div></div></div>
-<div class="api-stat"><div class="api-label-card"><div class="api-label">VIDEOS</div></div><div class="api-value-card"><div class="api-value odometer" id="kondzilla-videos">0</div></div></div>
+<div class="api-stat"><div class="api-label">API SUBSCRIBERS</div><div class="api-value odometer" id="kondzilla-api-subs">0</div></div>
+<div class="api-stat"><div class="api-label">TOTAL VIEWS</div><div class="api-value odometer" id="kondzilla-views">0</div></div>
+<div class="api-stat"><div class="api-label">API VIEWS</div><div class="api-value odometer" id="kondzilla-api-views">0</div></div>
+<div class="api-stat"><div class="api-label">VIDEOS</div><div class="api-value odometer" id="kondzilla-videos">0</div></div>
 </div></div><div class="subscriber-card"><div class="hero-number"><div class="eyebrow">LIVE ESTIMATED SUBSCRIBERS</div><div class="big-number odometer" id="kondzilla-est-subs">0</div><div class="hero-caption">COMPARISON CHANNEL</div></div></div></div></section>
 </div></main>
 <aside class="sidebar">
