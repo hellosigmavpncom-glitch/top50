@@ -34,22 +34,22 @@ header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:s
 .channel-content{display:grid;grid-template-columns:340px minmax(0,1fr);gap:12px;min-width:0;min-height:0}
 .left-stack{display:grid;grid-template-rows:82px minmax(0,1fr);gap:7px;min-width:0;min-height:0}
 .avatar-card,.subscriber-card{min-width:0;min-height:0;overflow:hidden;background:#ffffff09;border:1px solid #ffffff18;border-radius:11px}
-.avatar-card{display:flex;align-items:center;justify-content:flex-start;gap:13px;padding:7px 12px}
+.avatar-card{display:flex;align-items:center;gap:13px;padding:7px 12px}
 .avatar{width:64px;height:64px;object-fit:cover;border-radius:9px;border:2px solid var(--purple);background:#171d2b;flex:none}
 .kond .avatar{border-color:var(--blue)}
 .avatar-name{font-size:17px;font-weight:800;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .avatar-handle{font-size:11px;color:var(--muted);margin-top:5px}
 .api-grid{display:grid;grid-template-columns:1fr;grid-template-rows:repeat(4,minmax(0,1fr));gap:6px;min-width:0;min-height:0}
-.api-stat{min-width:0;min-height:0;overflow:hidden;background:#ffffff0b;border:1px solid #ffffff16;border-radius:8px;padding:5px 11px;display:flex;align-items:center;justify-content:space-between;gap:8px}
-.api-label{font-size:11px;font-weight:800;letter-spacing:.3px;color:#c6d7f0;white-space:nowrap}
-.api-value{font-size:26px;font-weight:800;letter-spacing:-1.2px;line-height:1;white-space:nowrap;overflow:hidden;text-align:right;min-width:0}
-.subscriber-card{display:flex;align-items:center;justify-content:center;padding:18px 25px;background:linear-gradient(125deg,#ffffff0d,#ffffff05);border-radius:12px}
+.api-stat{min-width:0;min-height:0;overflow:hidden;background:#ffffff0b;border:1px solid #ffffff16;border-radius:8px;padding:5px 10px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:5px}
+.api-label{font-size:11px;font-weight:800;letter-spacing:.2px;color:#c6d7f0;white-space:nowrap}
+.api-value{font-size:23px;font-weight:800;letter-spacing:-1px;line-height:1;white-space:nowrap;text-align:right;min-width:0}
+.subscriber-card{display:flex;align-items:center;justify-content:flex-start;padding:20px 30px;background:linear-gradient(125deg,#ffffff12,#ffffff04);border-radius:12px}
 .hero-number{width:100%;min-width:0}
-.eyebrow{font-size:15px;font-weight:800;letter-spacing:1px;color:var(--muted);margin-bottom:15px}
-.big-number{font-size:82px;font-weight:800;letter-spacing:-5px;line-height:1.05;white-space:nowrap;overflow:hidden}
+.eyebrow{font-size:16px;font-weight:800;letter-spacing:1.2px;color:var(--muted);margin-bottom:20px}
+.big-number{font-size:112px;font-weight:800;letter-spacing:-6px;line-height:1.12;white-space:nowrap}
 .odometer{font-family:Inter,sans-serif!important;font-variant-numeric:tabular-nums;line-height:1.05!important;vertical-align:middle}
 .odometer-digit-inner{overflow:hidden!important}.odometer-ribbon-inner{line-height:1.05!important}.odometer-digit{vertical-align:baseline!important}
-.hero-caption{font-size:12px;color:var(--muted);margin-top:13px;letter-spacing:.5px}
+.hero-caption{font-size:13px;color:var(--muted);margin-top:18px;letter-spacing:.6px}
 .difference{min-height:68px;border:1px solid #a855f7;border-radius:12px;background:linear-gradient(100deg,#26113c,#171025 50%,#25113b);display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;padding:0 18px;gap:10px;box-shadow:0 0 20px #a855f72b;overflow:hidden}
 .diff-label{font-size:13px;font-weight:800;color:#d5a0ff;letter-spacing:.5px}
 .diff-value{justify-self:center;font-size:52px;font-weight:800;color:#bd69ff;letter-spacing:-2.5px;line-height:1;white-space:nowrap}
@@ -64,7 +64,7 @@ header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:s
 .my-count{font-size:34px;font-weight:800;letter-spacing:-1px;line-height:1.1;white-space:nowrap;overflow:hidden;width:100%}
 .api-line{display:flex;align-items:center;justify-content:space-between;gap:7px;padding:8px 0;border-top:1px solid #ffffff20;border-bottom:1px solid #ffffff20;min-width:0}
 .api-line span{font-size:11px;color:var(--muted);font-weight:800;white-space:nowrap}.api-line strong{font-size:25px;font-weight:800;white-space:nowrap;overflow:hidden;min-width:0}
-.stream-head span:first-child{font-size:13px;color:var(--blue);font-weight:800}
+.stream-head{flex:none}.stream-head span:first-child{font-size:13px;color:var(--blue);font-weight:800}
 .stream{display:grid;grid-template-columns:90px minmax(0,1fr);gap:9px;align-items:center;min-width:0}
 .thumb{width:90px;height:58px;object-fit:cover;border-radius:7px;border:1px solid #3d577b}
 .stream-title{font-size:12px;font-weight:700;line-height:1.3;overflow-wrap:anywhere}.stream-channel{font-size:10px;color:var(--muted);margin-top:4px}
@@ -121,76 +121,60 @@ function meter(el){return window.Odometer&&el?new Odometer({el,value:0,format:"(
 ids.forEach(id=>meters[id]=meter($(id)));
 const fmt=n=>Math.round(n).toLocaleString("en-US"),toNum=v=>v==null||v===""?NaN:typeof v==="string"?Number(v.replace(/[,\s]/g,"")):Number(v);
 function num(id,v){
- const n=toNum(v),el=$(id);
- if(!el||!Number.isFinite(n)||lastValues[id]===n)return;
- lastValues[id]=n;
- if(!meters[id])meters[id]=meter(el);
- if(meters[id])meters[id].update(n);else el.textContent=fmt(n);
+const n=toNum(v),el=$(id);if(!el||!Number.isFinite(n)||lastValues[id]===n)return;
+lastValues[id]=n;if(!meters[id])meters[id]=meter(el);
+if(meters[id])meters[id].update(n);else el.textContent=fmt(n);
 }
 function txt(id,v){if($(id))$(id).textContent=v??"—"}
 function loadAvatar(k){
- const el=$(k+"-avatar");
- if(el&&!el.dataset.loaded){el.dataset.loaded="1";el.src="/api/avatar/"+k+"?v=3";el.onerror=()=>console.error("[Avatar] Failed: /api/avatar/"+k)}
+const el=$(k+"-avatar");if(el&&!el.dataset.loaded){el.dataset.loaded="1";el.src="/api/avatar/"+k+"?v=3";el.onerror=()=>console.error("[Avatar] Failed: /api/avatar/"+k)}
 }
 function renderChannel(k,d){
- if(!d)return;loadAvatar(k);
- if(d.name)txt(k+"-name",d.name);if(d.handle)txt(k+"-handle",d.handle);
- [["est-subs","estimatedSubscriberCount"],["api-subs","apiSubscriberCount"],["views","viewCount"],["api-views","apiViewCount"],["videos","videoCount"]].forEach(([f,p])=>num(k+"-"+f,d[p]));
+if(!d)return;loadAvatar(k);if(d.name)txt(k+"-name",d.name);if(d.handle)txt(k+"-handle",d.handle);
+[["est-subs","estimatedSubscriberCount"],["api-subs","apiSubscriberCount"],["views","viewCount"],["api-views","apiViewCount"],["videos","videoCount"]].forEach(([f,p])=>num(k+"-"+f,d[p]));
 }
 function renderVystats(d){
- if(!d)return;loadAvatar("vystats");
- if(d.name)txt("vystats-name",d.name);if(d.handle)txt("vystats-handle",d.handle);
- num("vystats-est-subs",d.estimatedSubscriberCount);num("vystats-api-subs",d.apiSubscriberCount);
+if(!d)return;loadAvatar("vystats");if(d.name)txt("vystats-name",d.name);if(d.handle)txt("vystats-handle",d.handle);
+num("vystats-est-subs",d.estimatedSubscriberCount);num("vystats-api-subs",d.apiSubscriberCount);
 }
 function renderDynamic(s){
- const grid=$("stream-grid"),keep=new Set();let count=0;
- Object.entries(s).forEach(([k,v])=>{
-  if(["viewerCount","viewCount","estimatedViewCount","likeCount"].includes(k)||v==null||typeof v==="object"||count>=4)return;
-  count++;const key="dynamic-"+k;keep.add(key);let x=dynamic[key];
-  if(!x){
-   const w=document.createElement("div"),l=document.createElement("label"),e=document.createElement("div");
-   w.className="stream-stat";l.textContent=k.replace(/([A-Z])/g," $1").toUpperCase();e.className="value odometer";w.append(l,e);grid.append(w);
-   x=dynamic[key]={w,e,m:meter(e),last:undefined};
-  }
-  x.w.style.display="";
-  const n=toNum(v);
-  if(Number.isFinite(n)){if(x.last!==n){if(!x.m)x.m=meter(x.e);if(x.m)x.m.update(n);else x.e.textContent=fmt(n);x.last=n}}
-  else{const value=String(v);if(x.last!==value){x.m=null;x.e.classList.remove("odometer");x.e.textContent=value;x.last=value}}
- });
- Object.entries(dynamic).forEach(([k,x])=>{if(!keep.has(k))x.w.style.display="none"});
+const grid=$("stream-grid"),keep=new Set();let count=0;
+Object.entries(s).forEach(([k,v])=>{
+if(["viewerCount","viewCount","estimatedViewCount","likeCount"].includes(k)||v==null||typeof v==="object"||count>=4)return;
+count++;const key="dynamic-"+k;keep.add(key);let x=dynamic[key];
+if(!x){const w=document.createElement("div"),l=document.createElement("label"),e=document.createElement("div");w.className="stream-stat";l.textContent=k.replace(/([A-Z])/g," $1").toUpperCase();e.className="value odometer";w.append(l,e);grid.append(w);x=dynamic[key]={w,e,m:meter(e),last:undefined}}
+x.w.style.display="";const n=toNum(v);
+if(Number.isFinite(n)){if(x.last!==n){if(!x.m)x.m=meter(x.e);if(x.m)x.m.update(n);else x.e.textContent=fmt(n);x.last=n}}
+else{const value=String(v);if(x.last!==value){x.m=null;x.e.classList.remove("odometer");x.e.textContent=value;x.last=value}}
+});
+Object.entries(dynamic).forEach(([k,x])=>{if(!keep.has(k))x.w.style.display="none"});
 }
 function renderStream(s){
- if(s)lastStream=s;else s=lastStream;if(!s)return;
- const i=s.info||{},st=s.stats||{},ch=i.channel||{};
- if(i.title)txt("stream-title",i.title);if(ch.name)txt("stream-channel",ch.name);if(i.id)txt("stream-id",i.id);
- if(i.uploadDate){const d=new Date(i.uploadDate);txt("stream-date",Number.isNaN(d.getTime())?"—":d.toLocaleString())}
- if(i.thumbnail&&$("stream-thumb").src!==i.thumbnail)$("stream-thumb").src=i.thumbnail;
- [["stream-viewers","viewerCount"],["stream-views","viewCount"],["stream-est-views","estimatedViewCount"],["stream-likes","likeCount"]].forEach(([id,k])=>num(id,st[k]));
- const extra=Object.entries(i).filter(([k,v])=>!["id","title","thumbnail","uploadDate","channel"].includes(k)&&v!=null&&typeof v!=="object").map(([k,v])=>k+": "+v);
- if(ch.id)extra.push("CHANNEL ID: "+ch.id);txt("stream-extra-info",extra.join(" · "));renderDynamic(st);
+if(s)lastStream=s;else s=lastStream;if(!s)return;
+const i=s.info||{},st=s.stats||{},ch=i.channel||{};
+if(i.title)txt("stream-title",i.title);if(ch.name)txt("stream-channel",ch.name);if(i.id)txt("stream-id",i.id);
+if(i.uploadDate){const d=new Date(i.uploadDate);txt("stream-date",Number.isNaN(d.getTime())?"—":d.toLocaleString())}
+if(i.thumbnail&&$("stream-thumb").src!==i.thumbnail)$("stream-thumb").src=i.thumbnail;
+[["stream-viewers","viewerCount"],["stream-views","viewCount"],["stream-est-views","estimatedViewCount"],["stream-likes","likeCount"]].forEach(([id,k])=>num(id,st[k]));
+const extra=Object.entries(i).filter(([k,v])=>!["id","title","thumbnail","uploadDate","channel"].includes(k)&&v!=null&&typeof v!=="object").map(([k,v])=>k+": "+v);
+if(ch.id)extra.push("CHANNEL ID: "+ch.id);txt("stream-extra-info",extra.join(" · "));renderDynamic(st);
 }
 async function update(){
- if(updating)return;updating=true;
- try{
-  const r=await fetch("/api/stats",{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);
-  const d=await r.json();
-  renderChannel("celine",d.celine);renderChannel("kondzilla",d.kondzilla);renderVystats(d.vystats);renderStream(d.stream);
-  if(d.celine&&d.kondzilla){
-   const a=toNum(d.celine.estimatedSubscriberCount),b=toNum(d.kondzilla.estimatedSubscriberCount);
-   if(Number.isFinite(a)&&Number.isFinite(b)){num("sub-diff",Math.abs(a-b));txt("gap-status",a>b?"Celine is ahead":a<b?"Celine is behind":"Channels are tied")}
-  }
-  txt("updated",d.lastUpdated?"Updated "+new Date(d.lastUpdated).toLocaleTimeString():"Waiting...");
- }catch(e){txt("updated","Connection error · showing last stats");if(lastStream)renderStream(lastStream);console.error("[Dashboard]",e)}
- finally{updating=false}
+if(updating)return;updating=true;
+try{
+const r=await fetch("/api/stats",{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);
+const d=await r.json();renderChannel("celine",d.celine);renderChannel("kondzilla",d.kondzilla);renderVystats(d.vystats);renderStream(d.stream);
+if(d.celine&&d.kondzilla){const a=toNum(d.celine.estimatedSubscriberCount),b=toNum(d.kondzilla.estimatedSubscriberCount);
+if(Number.isFinite(a)&&Number.isFinite(b)){num("sub-diff",Math.abs(a-b));txt("gap-status",a>b?"Celine is ahead":a<b?"Celine is behind":"Channels are tied")}}
+txt("updated",d.lastUpdated?"Updated "+new Date(d.lastUpdated).toLocaleTimeString():"Waiting...");
+}catch(e){txt("updated","Connection error · showing last stats");if(lastStream)renderStream(lastStream);console.error("[Dashboard]",e)}
+finally{updating=false}
 }
 async function updateMusic(){
- try{
-  const r=await fetch("/api/music",{cache:"no-store"});if(!r.ok)return;
-  const m=await r.json(),song=[m.artist,m.title].filter(Boolean).join(" — ");
-  if(song&&$("music-marquee").textContent!==song){
-   const el=$("music-marquee");el.textContent=song;el.style.animation="none";void el.offsetWidth;el.style.animation="music-scroll 18s linear infinite";
-  }
- }catch(e){}
+try{const r=await fetch("/api/music",{cache:"no-store"});if(!r.ok)return;
+const m=await r.json(),song=[m.artist,m.title].filter(Boolean).join(" — ");
+if(song&&$("music-marquee").textContent!==song){const el=$("music-marquee");el.textContent=song;el.style.animation="none";void el.offsetWidth;el.style.animation="music-scroll 18s linear infinite"}
+}catch(e){}
 }
 update();updateMusic();setInterval(update,5000);setInterval(updateMusic,2000);
 </script></body></html>
