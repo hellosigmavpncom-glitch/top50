@@ -106,14 +106,15 @@ footer{font-size:10px;color:var(--muted)}footer .live{color:var(--green)}
 </div></aside>
 <footer><div><span class="live">● LIVE</span> &nbsp; FLASHCOUNTS + MIXERNO FALLBACK</div><div id="updated">Connecting...</div></footer>
 </div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
+<script>
 const $=id=>document.getElementById(id),meters={},dynamic={},lastValues={};
 let lastStream=null,updating=false;
 const ids=["celine-est-subs","celine-api-subs","celine-views","celine-api-views","celine-videos","kondzilla-est-subs","kondzilla-api-subs","kondzilla-views","kondzilla-api-views","kondzilla-videos","vystats-est-subs","vystats-api-subs","sub-diff","stream-viewers","stream-views","stream-est-views","stream-likes"];
+const fmt=n=>Math.round(n).toLocaleString("en-US"),toNum=v=>v==null||v===""?NaN:typeof v==="string"?Number(v.replace(/[,\s]/g,"")):Number(v);
 function meter(el){return window.Odometer&&el?new Odometer({el,value:0,format:"(,ddd)",duration:350}):null}
 ids.forEach(id=>meters[id]=meter($(id)));
-const fmt=n=>Math.round(n).toLocaleString("en-US"),toNum=v=>v==null||v===""?NaN:typeof v==="string"?Number(v.replace(/[,\s]/g,"")):Number(v);
 function num(id,v){
 const n=toNum(v),el=$(id);if(!el||!Number.isFinite(n)||lastValues[id]===n)return;
 lastValues[id]=n;if(!meters[id])meters[id]=meter(el);
@@ -121,7 +122,7 @@ if(meters[id])meters[id].update(n);else el.textContent=fmt(n);
 }
 function txt(id,v){if($(id))$(id).textContent=v??"—"}
 function loadAvatar(k){
-const el=$(k+"-avatar");if(el&&!el.dataset.loaded){el.dataset.loaded="1";el.src="/api/avatar/"+k+"?v=3";el.onerror=()=>console.error("[Avatar] Failed: /api/avatar/"+k)}
+const el=$(k+"-avatar");if(el&&!el.dataset.loaded){el.dataset.loaded="1";el.src="/api/avatar/"+k+"?v=4";el.onerror=()=>console.error("[Avatar] Failed:",k)}
 }
 function renderChannel(k,d){
 if(!d)return;loadAvatar(k);if(d.name)txt(k+"-name",d.name);if(d.handle)txt(k+"-handle",d.handle);
@@ -157,13 +158,14 @@ async function update(){
 if(updating)return;updating=true;
 try{
 const r=await fetch("/api/stats",{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);
-const d=await r.json();renderChannel("celine",d.celine);renderChannel("kondzilla",d.kondzilla);renderVystats(d.vystats);renderStream(d.stream);
+const d=await r.json();
+renderChannel("celine",d.celine);renderChannel("kondzilla",d.kondzilla);renderVystats(d.vystats);renderStream(d.stream);
 if(d.celine&&d.kondzilla){
 const a=toNum(d.celine.estimatedSubscriberCount),b=toNum(d.kondzilla.estimatedSubscriberCount);
 if(Number.isFinite(a)&&Number.isFinite(b)){num("sub-diff",Math.abs(a-b));txt("gap-status",a>b?"Celine is ahead":a<b?"Celine is behind":"Channels are tied")}
 }
 txt("updated",d.lastUpdated?"Updated "+new Date(d.lastUpdated).toLocaleTimeString():"Waiting...");
-}catch(e){txt("updated","Connection error · showing last stats");if(lastStream)renderStream(lastStream);console.error("[Dashboard]",e)}
+}catch(e){txt("updated","Connection error · showing last stats");console.error("[Dashboard]",e)}
 finally{updating=false}
 }
 async function updateMusic(){
@@ -174,4 +176,6 @@ if(song&&$("music-marquee").textContent!==song){const el=$("music-marquee");el.t
 }catch(e){}
 }
 update();updateMusic();setInterval(update,5000);setInterval(updateMusic,2000);
-</script></body></html>
+</script>
+</body></html>
+
