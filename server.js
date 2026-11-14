@@ -12,13 +12,13 @@ app.use(express.json({limit:"2kb"}));
 app.use((q,s,n)=>{s.setHeader("Cache-Control","no-store");n()});
 const num=v=>Number(String(v??0).replace(/,/g,""))||0;
 async function get(url,headers={}){
- const r=await fetch(url,{signal:AbortSignal.timeout(15000),headers:{"User-Agent":"Mozilla/5.0",...headers}});
+ const r=await fetch(url,{signal:AbortSignal.timeout(15000),headers:{"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",...headers}});
  if(!r.ok)throw Error("HTTP "+r.status);
  return r;
 }
 async function json(url){return(await get(url)).json()}
-const mix=(d,key)=>d?.counts?.find(x=>x.value===key)?.count;
-const user=(d,key)=>d?.user?.find(x=>x.value===key)?.count;
+const mix=(d,k)=>d?.counts?.find(x=>x.value===k)?.count;
+const user=(d,k)=>d?.user?.find(x=>x.value===k)?.count;
 async function fetchMixerno(ch){
  const d=await json(`https://mixerno.space/api/youtube-channel-counter/user/${ch.id}`),subs=num(mix(d,"subscribers"));
  if(!subs)throw Error("Missing Mixerno subscriber count");
@@ -33,23 +33,39 @@ async function fetchCh(k,ch){
   console.log(`[${k}] FlashCounts · ${data.estimatedSubscriberCount.toLocaleString()}`);
  }catch(e){
   console.log(`[${k}] FlashCounts: ${e.message} · trying Mixerno`);
-  try{
-   const data=await fetchMixerno(ch);
-   cache[k]={...cache[k],...data};
-   console.log(`[${k}] Mixerno · ${data.estimatedSubscriberCount.toLocaleString()}`);
-  }catch(x){console.log(`[${k}] Mixerno: ${x.message}`)}
+  try{const data=await fetchMixerno(ch);cache[k]={...cache[k],...data};console.log(`[${k}] Mixerno · ${data.estimatedSubscriberCount.toLocaleString()}`)}
+  catch(x){console.log(`[${k}] Mixerno: ${x.message}`)}
  }
  return cache[k];
 }
+function extractObject(s,start){
+ start=s.indexOf("{",start);
+ if(start<0)return null;
+ let depth=0,string=false,escape=false;
+ for(let i=start;i<s.length;i++){
+  const c=s[i];
+  if(string){if(escape)escape=false;else if(c==="\\")escape=true;else if(c==='"')string=false;continue}
+  if(c==='"'){string=true;continue}
+  if(c==="{")depth++;
+  if(c==="}"&&!--depth){try{return JSON.parse(s.slice(start,i+1))}catch{return null}}
+ }
+ return null;
+}
 function avatarUrl(html){
- const start=html.indexOf('"channelMetadataRenderer"'),part=start>=0?html.slice(start,start+30000):html;
- const m=part.match(/"avatar"\s*:\s*\{\s*"thumbnails"\s*:\s*(\[[^\]]+\])/);
- if(m)try{
-  const list=JSON.parse(m[1]).sort((a,b)=>(b.width||0)-(a.width||0));
-  if(list[0]?.url)return list[0].url.replace(/=s\d+(-c-k-c0x00ffffff-no-rj)?/,"=s800-c-k-c0x00ffffff-no-rj");
- }catch{}
- const og=html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i);
- return og?.[1]?.replace(/&amp;/g,"&").replace(/=s\d+(-c-k-c0x00ffffff-no-rj)?/,"=s800-c-k-c0x00ffffff-no-rj")||"";
+ const key='"channelMetadataRenderer"',pos=html.indexOf(key);
+ if(pos>=0){
+  const data=extractObject(html,pos+key.length),list=data?.avatar?.thumbnails||[];
+  const best=list.sort((a,b)=>(b.width||0)-(a.width||0))[0]?.url;
+  if(best)return best.replace(/=s\d+(?:-c-k-c0x00ffffff-no-rj)?/,"=s800-c-k-c0x00ffffff-no-rj");
+ }
+ const tags=html.match(/<meta\b[^>]*>/gi)||[];
+ for(const tag of tags){
+  if(/property=["']og:image["']/i.test(tag)){
+   const url=tag.match(/content=["']([^"']+)/i)?.[1];
+   if(url)return url.replace(/&amp;/g,"&").replace(/=s\d+(?:-c-k-c0x00ffffff-no-rj)?/,"=s800-c-k-c0x00ffffff-no-rj");
+  }
+ }
+ return "";
 }
 async function fetchAvatar(k){
  const old=avatars[k];
@@ -59,14 +75,16 @@ async function fetchAvatar(k){
  if(!ch)throw Error("Unknown channel");
  const loading=(async()=>{
   try{
-   const page=await get(`https://www.youtube.com/channel/${ch.id}`,{"Accept-Language":"en-US,en;q=0.9"});
-   const url=avatarUrl(await page.text());
-   if(!url)throw Error("YouTube avatar not found");
+   const page=await get(`https://www.youtube.com/channel/${ch.id}?hl=en`,{"Accept-Language":"en-US,en;q=0.9","Accept":"text/html"});
+   const html=await page.text();
+   if(!html.includes(ch.id))throw Error(`Unexpected YouTube page (${html.length} bytes)`);
+   const url=avatarUrl(html);
+   if(!url)throw Error(`Avatar not found (${html.length} bytes, metadata:${html.includes("channelMetadataRenderer")})`);
    const u=new URL(url);
-   if(!["yt3.ggpht.com","yt3.googleusercontent.com"].includes(u.hostname))throw Error("Unexpected avatar host");
+   if(!["yt3.ggpht.com","yt3.googleusercontent.com"].includes(u.hostname))throw Error("Unexpected avatar host: "+u.hostname);
    const img=await get(u.href,{"Referer":"https://www.youtube.com/"});
    const type=img.headers.get("content-type")||"image/jpeg";
-   if(!type.startsWith("image/"))throw Error("Invalid image response");
+   if(!type.startsWith("image/"))throw Error("Invalid image response: "+type);
    const body=Buffer.from(await img.arrayBuffer());
    if(!body.length||body.length>5e6)throw Error("Invalid avatar size");
    const result={body,type,time:Date.now()};
@@ -108,7 +126,7 @@ app.get("/api/avatar/:key",async(q,r)=>{
  try{
   const a=await fetchAvatar(q.params.key);
   r.set("Content-Type",a.type).set("Cache-Control","public,max-age=21600").set("X-Content-Type-Options","nosniff").send(a.body);
- }catch(e){r.sendStatus(502)}
+ }catch(e){r.status(502).send("Avatar unavailable")}
 });
 app.get("/",(_,r)=>r.sendFile(path.join(__dirname,"index.html")));
 app.listen(PORT,()=>{console.log(`[RUN] Port ${PORT}`);update();setInterval(update,5000)});
