@@ -17,10 +17,10 @@ header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:s
 .equalizer{height:19px;display:flex;align-items:center;gap:3px;flex:none}
 .equalizer i{width:3px;height:6px;border-radius:3px;background:#c78aff;animation:eq .7s ease-in-out infinite alternate}
 .equalizer i:nth-child(2){height:13px;animation-delay:.2s}.equalizer i:nth-child(3){height:9px;animation-delay:.4s}.equalizer i:nth-child(4){height:15px;animation-delay:.1s}
-@keyframes eq{to{transform:scaleY(1);opacity:1}}
+@keyframes eq{to{transform:scaleY(.45);opacity:.7}}
 .music-window{height:28px;flex:1;min-width:0;overflow:hidden;position:relative}
-.music-marquee{position:absolute;top:2px;left:100%;width:max-content;white-space:nowrap;font-size:21px;line-height:24px;font-weight:800;color:#f0e7ff;animation:music-scroll 18s linear infinite}
-@keyframes music-scroll{from{transform:translateX(0)}to{transform:translateX(calc(-100% - 100vw))}}
+.music-marquee{position:absolute;top:2px;left:100%;width:max-content;white-space:nowrap;font-size:21px;line-height:24px;font-weight:800;color:#f0e7ff;will-change:transform;animation:music-scroll 18s linear infinite}
+@keyframes music-scroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(calc(-100% - 100vw),0,0)}}
 .battle,.versus{min-width:0;min-height:0}
 .versus{height:100%;display:grid;grid-template-rows:minmax(0,1fr) 108px minmax(0,1fr);gap:8px}
 .channel{position:relative;min-width:0;min-height:0;overflow:hidden;background:linear-gradient(120deg,#171329,#0e1320 65%);border:1px solid #8d45c9;border-radius:14px;padding:10px 14px;display:grid;grid-template-rows:28px minmax(0,1fr);gap:7px;box-shadow:inset 0 0 35px #a855f70b,0 5px 20px #0007}
@@ -107,12 +107,13 @@ footer{font-size:11px;color:#b7c4da}footer .live{color:var(--green)}
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
 <script>
-const $=id=>document.getElementById(id),meters={},dynamic={},lastValues={};let lastStream=null,updating=false;
+const $=id=>document.getElementById(id),meters={},dynamic={},lastValues={},pending=new Map();let lastStream=null,updating=false,queueBusy=false;
 const ids=["celine-est-subs","celine-api-subs","celine-views","celine-api-views","celine-videos","kondzilla-est-subs","kondzilla-api-subs","kondzilla-views","kondzilla-api-views","kondzilla-videos","vystats-est-subs","vystats-api-subs","sub-diff","stream-viewers","stream-views","stream-est-views","stream-likes"];
-function meter(el){return window.Odometer&&el?new Odometer({el,value:0,format:"(,ddd)",duration:220}):null}
+function meter(el){return window.Odometer&&el?new Odometer({el,value:0,format:"(,ddd)",duration:170}):null}
 ids.forEach(id=>meters[id]=meter($(id)));
 const fmt=n=>Math.round(n).toLocaleString("en-US"),toNum=v=>v==null||v===""?NaN:typeof v==="string"?Number(v.replace(/[,\s]/g,"")):Number(v);
-function num(id,v){const n=toNum(v),el=$(id);if(!el||!Number.isFinite(n)||lastValues[id]===n)return;lastValues[id]=n;if(!meters[id])meters[id]=meter(el);if(meters[id])meters[id].update(n);else el.textContent=fmt(n)}
+function flushNums(){const item=pending.entries().next().value;if(!item){queueBusy=false;return}const [id,n]=item;pending.delete(id);const el=$(id);if(el){if(!meters[id])meters[id]=meter(el);if(meters[id])meters[id].update(n);else el.textContent=fmt(n)}setTimeout(flushNums,24)}
+function num(id,v){const n=toNum(v);if(!$(id)||!Number.isFinite(n)||lastValues[id]===n)return;lastValues[id]=n;pending.set(id,n);if(!queueBusy){queueBusy=true;flushNums()}}
 function txt(id,v){if($(id))$(id).textContent=v??"—"}
 function loadAvatar(k){const el=$(k+"-avatar");if(el&&!el.dataset.loaded){el.dataset.loaded="1";el.src="/api/avatar/"+k+"?v=3";el.onerror=()=>console.error("[Avatar] Failed: /api/avatar/"+k)}}
 function renderChannel(k,d){if(!d)return;loadAvatar(k);if(d.name)txt(k+"-name",d.name);if(d.handle)txt(k+"-handle",d.handle);[["est-subs","estimatedSubscriberCount"],["api-subs","apiSubscriberCount"],["views","viewCount"],["api-views","apiViewCount"],["videos","videoCount"]].forEach(([f,p])=>num(k+"-"+f,d[p]))}
