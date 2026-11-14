@@ -26,23 +26,22 @@ header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:s
 .channel-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff20;padding-bottom:6px;gap:8px;min-width:0}
 .channel-name{font-size:16px;font-weight:800;letter-spacing:.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .celine .channel-name{color:#d5a0ff}.kond .channel-name{color:#75d8ff}.channel-number{font-size:10px;color:#91a0ba;white-space:nowrap}
-.channel-content{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:12px;min-width:0;min-height:0;align-items:stretch}
-.hero{display:grid;grid-template-rows:80px minmax(0,1fr);min-width:0;min-height:0}
-.identity{display:flex;align-items:center;gap:12px;min-width:0}
-.avatar{width:76px;height:76px;object-fit:cover;border-radius:9px;border:2px solid var(--purple);background:#171d2b;box-shadow:0 0 15px #a855f755;flex:none}
-.kond .avatar{border-color:var(--blue);box-shadow:0 0 15px #39c5ff44}
-.identity-text{min-width:0}.avatar-name{font-size:19px;font-weight:800;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.avatar-handle{font-size:11px;color:var(--muted);margin-top:4px}
-.hero-number{display:flex;flex-direction:column;justify-content:center;min-width:0;overflow:visible}
-.eyebrow{font-size:12px;font-weight:800;letter-spacing:.6px;color:var(--muted);margin-bottom:4px}
+.channel-content{display:grid;grid-template-columns:180px minmax(0,1fr) minmax(0,1.15fr);gap:12px;min-width:0;min-height:0;align-items:stretch}
+.avatar-card{min-width:0;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px;background:#ffffff09;border:1px solid #ffffff18;border-radius:11px;overflow:hidden}
+.avatar{width:132px;height:132px;object-fit:cover;border-radius:13px;border:3px solid var(--purple);background:#171d2b;box-shadow:0 0 22px #a855f755;flex:none}
+.kond .avatar{border-color:var(--blue);box-shadow:0 0 22px #39c5ff44}
+.identity-text{width:100%;min-width:0;text-align:center}.avatar-name{font-size:17px;font-weight:800;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.avatar-handle{font-size:11px;color:var(--muted);margin-top:5px}
+.hero-number{display:flex;flex-direction:column;justify-content:center;min-width:0;overflow:hidden;padding:8px}
+.eyebrow{font-size:12px;font-weight:800;letter-spacing:.6px;color:var(--muted);margin-bottom:8px}
 .big-number{font-size:clamp(66px,7.3vw,118px);font-weight:800;letter-spacing:-.085em;line-height:1.05;white-space:nowrap;min-width:0;overflow:visible}
 .odometer{font-family:Inter,sans-serif!important;font-variant-numeric:tabular-nums;line-height:1.05!important;vertical-align:middle}
 .odometer-digit-inner{overflow:hidden!important}.odometer-ribbon-inner{line-height:1.05!important}.odometer-digit{vertical-align:baseline!important}
-.hero-caption{font-size:11px;color:var(--muted);margin-top:5px}
+.hero-caption{font-size:11px;color:var(--muted);margin-top:8px}
 .api-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:7px;min-width:0;min-height:0}
-.api-stat{min-width:0;min-height:0;overflow:hidden;background:#ffffff0b;border:1px solid #ffffff16;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;justify-content:center;gap:7px}
+.api-stat{min-width:0;min-height:0;overflow:hidden;background:#ffffff0b;border:1px solid #ffffff16;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;justify-content:center;gap:9px}
 .api-label{font-size:12px;font-weight:800;letter-spacing:.3px;color:#c6d7f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.api-value,.api-value.odometer{display:block;min-width:0;width:100%;max-width:100%;font-size:clamp(17px,1.8vw,24px)!important;font-weight:800!important;letter-spacing:-1.1px!important;line-height:1!important;white-space:nowrap;text-align:left;overflow:hidden}
+.api-value,.api-value.odometer{display:block;min-width:0;width:100%;max-width:100%;font-size:clamp(19px,1.9vw,27px)!important;font-weight:800!important;letter-spacing:-1.1px!important;line-height:1!important;white-space:nowrap;text-align:left;overflow:hidden}
 .difference{min-height:82px;border:1px solid #a855f7;border-radius:12px;background:linear-gradient(100deg,#26113c,#171025 50%,#25113b);display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;padding:0 18px;gap:10px;box-shadow:0 0 20px #a855f72b;overflow:hidden}
 .diff-label{font-size:13px;font-weight:800;color:#d5a0ff;letter-spacing:.5px}
 .diff-value{justify-self:center;align-self:center;display:flex;align-items:center;justify-content:center;font-size:var(--large-number);font-weight:800;color:#bd69ff;letter-spacing:-.075em;line-height:1!important;white-space:nowrap;overflow:visible;padding:0}
@@ -67,35 +66,14 @@ header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:s
 .stream-stat label{font-size:10px;color:var(--blue);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stream-stat .value{font-size:var(--large-number);font-weight:800;letter-spacing:-.075em;white-space:nowrap;overflow:hidden;line-height:1!important;min-width:0}
 footer{font-size:10px;color:var(--muted)}footer .live{color:var(--green)}
-@media(max-height:760px){
-:root{--large-number:clamp(54px,5vw,76px)}
-.container{padding:4px 10px 7px;grid-template-rows:32px minmax(0,1fr) 13px;gap:6px}
-.versus{grid-template-rows:minmax(0,1fr) 70px minmax(0,1fr);gap:6px}
-.channel{padding:7px 11px;grid-template-rows:23px minmax(0,1fr);gap:5px}
-.hero{grid-template-rows:76px minmax(0,1fr)}
-.avatar{width:76px;height:76px}.avatar-name{font-size:15px}
-.big-number{font-size:clamp(53px,6vw,83px)}
-.api-grid{gap:4px}.api-stat{padding:6px 8px}.api-label{font-size:10px}
-.sidebar{padding:7px;gap:6px}.profile{grid-template-columns:50px minmax(0,1fr)}.my-avatar{width:48px;height:48px}
-.my-count{font-size:27px}.api-line{padding:5px 0}.api-line strong{font-size:21px}
-.stream{grid-template-columns:70px minmax(0,1fr)}.thumb{width:70px;height:45px}.stream-stat{padding:5px 8px}
-}
-@media(max-width:1000px){
-.container{grid-template-columns:minmax(0,1fr) 300px;padding:4px 8px 8px;gap:7px}
-.channel-content{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:7px}
-.hero{grid-template-rows:76px minmax(0,1fr)}
-.big-number{font-size:clamp(48px,6vw,76px)}
-.api-stat{padding:6px 8px}.api-label{font-size:10px}.api-value,.api-value.odometer{font-size:clamp(16px,1.7vw,21px)!important}
-.sidebar{padding:7px;gap:6px}
-}
 </style></head><body><div class="container">
 <header><div class="music-player"><span class="mission-tag">NCS · NOW PLAYING</span><div class="music-info"><span class="equalizer"><i></i><i></i><i></i><i></i></span><div class="music-window"><div class="music-marquee" id="music-marquee">Waiting for VLC...</div></div></div></div></header>
 <main class="battle"><div class="versus">
-<section class="channel celine"><div class="channel-head"><span class="channel-name">RACE TO TOP 50: CELINE</span><span class="channel-number">01 · CHALLENGER</span></div><div class="channel-content"><div class="hero"><div class="identity"><img id="celine-avatar" class="avatar" alt="Celine Dept"><div class="identity-text"><div class="avatar-name" id="celine-name">Celine Dept</div><div class="avatar-handle" id="celine-handle">@celinedept</div></div></div><div class="hero-number"><div class="eyebrow">LIVE ESTIMATED SUBSCRIBERS</div><div class="big-number odometer" id="celine-est-subs">0</div><div class="hero-caption">TARGET CHANNEL · TOP 51</div></div></div><div class="api-grid">
+<section class="channel celine"><div class="channel-head"><span class="channel-name">RACE TO TOP 50: CELINE</span><span class="channel-number">01 · CHALLENGER</span></div><div class="channel-content"><div class="avatar-card"><img id="celine-avatar" class="avatar" alt="Celine Dept"><div class="identity-text"><div class="avatar-name" id="celine-name">Celine Dept</div><div class="avatar-handle" id="celine-handle">@celinedept</div></div></div><div class="hero-number"><div class="eyebrow">LIVE ESTIMATED SUBSCRIBERS</div><div class="big-number odometer" id="celine-est-subs">0</div><div class="hero-caption">TARGET CHANNEL · TOP 51</div></div><div class="api-grid">
 <div class="api-stat"><div class="api-label">API SUBSCRIBERS</div><div class="api-value odometer" id="celine-api-subs">0</div></div><div class="api-stat"><div class="api-label">TOTAL VIEWS</div><div class="api-value odometer" id="celine-views">0</div></div><div class="api-stat"><div class="api-label">API VIEWS</div><div class="api-value odometer" id="celine-api-views">0</div></div><div class="api-stat"><div class="api-label">VIDEOS</div><div class="api-value odometer" id="celine-videos">0</div></div>
 </div></div></section>
 <div class="difference"><div class="diff-label">LIVE SUBSCRIBER DIFFERENCE</div><div class="diff-value odometer" id="sub-diff">0</div><div class="diff-status" id="gap-status">Connecting...</div></div>
-<section class="channel kond"><div class="channel-head"><span class="channel-name">02 · CANAL KONDZILLA</span><span class="channel-number">COMPARISON</span></div><div class="channel-content"><div class="hero"><div class="identity"><img id="kondzilla-avatar" class="avatar" alt="Canal KondZilla"><div class="identity-text"><div class="avatar-name" id="kondzilla-name">Canal KondZilla</div><div class="avatar-handle" id="kondzilla-handle">@kondzilla</div></div></div><div class="hero-number"><div class="eyebrow">LIVE ESTIMATED SUBSCRIBERS</div><div class="big-number odometer" id="kondzilla-est-subs">0</div><div class="hero-caption">COMPARISON CHANNEL</div></div></div><div class="api-grid">
+<section class="channel kond"><div class="channel-head"><span class="channel-name">02 · CANAL KONDZILLA</span><span class="channel-number">COMPARISON</span></div><div class="channel-content"><div class="avatar-card"><img id="kondzilla-avatar" class="avatar" alt="Canal KondZilla"><div class="identity-text"><div class="avatar-name" id="kondzilla-name">Canal KondZilla</div><div class="avatar-handle" id="kondzilla-handle">@kondzilla</div></div></div><div class="hero-number"><div class="eyebrow">LIVE ESTIMATED SUBSCRIBERS</div><div class="big-number odometer" id="kondzilla-est-subs">0</div><div class="hero-caption">COMPARISON CHANNEL</div></div><div class="api-grid">
 <div class="api-stat"><div class="api-label">API SUBSCRIBERS</div><div class="api-value odometer" id="kondzilla-api-subs">0</div></div><div class="api-stat"><div class="api-label">TOTAL VIEWS</div><div class="api-value odometer" id="kondzilla-views">0</div></div><div class="api-stat"><div class="api-label">API VIEWS</div><div class="api-value odometer" id="kondzilla-api-views">0</div></div><div class="api-stat"><div class="api-label">VIDEOS</div><div class="api-value odometer" id="kondzilla-videos">0</div></div>
 </div></div></section></div></main>
 <aside class="sidebar">
