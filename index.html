@@ -1,4 +1,3 @@
-
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Race to Top 50 | Live Battle</title>
@@ -8,7 +7,7 @@
 :root{--bg:#070910;--purple:#b45cff;--blue:#39c5ff;--white:#f7f8ff;--muted:#a5b1c7;--green:#42ed9b}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:1600px;height:900px;overflow:hidden}
-body{font-family:Inter,sans-serif;background:var(--bg);color:var(--white);font-weight:600}
+body{font-family:Inter,sans-serif;background:var(--bg);color:var(--white);font-weight:700}
 .container{width:1600px;height:900px;padding:4px 15px 12px;display:grid;grid-template-columns:minmax(0,1fr) 360px;grid-template-rows:40px minmax(0,1fr) 17px;gap:9px;background:radial-gradient(ellipse at 25% 30%,#29123c55,transparent 48%),radial-gradient(ellipse at 75% 55%,#102a4455,transparent 48%),#070910}
 header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;min-width:0}
 .music-player{width:100%;height:100%;display:flex;align-items:center;gap:12px;padding:5px 15px;background:#160e25;border:1px solid #63358a;border-radius:9px;overflow:hidden}
@@ -30,50 +29,50 @@ header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:s
 .channel-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff20;padding-bottom:5px;gap:8px;min-width:0}
 .channel-name{font-size:16px;font-weight:800;letter-spacing:.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .celine .channel-name{color:#d5a0ff}.kond .channel-name{color:#75d8ff}
-.channel-number{font-size:10px;color:#91a0ba;white-space:nowrap}
+.channel-number{font-size:11px;color:#aab8d0;white-space:nowrap}
 .channel-content{display:grid;grid-template-columns:340px minmax(0,1fr);gap:12px;min-width:0;min-height:0}
 .left-stack{display:grid;grid-template-rows:82px minmax(0,1fr);gap:7px;min-width:0;min-height:0}
 .avatar-card,.subscriber-card{min-width:0;min-height:0;overflow:hidden;background:#ffffff09;border:1px solid #ffffff18;border-radius:11px}
 .avatar-card{display:flex;align-items:center;gap:13px;padding:7px 12px}
 .avatar{width:64px;height:64px;object-fit:cover;border-radius:9px;border:2px solid var(--purple);background:#171d2b;flex:none}
 .kond .avatar{border-color:var(--blue)}
-.avatar-name{font-size:17px;font-weight:800;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.avatar-handle{font-size:11px;color:var(--muted);margin-top:5px}
+.avatar-name{font-size:18px;font-weight:800;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.avatar-handle{font-size:12px;color:var(--muted);margin-top:5px}
 .api-grid{display:grid;grid-template-columns:1fr;grid-template-rows:repeat(4,minmax(0,1fr));gap:6px;min-width:0;min-height:0}
-.api-stat{min-width:0;min-height:0;overflow:hidden;background:#ffffff0b;border:1px solid #ffffff16;border-radius:8px;padding:5px 10px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:5px}
-.api-label{font-size:12px;font-weight:800;letter-spacing:.2px;color:#c6d7f0;white-space:nowrap}
-.api-value{font-size:27px;font-weight:800;letter-spacing:-1px;line-height:1;white-space:nowrap;text-align:right;min-width:0}
+.api-stat{min-width:0;min-height:0;overflow:hidden;background:#ffffff0b;border:1px solid #ffffff20;border-radius:8px;padding:5px 10px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:5px}
+.api-label{font-size:14px;font-weight:800;letter-spacing:.3px;color:#d4e2f8;white-space:nowrap}
+.api-value{font-size:36px;font-weight:800;letter-spacing:-1.5px;line-height:1;white-space:nowrap;text-align:right;min-width:0;color:#fff}
 .subscriber-card{display:flex;align-items:center;justify-content:flex-start;padding:10px 35px;background:linear-gradient(125deg,#ffffff12,#ffffff04);border-radius:12px}
 .hero-number{width:100%;min-width:0}
-.eyebrow{font-size:18px;font-weight:800;letter-spacing:1.2px;color:var(--muted);margin-bottom:12px}
+.eyebrow{font-size:20px;font-weight:800;letter-spacing:1.2px;color:#c1cde1;margin-bottom:12px}
 .big-number{font-size:140px;font-weight:800;letter-spacing:-7px;line-height:1.08;white-space:nowrap}
 .odometer{font-family:Inter,sans-serif!important;font-variant-numeric:tabular-nums;line-height:1.05!important;vertical-align:middle}
 .odometer-digit-inner{overflow:hidden!important}.odometer-ribbon-inner{line-height:1.05!important}.odometer-digit{vertical-align:baseline!important}
-.hero-caption{font-size:13px;color:var(--muted);margin-top:18px;letter-spacing:.6px}
+.hero-caption{font-size:14px;color:#b8c5dc;margin-top:18px;letter-spacing:.6px}
 .difference{height:90px;min-height:90px;border:1px solid #a855f7;border-radius:12px;background:linear-gradient(100deg,#26113c,#171025 50%,#25113b);display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;padding:0 22px;gap:12px;box-shadow:0 0 20px #a855f72b;overflow:hidden}
-.diff-label{font-size:15px;font-weight:800;color:#d5a0ff;letter-spacing:.6px}
-.diff-value{justify-self:center;font-size:66px;font-weight:800;color:#bd69ff;letter-spacing:-3px;line-height:1;white-space:nowrap}
-.diff-status{text-align:right;font-size:13px;font-weight:700;color:#e0c5ff;white-space:nowrap}
-.sidebar{min-width:0;min-height:0;overflow:hidden;background:linear-gradient(155deg,#151326,#0e1421 60%);border:1px solid #a855f7;border-radius:13px;padding:10px;display:flex;flex-direction:column;gap:9px}
+.diff-label{font-size:16px;font-weight:800;color:#e0baff;letter-spacing:.6px}
+.diff-value{justify-self:center;font-size:86px;font-weight:800;color:#c77aff;letter-spacing:-4px;line-height:1;white-space:nowrap}
+.diff-status{text-align:right;font-size:14px;font-weight:800;color:#e0c5ff;white-space:nowrap}
+.sidebar{min-width:0;min-height:0;overflow:hidden;background:linear-gradient(155deg,#151326,#0e1421 60%);border:1px solid #a855f7;border-radius:13px;padding:10px;display:flex;flex-direction:column;gap:8px}
 .side-head,.stream-head{display:flex;justify-content:space-between;align-items:center;gap:5px}
-.side-title{font-size:14px;font-weight:800;color:#c78aff}.live{font-size:10px;font-weight:700;color:var(--green);white-space:nowrap}
+.side-title{font-size:15px;font-weight:800;color:#d5a0ff}.live{font-size:11px;font-weight:800;color:var(--green);white-space:nowrap}
 .profile{display:grid;grid-template-columns:68px minmax(0,1fr);align-items:center;gap:10px;min-width:0}
 .my-avatar{width:66px;height:66px;object-fit:cover;border-radius:50%;border:2px solid var(--purple);box-shadow:0 0 14px #a855f755}
-.my-name{font-size:17px;font-weight:800;overflow-wrap:anywhere}.my-handle{font-size:10px;color:var(--muted);margin-top:2px}
-.my-label{font-size:10px;font-weight:800;color:var(--muted);margin-top:5px}
-.my-count{font-size:34px;font-weight:800;letter-spacing:-1px;line-height:1.1;white-space:nowrap;overflow:hidden;width:100%}
-.api-line{display:flex;align-items:center;justify-content:space-between;gap:7px;padding:8px 0;border-top:1px solid #ffffff20;border-bottom:1px solid #ffffff20;min-width:0}
-.api-line span{font-size:11px;color:var(--muted);font-weight:800;white-space:nowrap}.api-line strong{font-size:25px;font-weight:800;white-space:nowrap;overflow:hidden;min-width:0}
-.stream-head{flex:none}.stream-head span:first-child{font-size:13px;color:var(--blue);font-weight:800}
+.my-name{font-size:18px;font-weight:800;overflow-wrap:anywhere}.my-handle{font-size:11px;color:var(--muted);margin-top:2px}
+.my-label{font-size:12px;font-weight:800;color:#c4d0e4;margin-top:5px}
+.my-count{font-size:38px;font-weight:800;letter-spacing:-1px;line-height:1.1;white-space:nowrap;overflow:hidden;width:100%;color:#fff}
+.api-line{display:flex;align-items:center;justify-content:space-between;gap:7px;padding:7px 0;border-top:1px solid #ffffff20;border-bottom:1px solid #ffffff20;min-width:0}
+.api-line span{font-size:13px;color:#c4d0e4;font-weight:800;white-space:nowrap}.api-line strong{font-size:32px;font-weight:800;white-space:nowrap;overflow:hidden;min-width:0}
+.stream-head{flex:none}.stream-head span:first-child{font-size:15px;color:var(--blue);font-weight:800}
 .stream{display:grid;grid-template-columns:90px minmax(0,1fr);gap:9px;align-items:center;min-width:0}
 .thumb{width:90px;height:58px;object-fit:cover;border-radius:7px;border:1px solid #3d577b}
-.stream-title{font-size:12px;font-weight:700;line-height:1.3;overflow-wrap:anywhere}.stream-channel{font-size:10px;color:var(--muted);margin-top:4px}
-.meta{font-size:10px;color:#a5b1c7;line-height:1.5;overflow-wrap:anywhere;max-height:43px;overflow:hidden}
-.stream-grid{display:grid;grid-template-columns:1fr;grid-auto-rows:minmax(0,1fr);gap:7px;flex:1;min-height:0;min-width:0}
-.stream-stat{background:#ffffff09;border:1px solid #ffffff12;border-radius:8px;padding:7px 11px;min-width:0;min-height:0;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:8px}
-.stream-stat label{font-size:10px;color:var(--blue);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.stream-stat .value{font-size:30px;font-weight:800;letter-spacing:-1px;white-space:nowrap;overflow:hidden;line-height:1!important;min-width:0}
-footer{font-size:10px;color:var(--muted)}footer .live{color:var(--green)}
+.stream-title{font-size:13px;font-weight:800;line-height:1.3;overflow-wrap:anywhere}.stream-channel{font-size:11px;color:var(--muted);margin-top:4px}
+.meta{font-size:11px;color:#b7c4da;line-height:1.5;overflow-wrap:anywhere;max-height:43px;overflow:hidden}
+.stream-grid{display:grid;grid-template-columns:1fr;grid-template-rows:repeat(4,minmax(0,1fr));gap:5px;flex:1;min-height:0;min-width:0}
+.stream-stat{background:linear-gradient(110deg,#14283c,#101a2a);border:1px solid #39c5ff55;border-radius:8px;padding:2px 9px;min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:0}
+.stream-stat label{font-size:13px;color:#75d8ff;font-weight:800;letter-spacing:.4px;white-space:nowrap}
+.stream-stat .value{display:block;font-size:100px;font-weight:800;letter-spacing:-6px;white-space:nowrap;overflow:visible;line-height:.85!important;min-width:0;color:#fff;transform:scaleX(.58);transform-origin:left center;width:170%}
+footer{font-size:11px;color:#b7c4da}footer .live{color:var(--green)}
 </style></head><body><div class="container">
 <header><div class="music-player"><span class="mission-tag">NCS · NOW PLAYING</span><div class="music-info"><span class="equalizer"><i></i><i></i><i></i><i></i></span><div class="music-window"><div class="music-marquee" id="music-marquee">Waiting for VLC...</div></div></div></div></header>
 <main class="battle"><div class="versus">
@@ -106,15 +105,14 @@ footer{font-size:10px;color:var(--muted)}footer .live{color:var(--green)}
 </div></aside>
 <footer><div><span class="live">● LIVE</span> &nbsp; FLASHCOUNTS + MIXERNO FALLBACK</div><div id="updated">Connecting...</div></footer>
 </div>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
 <script>
 const $=id=>document.getElementById(id),meters={},dynamic={},lastValues={};
 let lastStream=null,updating=false;
 const ids=["celine-est-subs","celine-api-subs","celine-views","celine-api-views","celine-videos","kondzilla-est-subs","kondzilla-api-subs","kondzilla-views","kondzilla-api-views","kondzilla-videos","vystats-est-subs","vystats-api-subs","sub-diff","stream-viewers","stream-views","stream-est-views","stream-likes"];
-const fmt=n=>Math.round(n).toLocaleString("en-US"),toNum=v=>v==null||v===""?NaN:typeof v==="string"?Number(v.replace(/[,\s]/g,"")):Number(v);
-function meter(el){return window.Odometer&&el?new Odometer({el,value:0,format:"(,ddd)",duration:350}):null}
+function meter(el){return window.Odometer&&el?new Odometer({el,value:0,format:"(,ddd)",duration:220}):null}
 ids.forEach(id=>meters[id]=meter($(id)));
+const fmt=n=>Math.round(n).toLocaleString("en-US"),toNum=v=>v==null||v===""?NaN:typeof v==="string"?Number(v.replace(/[,\s]/g,"")):Number(v);
 function num(id,v){
 const n=toNum(v),el=$(id);if(!el||!Number.isFinite(n)||lastValues[id]===n)return;
 lastValues[id]=n;if(!meters[id])meters[id]=meter(el);
@@ -122,7 +120,7 @@ if(meters[id])meters[id].update(n);else el.textContent=fmt(n);
 }
 function txt(id,v){if($(id))$(id).textContent=v??"—"}
 function loadAvatar(k){
-const el=$(k+"-avatar");if(el&&!el.dataset.loaded){el.dataset.loaded="1";el.src="/api/avatar/"+k+"?v=4";el.onerror=()=>console.error("[Avatar] Failed:",k)}
+const el=$(k+"-avatar");if(el&&!el.dataset.loaded){el.dataset.loaded="1";el.src="/api/avatar/"+k+"?v=3";el.onerror=()=>console.error("[Avatar] Failed: /api/avatar/"+k)}
 }
 function renderChannel(k,d){
 if(!d)return;loadAvatar(k);if(d.name)txt(k+"-name",d.name);if(d.handle)txt(k+"-handle",d.handle);
@@ -158,14 +156,13 @@ async function update(){
 if(updating)return;updating=true;
 try{
 const r=await fetch("/api/stats",{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);
-const d=await r.json();
-renderChannel("celine",d.celine);renderChannel("kondzilla",d.kondzilla);renderVystats(d.vystats);renderStream(d.stream);
+const d=await r.json();renderChannel("celine",d.celine);renderChannel("kondzilla",d.kondzilla);renderVystats(d.vystats);renderStream(d.stream);
 if(d.celine&&d.kondzilla){
 const a=toNum(d.celine.estimatedSubscriberCount),b=toNum(d.kondzilla.estimatedSubscriberCount);
 if(Number.isFinite(a)&&Number.isFinite(b)){num("sub-diff",Math.abs(a-b));txt("gap-status",a>b?"Celine is ahead":a<b?"Celine is behind":"Channels are tied")}
 }
 txt("updated",d.lastUpdated?"Updated "+new Date(d.lastUpdated).toLocaleTimeString():"Waiting...");
-}catch(e){txt("updated","Connection error · showing last stats");console.error("[Dashboard]",e)}
+}catch(e){txt("updated","Connection error · showing last stats");if(lastStream)renderStream(lastStream);console.error("[Dashboard]",e)}
 finally{updating=false}
 }
 async function updateMusic(){
@@ -176,6 +173,4 @@ if(song&&$("music-marquee").textContent!==song){const el=$("music-marquee");el.t
 }catch(e){}
 }
 update();updateMusic();setInterval(update,5000);setInterval(updateMusic,2000);
-</script>
-</body></html>
-
+</script></body></html>
