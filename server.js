@@ -19,6 +19,7 @@ async function get(url,headers={}){
 async function json(url){return(await get(url)).json()}
 const mix=(d,k)=>d?.counts?.find(x=>x.value===k)?.count;
 const user=(d,k)=>d?.user?.find(x=>x.value===k)?.count;
+
 async function fetchMixerno(ch){
  const d=await json(`https://mixerno.space/api/youtube-channel-counter/user/${ch.id}`),subs=num(mix(d,"subscribers"));
  if(!subs)throw Error("Missing Mixerno subscriber count");
@@ -51,21 +52,30 @@ function extractObject(s,start){
  }
  return null;
 }
-function avatarUrl(html){
- const key='"channelMetadataRenderer"',pos=html.indexOf(key);
+function avatarUrls(html){
+ const urls=[],pos=html.indexOf('"channelMetadataRenderer"');
  if(pos>=0){
-  const data=extractObject(html,pos+key.length),list=data?.avatar?.thumbnails||[];
-  const best=list.sort((a,b)=>(b.width||0)-(a.width||0))[0]?.url;
-  if(best)return best.replace(/=s\d+(?:-c-k-c0x00ffffff-no-rj)?/,"=s800-c-k-c0x00ffffff-no-rj");
+  const data=extractObject(html,pos+'"channelMetadataRenderer"'.length);
+  const list=data?.avatar?.thumbnails||[];
+  list.sort((a,b)=>(b.width||0)-(a.width||0)).forEach(x=>{
+   if(!x.url)return;
+   const u=x.url;
+   urls.push(u.replace(/=s\d+(?:-[^?&]*)?/,"=s0"));
+   urls.push(u.replace(/=s\d+(?:-[^?&]*)?/,"=s1000-c-k-c0x00ffffff-no-rj"));
+   urls.push(u);
+  });
  }
  const tags=html.match(/<meta\b[^>]*>/gi)||[];
  for(const tag of tags){
   if(/property=["']og:image["']/i.test(tag)){
-   const url=tag.match(/content=["']([^"']+)/i)?.[1];
-   if(url)return url.replace(/&amp;/g,"&").replace(/=s\d+(?:-c-k-c0x00ffffff-no-rj)?/,"=s800-c-k-c0x00ffffff-no-rj");
+   const m=tag.match(/\bcontent=["']([^"']+)/i);
+   if(m){
+    const u=m[1].replace(/&amp;/g,"&");
+    urls.push(u.replace(/=s\d+(?:-[^?&]*)?/,"=s0"),u);
+   }
   }
  }
- return "";
+ return [...new Set(urls)];
 }
 async function fetchAvatar(k){
  const old=avatars[k];
@@ -78,19 +88,25 @@ async function fetchAvatar(k){
    const page=await get(`https://www.youtube.com/channel/${ch.id}?hl=en`,{"Accept-Language":"en-US,en;q=0.9","Accept":"text/html"});
    const html=await page.text();
    if(!html.includes(ch.id))throw Error(`Unexpected YouTube page (${html.length} bytes)`);
-   const url=avatarUrl(html);
-   if(!url)throw Error(`Avatar not found (${html.length} bytes, metadata:${html.includes("channelMetadataRenderer")})`);
-   const u=new URL(url);
-   if(!["yt3.ggpht.com","yt3.googleusercontent.com"].includes(u.hostname))throw Error("Unexpected avatar host: "+u.hostname);
-   const img=await get(u.href,{"Referer":"https://www.youtube.com/"});
-   const type=img.headers.get("content-type")||"image/jpeg";
-   if(!type.startsWith("image/"))throw Error("Invalid image response: "+type);
-   const body=Buffer.from(await img.arrayBuffer());
-   if(!body.length||body.length>5e6)throw Error("Invalid avatar size");
-   const result={body,type,time:Date.now()};
-   avatars[k]=result;
-   console.log(`[Avatar ${k}] YouTube · ${Math.round(body.length/1024)} KB`);
-   return result;
+   const urls=avatarUrls(html);
+   if(!urls.length)throw Error(`Avatar not found (${html.length} bytes)`);
+   let lastError;
+   for(const url of urls){
+    try{
+     const u=new URL(url);
+     if(!["yt3.ggpht.com","yt3.googleusercontent.com"].includes(u.hostname))continue;
+     const img=await get(u.href,{"Referer":"https://www.youtube.com/"});
+     const type=img.headers.get("content-type")||"image/jpeg";
+     if(!type.startsWith("image/"))throw Error("Invalid image response: "+type);
+     const body=Buffer.from(await img.arrayBuffer());
+     if(!body.length||body.length>8e6)throw Error("Invalid avatar size");
+     const result={body,type,time:Date.now()};
+     avatars[k]=result;
+     console.log(`[Avatar ${k}] YouTube · ${Math.round(body.length/1024)} KB`);
+     return result;
+    }catch(e){lastError=e}
+   }
+   throw lastError||Error("No usable YouTube avatar URL");
   }catch(e){
    console.log(`[Avatar ${k}] ${e.message}`);
    if(old?.body)return old;
