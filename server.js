@@ -19,7 +19,6 @@ async function get(url,headers={}){
 async function json(url){return(await get(url)).json()}
 const mix=(d,k)=>d?.counts?.find(x=>x.value===k)?.count;
 const user=(d,k)=>d?.user?.find(x=>x.value===k)?.count;
-
 async function fetchMixerno(ch){
  const d=await json(`https://mixerno.space/api/youtube-channel-counter/user/${ch.id}`),subs=num(mix(d,"subscribers"));
  if(!subs)throw Error("Missing Mixerno subscriber count");
@@ -40,8 +39,7 @@ async function fetchCh(k,ch){
  return cache[k];
 }
 function extractObject(s,start){
- start=s.indexOf("{",start);
- if(start<0)return null;
+ start=s.indexOf("{",start);if(start<0)return null;
  let depth=0,string=false,escape=false;
  for(let i=start;i<s.length;i++){
   const c=s[i];
@@ -52,61 +50,49 @@ function extractObject(s,start){
  }
  return null;
 }
-function avatarUrls(html){
- const urls=[],pos=html.indexOf('"channelMetadataRenderer"');
+function avatarUrl(html){
+ const key='"channelMetadataRenderer"',pos=html.indexOf(key);
  if(pos>=0){
-  const data=extractObject(html,pos+'"channelMetadataRenderer"'.length);
-  const list=data?.avatar?.thumbnails||[];
-  list.sort((a,b)=>(b.width||0)-(a.width||0)).forEach(x=>{
-   if(!x.url)return;
-   const u=x.url;
-   urls.push(u.replace(/=s\d+(?:-[^?&]*)?/,"=s0"));
-   urls.push(u.replace(/=s\d+(?:-[^?&]*)?/,"=s1000-c-k-c0x00ffffff-no-rj"));
-   urls.push(u);
-  });
+  const list=extractObject(html,pos+key.length)?.avatar?.thumbnails||[];
+  const best=[...list].sort((a,b)=>(b.width||0)-(a.width||0))[0]?.url;
+  if(best)return best;
  }
  const tags=html.match(/<meta\b[^>]*>/gi)||[];
  for(const tag of tags){
   if(/property=["']og:image["']/i.test(tag)){
-   const m=tag.match(/\bcontent=["']([^"']+)/i);
-   if(m){
-    const u=m[1].replace(/&amp;/g,"&");
-    urls.push(u.replace(/=s\d+(?:-[^?&]*)?/,"=s0"),u);
-   }
+   const url=tag.match(/content=["']([^"']+)/i)?.[1];
+   if(url)return url.replace(/&amp;/g,"&");
   }
  }
- return [...new Set(urls)];
+ return "";
+}
+function originalAvatarUrl(url,size){
+ return url.replace(/=s\d+[^?]*/,"="+size);
 }
 async function fetchAvatar(k){
  const old=avatars[k];
  if(old?.body&&Date.now()-old.time<AVATAR_TTL)return old;
  if(old?.loading)return old.loading;
- const ch=chs[k];
- if(!ch)throw Error("Unknown channel");
+ const ch=chs[k];if(!ch)throw Error("Unknown channel");
  const loading=(async()=>{
   try{
    const page=await get(`https://www.youtube.com/channel/${ch.id}?hl=en`,{"Accept-Language":"en-US,en;q=0.9","Accept":"text/html"});
    const html=await page.text();
-   if(!html.includes(ch.id))throw Error(`Unexpected YouTube page (${html.length} bytes)`);
-   const urls=avatarUrls(html);
-   if(!urls.length)throw Error(`Avatar not found (${html.length} bytes)`);
-   let lastError;
-   for(const url of urls){
-    try{
-     const u=new URL(url);
-     if(!["yt3.ggpht.com","yt3.googleusercontent.com"].includes(u.hostname))continue;
-     const img=await get(u.href,{"Referer":"https://www.youtube.com/"});
-     const type=img.headers.get("content-type")||"image/jpeg";
-     if(!type.startsWith("image/"))throw Error("Invalid image response: "+type);
-     const body=Buffer.from(await img.arrayBuffer());
-     if(!body.length||body.length>8e6)throw Error("Invalid avatar size");
-     const result={body,type,time:Date.now()};
-     avatars[k]=result;
-     console.log(`[Avatar ${k}] YouTube · ${Math.round(body.length/1024)} KB`);
-     return result;
-    }catch(e){lastError=e}
+   if(!html.includes(ch.id))throw Error("Unexpected YouTube page");
+   const found=avatarUrl(html);if(!found)throw Error("Avatar not found");
+   const u=new URL(found);
+   if(!["yt3.ggpht.com","yt3.googleusercontent.com"].includes(u.hostname))throw Error("Unexpected avatar host");
+   let img;
+   for(const size of ["s0","s800-c-k-c0x00ffffff-no-rj"]){
+    try{img=await get(originalAvatarUrl(u.href,size),{"Referer":"https://www.youtube.com/"});break}catch(e){if(size==="s800-c-k-c0x00ffffff-no-rj")throw e}
    }
-   throw lastError||Error("No usable YouTube avatar URL");
+   const type=img.headers.get("content-type")||"image/jpeg";
+   if(!type.startsWith("image/"))throw Error("Invalid image response: "+type);
+   const body=Buffer.from(await img.arrayBuffer());
+   if(!body.length||body.length>5e6)throw Error("Invalid avatar size");
+   const result={body,type,time:Date.now()};avatars[k]=result;
+   console.log(`[Avatar ${k}] YouTube original · ${Math.round(body.length/1024)} KB`);
+   return result;
   }catch(e){
    console.log(`[Avatar ${k}] ${e.message}`);
    if(old?.body)return old;
@@ -117,8 +103,7 @@ async function fetchAvatar(k){
  try{return await loading}finally{if(avatars[k]?.loading===loading)delete avatars[k].loading}
 }
 async function update(){
- if(busy)return;
- busy=true;
+ if(busy)return;busy=true;
  try{
   const results=await Promise.all(Object.entries(chs).map(([k,c])=>fetchCh(k,c)));
   const s=await json(`https://api.basepoint.live/youtube/stream/${STREAM_ID}`).catch(e=>{console.log("[Stream]",e.message);return null});
@@ -134,8 +119,7 @@ app.post("/api/music",(q,r)=>{
  if(!a.length||!b.length||a.length!==b.length||!crypto.timingSafeEqual(a,b))return r.sendStatus(401);
  const title=String(q.body?.title||"").trim(),artist=String(q.body?.artist||"").trim();
  if(!title||title.length>300||artist.length>150)return r.sendStatus(400);
- music={title,artist,updatedAt:new Date().toISOString()};
- r.json({ok:true});
+ music={title,artist,updatedAt:new Date().toISOString()};r.json({ok:true});
 });
 app.get("/api/avatar/:key",async(q,r)=>{
  if(!chs[q.params.key])return r.sendStatus(404);
