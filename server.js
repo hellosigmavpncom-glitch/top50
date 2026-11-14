@@ -1,111 +1,108 @@
 
 const express=require("express"),app=express(),path=require("path"),crypto=require("crypto");
-const PORT=process.env.PORT||3000,STALE=90000,STREAM_ID="Nr1IWBNNQFA";
+const PORT=process.env.PORT||3000,STREAM_ID="Nr1IWBNNQFA";
 const chs={
  celine:{id:"UC1a2ZCw7tugRZYRMnecNj3A",name:"Celine Dept",handle:"@celinedept"},
  kondzilla:{id:"UCffDXn7ycAzwL2LDlbyWOTw",name:"Canal KondZilla",handle:"@kondzilla"},
  vystats:{id:"UCnKrmx7XhDqbiMD3aSBwz_g",name:"VYStats",handle:"@VYStats"}
 };
-const browserHeaders={
- "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36 Edg/157.0.0.0",
- "Accept":"application/json,text/plain,*/*",
- "Accept-Language":"en-US,en;q=0.9",
- "Cache-Control":"no-cache","Pragma":"no-cache"
-};
 let cache={celine:null,kondzilla:null,vystats:null,stream:null,lastUpdated:null};
 let music={title:"Waiting for VLC...",artist:""},busy=false;
-const sources={};
 app.use(express.json({limit:"2kb"}));
 app.use((q,s,n)=>{s.setHeader("Cache-Control","no-store");n()});
-
-const get=async u=>{
- let host=new URL(u).hostname;
- let ref=host.includes("socialcounts")?"https://socialcounts.org/":host.includes("mixerno")?"https://mixerno.space/":"https://basepoint.live/";
- let r=await fetch(u,{signal:AbortSignal.timeout(10000),headers:{...browserHeaders,Referer:ref}});
- let body=await r.text();
- if(!r.ok)throw Error(`HTTP ${r.status}: ${body.slice(0,180)}`);
- try{return JSON.parse(body)}catch{throw Error("Invalid JSON response")}
-};
 const n=v=>Number(String(v??0).replace(/,/g,""))||0;
+const get=async url=>{
+ let r=await fetch(url,{signal:AbortSignal.timeout(12000),headers:{"User-Agent":"Mozilla/5.0"}});
+ if(!r.ok)throw Error("HTTP "+r.status);
+ return r.json();
+};
 
-async function social(ch){
- let c=(await get(`https://api.socialcounts.org/youtube-live-subscriber-count/${ch.id}`)).counters;
- if(!c?.estimation)throw Error("Missing SocialCounts data");
- return{id:ch.id,name:ch.name,handle:ch.handle,estimatedSubscriberCount:n(c.estimation.subscriberCount),apiSubscriberCount:n(c.api?.subscriberCount),viewCount:n(c.estimation.viewCount),apiViewCount:n(c.api?.viewCount),videoCount:n(c.estimation.videoCount)};
+async function flashcounts(ch){
+ const d=await get(`https://flashcounts.jp/api/youtube/channels/${ch.id}`);
+ const sub=n(d.subscribers?.count);
+ if(!sub)throw Error("Missing estimated subscribers");
+ const avatar=d.channel?.thumbnail||"";
+ return{
+  id:ch.id,name:d.channel?.title||ch.name,
+  handle:d.channel?.handle||ch.handle,avatar,
+  estimatedSubscriberCount:sub,
+  apiSubscriberCount:n(d.subscribers?.api),
+  viewCount:n(d.views?.count),
+  apiViewCount:n(d.views?.api),
+  videoCount:n(d.videos?.count)
+ };
 }
-async function mixerno(ch){
- let d=await get(`https://mixerno.space/api/youtube-channel-counter/user/${ch.id}`);
- let gc=k=>d.counts?.find(x=>x.value===k)?.count??0,gu=k=>d.user?.find(x=>x.value===k)?.count??"";
- let sub=n(gc("subscribers"));
- if(!sub)throw Error("Missing Mixerno subscribers");
- return{id:ch.id,name:gu("name")||ch.name,handle:ch.handle,estimatedSubscriberCount:sub,apiSubscriberCount:n(gc("apisubscribers")),viewCount:n(gc("views")),apiViewCount:n(gc("apiviews")),videoCount:n(gc("videos"))};
-}
-function choose(key,a,b){
- let now=Date.now(),s=sources[key]||(sources[key]={});
- for(let [k,d] of [["social",a],["mixerno",b]])if(d){
-  let sig=[d.estimatedSubscriberCount,d.viewCount,d.videoCount].join(":");
-  if(s[k]?.sig!==sig)s[k]={sig,changed:now,data:d};
- }
- let valid=["social","mixerno"].filter(k=>s[k]?.data&&now-s[k].changed<STALE);
- if(!valid.length){console.log(`[${key}] Both sources stale`);return null}
- valid.sort((x,y)=>s[y].changed-s[x].changed);
- let pick=valid.includes("social")&&valid.length===2&&s.social.changed>=s.mixerno.changed?"social":valid[0];
- console.log(`[${key}] ${pick}: ${s[pick].data.estimatedSubscriberCount.toLocaleString()} subscribers`);
- return s[pick].data;
-}
+
 async function fetchCh(k,ch){
- let [a,b]=await Promise.allSettled([social(ch),mixerno(ch)]);
- if(a.status==="rejected")console.log(`[${k}] SocialCounts: ${a.reason.message}`);
- if(b.status==="rejected")console.log(`[${k}] Mixerno: ${b.reason.message}`);
- return choose(k,a.status==="fulfilled"?a.value:null,b.status==="fulfilled"?b.value:null);
-}
-async function avatar(k,ch){
  try{
-  let h={...browserHeaders,Accept:"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",Referer:"https://www.youtube.com/"};
-  let r=await fetch(`https://www.youtube.com/channel/${ch.id}`,{signal:AbortSignal.timeout(12000),headers:h});
-  if(!r.ok)throw Error("YouTube HTTP "+r.status);
-  let html=await r.text();
-  let m=html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i)||html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
-  if(m)cache[k]={...cache[k],avatar:m[1].replace(/&amp;/g,"&")};
-  else throw Error("Avatar metadata not found");
- }catch(e){console.log(`[${k}] Avatar: ${e.message}`)}
+  const d=await flashcounts(ch);
+  cache[k]={...cache[k],...d};
+  console.log(`[${k}] FlashCounts: ${d.estimatedSubscriberCount.toLocaleString()} subscribers`);
+  return d;
+ }catch(e){
+  console.log(`[${k}] FlashCounts: ${e.message}`);
+  return null;
+ }
 }
-const fetchStream=()=>get(`https://api.basepoint.live/youtube/stream/${STREAM_ID}`);
+
+async function fetchStream(){
+ return get(`https://api.basepoint.live/youtube/stream/${STREAM_ID}`);
+}
+
 async function update(){
- if(busy)return;busy=true;
+ if(busy)return;
+ busy=true;
  try{
-  let keys=Object.keys(chs),results=await Promise.all(keys.map(k=>fetchCh(k,chs[k])));
-  results.forEach((d,i)=>{if(d)cache[keys[i]]={...cache[keys[i]],...d}});
-  let s=await fetchStream().catch(e=>{console.log("[Stream]",e.message);return null});
+  const keys=Object.keys(chs);
+  const results=await Promise.all(keys.map(k=>fetchCh(k,chs[k])));
+  const s=await fetchStream().catch(e=>{
+   console.log("[Stream]",e.message);return null;
+  });
   if(s)cache.stream=s;
   if(results.some(Boolean)||s)cache.lastUpdated=new Date().toISOString();
  }catch(e){console.log("[Update]",e.message)}
  finally{busy=false}
 }
+
 app.get("/api/stats",(_,r)=>r.json(cache));
 app.get("/api/music",(_,r)=>r.json(music));
+
 app.post("/api/music",(q,r)=>{
- let a=Buffer.from(process.env.MUSIC_TOKEN||"");
- let b=Buffer.from(String(q.headers.authorization||"").replace(/^Bearer\s+/i,""));
- if(!a.length||!b.length||a.length!==b.length||!crypto.timingSafeEqual(a,b))return r.sendStatus(401);
- let title=String(q.body?.title||"").trim(),artist=String(q.body?.artist||"").trim();
+ const a=process.env.MUSIC_TOKEN||"";
+ const b=String(q.headers.authorization||"").replace(/^Bearer\s+/i,"");
+ const x=Buffer.from(a),y=Buffer.from(b);
+ if(!a||!b||x.length!==y.length||!crypto.timingSafeEqual(x,y))return r.sendStatus(401);
+ const title=String(q.body?.title||"").trim();
+ const artist=String(q.body?.artist||"").trim();
  if(!title||title.length>300||artist.length>150)return r.sendStatus(400);
  music={title,artist,updatedAt:new Date().toISOString()};
  r.json({ok:true});
 });
+
 app.get("/api/avatar/:key",async(q,r)=>{
- let url=cache[q.params.key]?.avatar;
+ const url=cache[q.params.key]?.avatar;
  if(!url)return r.sendStatus(404);
  try{
-  let x=await fetch(url,{signal:AbortSignal.timeout(8000),headers:{...browserHeaders,Accept:"image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",Referer:"https://www.youtube.com/"}});
+  const u=new URL(url);
+  if(!["https:"].includes(u.protocol))return r.sendStatus(400);
+  const x=await fetch(u,{signal:AbortSignal.timeout(10000),headers:{
+   "User-Agent":"Mozilla/5.0",
+   "Referer":"https://www.youtube.com/"
+  }});
   if(!x.ok)throw Error("HTTP "+x.status);
-  r.set("Content-Type",x.headers.get("content-type")||"image/jpeg").send(Buffer.from(await x.arrayBuffer()));
- }catch(e){console.log("[Avatar proxy]",e.message);r.sendStatus(502)}
+  r.set("Content-Type",x.headers.get("content-type")||"image/jpeg");
+  r.set("Cache-Control","public, max-age=3600");
+  r.send(Buffer.from(await x.arrayBuffer()));
+ }catch(e){
+  console.log(`[Avatar ${q.params.key}] ${e.message}`);
+  r.sendStatus(502);
+ }
 });
+
 app.get("/",(_,r)=>r.sendFile(path.join(__dirname,"index.html")));
+
 app.listen(PORT,()=>{
  console.log(`[RUN] Port ${PORT}`);
- update();setInterval(update,5000);
- Object.entries(chs).forEach(([k,ch])=>avatar(k,ch));
- setInterval(()=>Object.entries(chs).forEach(([k,ch])=>avatar(k,ch)),21600000);
+ update();
+ setInterval(update,5000);
 });
