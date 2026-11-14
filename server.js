@@ -12,26 +12,63 @@ app.use((q,s,n)=>{s.setHeader("Cache-Control","no-store");n()});
 const num=v=>Number(String(v??0).replace(/,/g,""))||0;
 async function get(url){
  const r=await fetch(url,{signal:AbortSignal.timeout(12000),headers:{"User-Agent":"Mozilla/5.0"}});
- if(!r.ok)throw Error("HTTP "+r.status);return r.json();
+ if(!r.ok)throw Error("HTTP "+r.status);
+ return r.json();
+}
+function mixValue(d,key){
+ return d?.counts?.find(x=>x.value===key)?.count;
+}
+function mixUser(d,key){
+ return d?.user?.find(x=>x.value===key)?.count;
+}
+async function fetchMixerno(k,ch){
+ const d=await get(`https://mixerno.space/api/youtube-channel-counter/user/${ch.id}`);
+ const subs=num(mixValue(d,"subscribers"));
+ if(!subs)throw Error("Missing Mixerno subscriber count");
+ return{
+  id:ch.id,name:mixUser(d,"name")||ch.name,handle:ch.handle,
+  avatar:mixUser(d,"pfp")||"",
+  estimatedSubscriberCount:subs,
+  apiSubscriberCount:num(mixValue(d,"apisubscribers")),
+  viewCount:num(mixValue(d,"views")),
+  apiViewCount:num(mixValue(d,"apiviews")),
+  videoCount:num(mixValue(d,"videos"))
+ };
 }
 async function fetchCh(k,ch){
  try{
   const d=await get(`https://flashcounts.jp/api/youtube/channels/${ch.id}`),s=d.subscribers||{};
   if(!num(s.count))throw Error("Missing estimated subscribers");
   const c=d.channel||{},v=d.views||{};
-  const data={id:ch.id,name:c.title||ch.name,handle:c.handle||ch.handle,avatar:c.thumbnail||"",
+  const data={
+   id:ch.id,name:c.title||ch.name,handle:c.handle||ch.handle,avatar:c.thumbnail||"",
    estimatedSubscriberCount:num(s.count),apiSubscriberCount:num(s.api),
-   viewCount:num(v.count),apiViewCount:num(v.api),videoCount:num(d.videos?.count)};
+   viewCount:num(v.count),apiViewCount:num(v.api),videoCount:num(d.videos?.count)
+  };
   cache[k]={...cache[k],...data};
-  console.log(`[${k}] ${data.estimatedSubscriberCount.toLocaleString()} subscribers`);
-  return data;
- }catch(e){console.log(`[${k}] FlashCounts: ${e.message}`);return null}
+  console.log(`[${k}] FlashCounts · ${data.estimatedSubscriberCount.toLocaleString()}`);
+  return cache[k];
+ }catch(e){
+  console.log(`[${k}] FlashCounts: ${e.message} · trying Mixerno`);
+ }
+ try{
+  const data=await fetchMixerno(k,ch);
+  cache[k]={...cache[k],...data};
+  console.log(`[${k}] Mixerno · ${data.estimatedSubscriberCount.toLocaleString()}`);
+  return cache[k];
+ }catch(e){
+  console.log(`[${k}] Mixerno: ${e.message}`);
+  return cache[k];
+ }
 }
 async function update(){
- if(busy)return;busy=true;
+ if(busy)return;
+ busy=true;
  try{
   const results=await Promise.all(Object.entries(chs).map(([k,c])=>fetchCh(k,c)));
-  const s=await get(`https://api.basepoint.live/youtube/stream/${STREAM_ID}`).catch(e=>{console.log("[Stream]",e.message);return null});
+  const s=await get(`https://api.basepoint.live/youtube/stream/${STREAM_ID}`).catch(e=>{
+   console.log("[Stream]",e.message);return null
+  });
   if(s)cache.stream=s;
   if(results.some(Boolean)||s)cache.lastUpdated=new Date().toISOString();
  }catch(e){console.log("[Update]",e.message)}
@@ -44,17 +81,22 @@ app.post("/api/music",(q,r)=>{
  if(!a.length||!b.length||a.length!==b.length||!crypto.timingSafeEqual(a,b))return r.sendStatus(401);
  const title=String(q.body?.title||"").trim(),artist=String(q.body?.artist||"").trim();
  if(!title||title.length>300||artist.length>150)return r.sendStatus(400);
- music={title,artist,updatedAt:new Date().toISOString()};r.json({ok:true});
+ music={title,artist,updatedAt:new Date().toISOString()};
+ r.json({ok:true});
 });
 app.get("/api/avatar/:key",async(q,r)=>{
  const url=cache[q.params.key]?.avatar;
  if(!url)return r.sendStatus(404);
  try{
-  const u=new URL(url);if(u.protocol!=="https:")return r.sendStatus(400);
+  const u=new URL(url);
+  if(u.protocol!=="https:")return r.sendStatus(400);
   const x=await fetch(u,{signal:AbortSignal.timeout(10000),headers:{"User-Agent":"Mozilla/5.0","Referer":"https://www.youtube.com/"}});
   if(!x.ok)throw Error("HTTP "+x.status);
   r.set("Content-Type",x.headers.get("content-type")||"image/jpeg").set("Cache-Control","public,max-age=3600").send(Buffer.from(await x.arrayBuffer()));
- }catch(e){console.log(`[Avatar ${q.params.key}] ${e.message}`);r.sendStatus(502)}
+ }catch(e){
+  console.log(`[Avatar ${q.params.key}] ${e.message}`);
+  r.sendStatus(502);
+ }
 });
 app.get("/",(_,r)=>r.sendFile(path.join(__dirname,"index.html")));
 app.listen(PORT,()=>{console.log(`[RUN] Port ${PORT}`);update();setInterval(update,5000)});
