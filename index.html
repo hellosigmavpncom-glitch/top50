@@ -2,96 +2,97 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Race to Top 50 | Live Battle</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/themes/odometer-theme-minimal.min.css">
 <style>
-:root{--bg:#070910;--purple:#b45cff;--blue:#39c5ff;--white:#f7f8ff;--muted:#a5b1c7;--green:#42ed9b}
+:root{--bg:#080b14;--purple:#bd70ff;--blue:#42caff;--white:#f7f8ff;--muted:#9eacc4;--green:#42ed9b}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:1600px;height:900px;overflow:hidden}
 body{font-family:Inter,sans-serif;background:var(--bg);color:var(--white);font-weight:700}
-.container{width:1600px;height:900px;padding:4px 15px 12px;display:grid;grid-template-columns:minmax(0,1fr) 360px;grid-template-rows:40px minmax(0,1fr) 17px;gap:9px;background:radial-gradient(ellipse at 25% 30%,#29123c55,transparent 48%),radial-gradient(ellipse at 75% 55%,#102a4455,transparent 48%),#070910}
+.container{width:1600px;height:900px;padding:7px 12px 10px;display:grid;grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:43px minmax(0,1fr) 17px;gap:9px;background:radial-gradient(ellipse at 22% 30%,#42165c44,transparent 48%),radial-gradient(ellipse at 78% 55%,#103c6040,transparent 48%),var(--bg)}
 header,footer{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;min-width:0}
-.music-player{width:100%;height:100%;display:flex;align-items:center;gap:12px;padding:5px 15px;background:#160e25;border:1px solid #63358a;border-radius:9px;overflow:hidden}
-.mission-tag{font-size:12px;letter-spacing:.7px;color:#d8a5ff;white-space:nowrap;border-right:1px solid #ffffff25;padding-right:13px}
+.music-player{height:100%;width:100%;display:flex;align-items:center;gap:12px;padding:5px 15px;background:linear-gradient(90deg,#241032,#111827);border:1px solid #7546a0;border-radius:10px;overflow:hidden}
+.mission-tag{font-size:12px;letter-spacing:.7px;color:#e0b5ff;white-space:nowrap;border-right:1px solid #ffffff25;padding-right:13px}
 .music-info{display:flex;align-items:center;gap:10px;min-width:0;flex:1;overflow:hidden}
 .equalizer{height:19px;display:flex;align-items:center;gap:3px;flex:none}
 .equalizer i{width:3px;height:6px;border-radius:3px;background:#c78aff;animation:eq .7s ease-in-out infinite alternate}
 .equalizer i:nth-child(2){height:13px;animation-delay:.2s}.equalizer i:nth-child(3){height:9px;animation-delay:.4s}.equalizer i:nth-child(4){height:15px;animation-delay:.1s}
 @keyframes eq{to{transform:scaleY(.45);opacity:.7}}
 .music-window{height:28px;flex:1;min-width:0;overflow:hidden;position:relative}
-.music-marquee{position:absolute;top:2px;left:100%;width:max-content;white-space:nowrap;font-size:21px;line-height:24px;font-weight:800;color:#f0e7ff;will-change:transform;animation:music-scroll 18s linear infinite}
+.music-marquee{position:absolute;top:2px;left:100%;width:max-content;white-space:nowrap;font-size:21px;line-height:24px;font-weight:800;color:#fff;will-change:transform;animation:music-scroll 18s linear infinite}
 @keyframes music-scroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(calc(-100% - 100vw),0,0)}}
 .battle,.versus{min-width:0;min-height:0}
-.versus{height:100%;display:grid;grid-template-rows:minmax(0,1fr) 108px minmax(0,1fr);gap:8px}
-.channel{position:relative;min-width:0;min-height:0;overflow:hidden;background:linear-gradient(120deg,#171329,#0e1320 65%);border:1px solid #8d45c9;border-radius:14px;padding:10px 14px;display:grid;grid-template-rows:28px minmax(0,1fr);gap:7px;box-shadow:inset 0 0 35px #a855f70b,0 5px 20px #0007}
-.channel:before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#8b35dd,#e0a5ff)}
-.channel.kond{background:linear-gradient(120deg,#101d30,#0e1320 65%);border-color:#277eb3}
+.versus{height:100%;display:grid;grid-template-rows:minmax(0,1fr) 94px minmax(0,1fr);gap:8px}
+.channel{position:relative;min-width:0;min-height:0;overflow:hidden;background:linear-gradient(120deg,#20142f,#101725 65%);border:1px solid #9c55d4;border-radius:14px;padding:10px 13px;display:grid;grid-template-rows:29px minmax(0,1fr);gap:8px;box-shadow:0 5px 22px #0007}
+.channel:before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#8b35dd,#e0a5ff)}
+.channel.kond{background:linear-gradient(120deg,#10283d,#101725 65%);border-color:#298bc0}
 .channel.kond:before{background:linear-gradient(90deg,#168bc5,#71ddff)}
-.channel-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff20;padding-bottom:5px;gap:8px;min-width:0}
-.channel-name{font-size:16px;font-weight:800;letter-spacing:.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.channel-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff17;padding-bottom:5px;gap:8px;min-width:0}
+.channel-name{font-size:16px;font-weight:800;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .celine .channel-name{color:#d5a0ff}.kond .channel-name{color:#75d8ff}
 .channel-number{font-size:11px;color:#aab8d0;white-space:nowrap}
-.channel-content{display:grid;grid-template-columns:220px minmax(0,1fr);gap:12px;min-width:0;min-height:0}
-.avatar-card{position:relative;width:220px;height:220px;max-height:100%;min-width:0;min-height:0;overflow:hidden;border:1px solid #ffffff30;border-radius:12px;background:#171d2b;align-self:center}
+.channel-content{display:grid;grid-template-columns:160px minmax(0,1fr);gap:13px;min-width:0;min-height:0}
+.avatar-card{position:relative;width:160px;height:160px;max-height:100%;min-width:0;overflow:hidden;border:1px solid #ffffff30;border-radius:12px;background:#171d2b;align-self:center}
 .avatar{display:block;width:100%;height:100%;object-fit:cover;border:2px solid var(--purple);border-radius:11px}
 .kond .avatar{border-color:var(--blue)}
-.avatar-info{position:absolute;bottom:0;left:0;right:0;padding:24px 10px 9px;background:linear-gradient(transparent,#070910ed)}
-.avatar-name{font-size:17px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.avatar-handle{font-size:11px;color:#c4cde0;margin-top:3px}
-.right-stack{display:grid;grid-template-rows:minmax(0,1fr) 76px;gap:7px;min-width:0;min-height:0}
-.subscriber-card{min-width:0;min-height:0;overflow:hidden;display:flex;align-items:center;padding:7px 12px;background:linear-gradient(125deg,#ffffff12,#ffffff04);border:1px solid #ffffff20;border-radius:12px}
+.avatar-info{position:absolute;bottom:0;left:0;right:0;padding:25px 9px 8px;background:linear-gradient(transparent,#070910ed)}
+.avatar-name{font-size:15px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.avatar-handle{font-size:10px;color:#c4cde0;margin-top:3px}
+.right-stack{display:grid;grid-template-rows:minmax(0,1fr) 78px;gap:8px;min-width:0;min-height:0}
+.subscriber-card{min-width:0;min-height:0;overflow:hidden;display:flex;align-items:center;padding:7px 15px;background:radial-gradient(ellipse at 25% 50%,#b45cff20,transparent 70%),#ffffff08;border:1px solid #b45cff55;border-radius:12px;box-shadow:inset 0 0 25px #a855f710}
+.kond .subscriber-card{background:radial-gradient(ellipse at 25% 50%,#39c5ff20,transparent 70%),#ffffff08;border-color:#39c5ff55;box-shadow:inset 0 0 25px #39c5ff10}
 .hero-number{width:100%;min-width:0;display:flex;flex-direction:column;justify-content:center}
-.eyebrow{font-size:clamp(14px,1.1vw,19px);font-weight:800;letter-spacing:.7px;color:#c1cde1;margin-bottom:0;white-space:normal;line-height:1.12}
-.big-number{font-size:140px;font-weight:800;letter-spacing:-.055em;line-height:1.08;white-space:nowrap}
+.eyebrow{font-size:15px;font-weight:800;letter-spacing:.8px;color:#cbd6e9;line-height:1.2;margin-bottom:2px}
+.big-number{font-size:clamp(95px,8vw,132px);font-weight:800;letter-spacing:-.065em;line-height:1.04;white-space:nowrap;color:#fff;text-shadow:0 0 17px #b45cff35}
+.kond .big-number{text-shadow:0 0 17px #39c5ff35}
 .odometer{font-family:Inter,sans-serif!important;font-variant-numeric:tabular-nums;line-height:1.08!important;vertical-align:middle}
 .odometer-digit-inner{overflow:hidden!important}.odometer-ribbon-inner{line-height:1.08!important}.odometer-digit{vertical-align:baseline!important}
-.hero-caption{font-size:clamp(11px,.8vw,14px);color:#b8c5dc;margin-top:1px;letter-spacing:.5px;white-space:normal;line-height:1.2;overflow:visible}
-.api-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;min-width:0;min-height:0}
-.api-stat{container-type:inline-size;min-width:0;min-height:0;overflow:hidden;background:#ffffff09;border:1px solid #ffffff20;border-radius:8px;padding:5px 7px;display:flex;flex-direction:column;justify-content:center;gap:5px}
-.api-label{font-size:clamp(12px,7cqi,17px);font-weight:800;letter-spacing:.2px;color:#e2edff;white-space:normal;overflow-wrap:anywhere;line-height:1.12}
-.api-value{display:block;font-size:clamp(25px,2vw,32px);font-weight:800;letter-spacing:-1px;line-height:1.1!important;white-space:nowrap;min-width:0;color:#fff;transform:scaleX(.88);transform-origin:left center;width:114%}
-.difference{height:108px;min-height:108px;border:1px solid #a855f7;border-radius:12px;background:linear-gradient(100deg,#26113c,#171025 50%,#25113b);display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;padding:0 22px;gap:12px;box-shadow:0 0 20px #a855f72b;overflow:hidden}
-.diff-label{font-size:clamp(15px,1.15vw,20px);font-weight:800;color:#e0baff;letter-spacing:.4px;white-space:normal;line-height:1.1}
-.diff-value{justify-self:center;font-size:96px;font-weight:800;color:#c77aff;letter-spacing:-4px;line-height:1;white-space:nowrap}
-.diff-status{text-align:right;font-size:14px;font-weight:800;color:#e0c5ff;white-space:nowrap}
-.diff-status.behind,.diff-status.ahead{font-size:clamp(19px,1.65vw,27px);font-weight:800;letter-spacing:.2px;line-height:1.15;white-space:normal;max-width:260px;padding:13px 15px;border-radius:10px;text-align:center;text-shadow:0 0 12px currentColor;box-shadow:0 0 18px currentColor}
-.diff-status.behind{color:#ff6b86;background:#ff36501c;border:1px solid #ff557b99}
-.diff-status.ahead{color:#42ed9b;background:#42ed9b18;border:1px solid #42ed9b88}
-.diff-status.tied{color:#e0c5ff;font-size:21px}
-.sidebar{min-width:0;min-height:0;overflow:hidden;background:linear-gradient(155deg,#151326,#0e1421 60%);border:1px solid #a855f7;border-radius:13px;padding:8px;display:flex;flex-direction:column;gap:6px}
+.hero-caption{font-size:11px;color:#aebdd4;margin-top:2px;letter-spacing:.5px}
+.api-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;min-width:0;min-height:0}
+.api-stat{container-type:inline-size;min-width:0;overflow:hidden;background:#ffffff08;border:1px solid #ffffff18;border-radius:9px;padding:5px 8px;display:flex;flex-direction:column;justify-content:center;gap:5px}
+.api-label{font-size:clamp(11px,7cqi,15px);font-weight:800;color:#b9c9df;line-height:1.1;overflow-wrap:anywhere}
+.api-value{display:block;font-size:clamp(23px,1.9vw,30px);font-weight:800;letter-spacing:-1px;line-height:1.1!important;white-space:nowrap;min-width:0;color:#fff;transform:scaleX(.9);transform-origin:left center;width:111%}
+.difference{height:94px;min-height:94px;border:1px solid #a855f7;border-radius:13px;background:linear-gradient(100deg,#29143d,#171025 50%,#26123c);display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;padding:0 22px;gap:15px;box-shadow:0 0 22px #a855f72b;overflow:hidden}
+.diff-label{font-size:17px;font-weight:800;color:#e0baff;letter-spacing:.3px;line-height:1.2}
+.diff-value{justify-self:center;font-size:clamp(55px,6vw,82px);font-weight:800;color:#d18aff;letter-spacing:-4px;line-height:1;white-space:nowrap}
+.diff-status{text-align:center;font-size:18px;font-weight:800;white-space:normal;line-height:1.15;padding:12px 15px;border-radius:10px;max-width:230px}
+.diff-status.behind{color:#ff819b;background:#ff36501c;border:1px solid #ff557b88;box-shadow:0 0 15px #ff557b25}
+.diff-status.ahead{color:#42ed9b;background:#42ed9b18;border:1px solid #42ed9b88;box-shadow:0 0 15px #42ed9b20}
+.diff-status.tied{color:#e0c5ff;background:#a855f720;border:1px solid #a855f788}
+.sidebar{min-width:0;min-height:0;overflow:hidden;background:linear-gradient(155deg,#19152a,#101827 65%);border:1px solid #a855f7;border-radius:13px;padding:9px;display:flex;flex-direction:column;gap:8px}
 .side-head,.stream-head{display:flex;justify-content:space-between;align-items:center;gap:5px}
-.side-title{font-size:16px;font-weight:800;color:#d5a0ff}.live{font-size:11px;font-weight:800;color:var(--green);white-space:nowrap}
-.profile{display:grid;grid-template-columns:78px minmax(0,1fr);align-items:center;gap:8px;min-width:0;padding:5px 3px;background:#ffffff07;border:1px solid #ffffff17;border-radius:9px}
-.my-avatar{width:76px;height:76px;object-fit:cover;border-radius:50%;border:2px solid var(--purple);box-shadow:0 0 14px #a855f755}
-.my-name{font-size:21px;font-weight:800;overflow-wrap:anywhere;line-height:1.1}
-.my-handle{font-size:12px;color:var(--muted);margin-top:3px}
-.my-label{font-size:13px;font-weight:800;color:#c4d0e4;margin-top:6px}
-.my-count{font-size:52px;font-weight:800;letter-spacing:-2px;line-height:1.05;white-space:nowrap;overflow:hidden;width:100%;color:#fff}
-.api-line{display:flex;align-items:center;justify-content:space-between;gap:7px;padding:5px 2px;border-top:1px solid #ffffff20;border-bottom:1px solid #ffffff20;min-width:0}
-.api-line span{font-size:14px;color:#c4d0e4;font-weight:800;white-space:nowrap}.api-line strong{font-size:34px;font-weight:800;white-space:nowrap;overflow:hidden;min-width:0}
-.stream-head{flex:none}.stream-head span:first-child{font-size:16px;color:var(--blue);font-weight:800}
-.stream{display:grid;grid-template-columns:100px minmax(0,1fr);gap:10px;align-items:center;min-width:0}
-.thumb{width:100px;height:68px;object-fit:cover;border-radius:7px;border:1px solid #3d577b}
-.stream-title{font-size:16px;font-weight:800;line-height:1.3;overflow-wrap:anywhere}
-.stream-channel{font-size:13px;color:var(--muted);margin-top:5px}
-.meta{flex:none;font-size:13px;color:#d0dced;line-height:1.45;overflow-wrap:anywhere;white-space:normal;padding:9px 10px;background:#ffffff09;border:1px solid #39c5ff55;border-radius:8px;min-width:0}
-.meta strong{color:#9be5ff;font-weight:800}
-.stream-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:6px;flex:1;min-height:0;min-width:0}
-.stream-stat{background:linear-gradient(135deg,#ffffff0c,#ffffff05);border:1px solid #39c5ff55;border-radius:8px;padding:7px 9px;min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:5px}
-.stream-stat label{font-size:clamp(12px,4.5cqi,16px);color:#9be5ff;font-weight:800;letter-spacing:.3px;white-space:normal;overflow-wrap:anywhere;line-height:1.1}
-.stream-stat .value{display:block;font-size:36px;font-weight:800;letter-spacing:-1.5px;white-space:nowrap;overflow:hidden;line-height:1!important;min-width:0;color:#fff}
-footer{font-size:11px;color:#b7c4da}footer .live{color:var(--green)}
+.side-title{font-size:15px;font-weight:800;color:#d5a0ff}.live{font-size:11px;font-weight:800;color:var(--green);white-space:nowrap}
+.profile{display:grid;grid-template-columns:70px minmax(0,1fr);align-items:center;gap:9px;padding:7px;background:#ffffff08;border:1px solid #ffffff17;border-radius:10px}
+.my-avatar{width:68px;height:68px;object-fit:cover;border-radius:50%;border:2px solid var(--purple);box-shadow:0 0 14px #a855f744}
+.my-name{font-size:19px;font-weight:800;overflow-wrap:anywhere;line-height:1.1}
+.my-handle{font-size:11px;color:var(--muted);margin-top:3px}
+.my-label{font-size:11px;font-weight:800;color:#c4d0e4;margin-top:5px}
+.my-count{font-size:43px;font-weight:800;letter-spacing:-2px;line-height:1.05;white-space:nowrap;overflow:hidden;width:100%;color:#fff}
+.api-line{display:flex;align-items:center;justify-content:space-between;gap:7px;padding:6px 3px;border-top:1px solid #ffffff17;border-bottom:1px solid #ffffff17}
+.api-line span{font-size:12px;color:#c4d0e4;font-weight:800}.api-line strong{font-size:27px;font-weight:800;white-space:nowrap}
+.stream-head span:first-child{font-size:14px;color:var(--blue);font-weight:800}
+.stream{display:grid;grid-template-columns:94px minmax(0,1fr);gap:9px;align-items:center;min-width:0}
+.thumb{width:94px;height:65px;object-fit:cover;border-radius:8px;border:1px solid #3d577b}
+.stream-title{font-size:13px;font-weight:800;line-height:1.25;overflow-wrap:anywhere}
+.stream-channel{font-size:11px;color:var(--muted);margin-top:4px}
+.meta{font-size:10px;color:#d0dced;line-height:1.4;overflow-wrap:anywhere;padding:7px 9px;background:#ffffff08;border:1px solid #39c5ff35;border-radius:8px}
+.meta strong{color:#9be5ff}
+.stream-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:7px;flex:1;min-height:0}
+.stream-stat{container-type:inline-size;background:linear-gradient(135deg,#ffffff0c,#ffffff05);border:1px solid #39c5ff40;border-radius:9px;padding:8px 10px;min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:6px}
+.stream-stat label{font-size:clamp(11px,5cqi,15px);color:#9be5ff;font-weight:800;line-height:1.1;overflow-wrap:anywhere}
+.stream-stat .value{display:block;font-size:34px;font-weight:800;letter-spacing:-1.5px;white-space:nowrap;overflow:hidden;line-height:1!important;min-width:0;color:#fff}
+footer{font-size:10px;color:#b7c4da}footer .live{color:var(--green)}
 </style></head><body><div class="container">
 <header><div class="music-player"><span class="mission-tag">NCS · NOW PLAYING</span><div class="music-info"><span class="equalizer"><i></i><i></i><i></i><i></i></span><div class="music-window"><div class="music-marquee" id="music-marquee">Waiting for VLC...</div></div></div></div></header>
 <main class="battle"><div class="versus">
-<section class="channel celine"><div class="channel-head"><span class="channel-name">RACE TO TOP 50: CELINE</span><span class="channel-number">01 · CHALLENGER</span></div><div class="channel-content">
+<section class="channel celine"><div class="channel-head"><span class="channel-name">01 · CELINE DEPT</span><span class="channel-number">TARGET CHANNEL · TOP 51</span></div><div class="channel-content">
 <div class="avatar-card"><img id="celine-avatar" class="avatar" alt="Celine Dept"><div class="avatar-info"><div class="avatar-name" id="celine-name">Celine Dept</div><div class="avatar-handle" id="celine-handle">@celinedept</div></div></div>
-<div class="right-stack"><div class="subscriber-card"><div class="hero-number"><div class="eyebrow">LIVE ESTIMATED SUBSCRIBERS</div><div class="big-number odometer" id="celine-est-subs">0</div><div class="hero-caption">TARGET CHANNEL · TOP 51</div></div></div>
+<div class="right-stack"><div class="subscriber-card"><div class="hero-number"><div class="eyebrow">LIVE ESTIMATED SUBSCRIBERS</div><div class="big-number odometer" id="celine-est-subs">0</div><div class="hero-caption">LIVE CHANNEL SUBSCRIBER COUNT</div></div></div>
 <div class="api-grid"><div class="api-stat"><div class="api-label">API SUBSCRIBERS</div><div class="api-value odometer" id="celine-api-subs">0</div></div><div class="api-stat"><div class="api-label">TOTAL VIEWS</div><div class="api-value odometer" id="celine-views">0</div></div><div class="api-stat"><div class="api-label">API VIEWS</div><div class="api-value odometer" id="celine-api-views">0</div></div><div class="api-stat"><div class="api-label">VIDEOS</div><div class="api-value odometer" id="celine-videos">0</div></div></div></div></div></section>
-<div class="difference"><div class="diff-label">LIVE SUBSCRIBER DIFFERENCE</div><div class="diff-value odometer" id="sub-diff">0</div><div class="diff-status" id="gap-status">Connecting...</div></div>
-<section class="channel kond"><div class="channel-head"><span class="channel-name">02 · CANAL KONDZILLA</span><span class="channel-number">COMPARISON</span></div><div class="channel-content">
+<div class="difference"><div class="diff-label">LIVE SUBSCRIBER<br>DIFFERENCE</div><div class="diff-value odometer" id="sub-diff">0</div><div class="diff-status" id="gap-status">Connecting...</div></div>
+<section class="channel kond"><div class="channel-head"><span class="channel-name">02 · CANAL KONDZILLA</span><span class="channel-number">COMPARISON CHANNEL</span></div><div class="channel-content">
 <div class="avatar-card"><img id="kondzilla-avatar" class="avatar" alt="Canal KondZilla"><div class="avatar-info"><div class="avatar-name" id="kondzilla-name">Canal KondZilla</div><div class="avatar-handle" id="kondzilla-handle">@kondzilla</div></div></div>
-<div class="right-stack"><div class="subscriber-card"><div class="hero-number"><div class="eyebrow">LIVE ESTIMATED SUBSCRIBERS</div><div class="big-number odometer" id="kondzilla-est-subs">0</div><div class="hero-caption">COMPARISON CHANNEL</div></div></div>
+<div class="right-stack"><div class="subscriber-card"><div class="hero-number"><div class="eyebrow">LIVE ESTIMATED SUBSCRIBERS</div><div class="big-number odometer" id="kondzilla-est-subs">0</div><div class="hero-caption">LIVE CHANNEL SUBSCRIBER COUNT</div></div></div>
 <div class="api-grid"><div class="api-stat"><div class="api-label">API SUBSCRIBERS</div><div class="api-value odometer" id="kondzilla-api-subs">0</div></div><div class="api-stat"><div class="api-label">TOTAL VIEWS</div><div class="api-value odometer" id="kondzilla-views">0</div></div><div class="api-stat"><div class="api-label">API VIEWS</div><div class="api-value odometer" id="kondzilla-api-views">0</div></div><div class="api-stat"><div class="api-label">VIDEOS</div><div class="api-value odometer" id="kondzilla-videos">0</div></div></div></div></div></section>
 </div></main>
 <aside class="sidebar">
@@ -101,23 +102,18 @@ footer{font-size:11px;color:#b7c4da}footer .live{color:var(--green)}
 <div class="stream-head"><span>MY LIVESTREAM</span><span class="live" id="stream-status">● LIVE PERFORMANCE</span></div>
 <div class="stream"><img id="stream-thumb" class="thumb" alt="Livestream thumbnail"><div><div class="stream-title" id="stream-title">Loading livestream...</div><div class="stream-channel" id="stream-channel">Loading channel...</div></div></div>
 <div class="meta"><strong>VIDEO ID:</strong> <span id="stream-id">Nr1IWBNNQFA</span><br><strong>UPLOAD DATE:</strong> <span id="stream-date">—</span><br><span id="stream-extra-info"></span></div>
-<div class="stream-grid" id="stream-grid">
-<div class="stream-stat"><label>VIEWERS WATCHING</label><div class="value odometer" id="stream-viewers">0</div></div>
-<div class="stream-stat"><label>TOTAL VIEWS</label><div class="value odometer" id="stream-views">0</div></div>
-<div class="stream-stat"><label>ESTIMATED VIEWS</label><div class="value odometer" id="stream-est-views">0</div></div>
-<div class="stream-stat"><label>LIKES</label><div class="value odometer" id="stream-likes">0</div></div>
-</div></aside>
+<div class="stream-grid" id="stream-grid"><div class="stream-stat"><label>VIEWERS WATCHING</label><div class="value odometer" id="stream-viewers">0</div></div><div class="stream-stat"><label>TOTAL VIEWS</label><div class="value odometer" id="stream-views">0</div></div><div class="stream-stat"><label>ESTIMATED VIEWS</label><div class="value odometer" id="stream-est-views">0</div></div><div class="stream-stat"><label>LIKES</label><div class="value odometer" id="stream-likes">0</div></div></div>
+</aside>
 <footer><div><span class="live">● LIVE</span> &nbsp; FLASHCOUNTS + SOCIALCOUNTS + MIXERNO FALLBACK</div><div id="updated">Connecting...</div></footer>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
 <script>
-const $=id=>document.getElementById(id),meters={},dynamic={},lastValues={},pending=new Map();let lastStream=null,updating=false,queueBusy=false;
+const $=id=>document.getElementById(id),meters={},dynamic={},lastValues={};let lastStream=null,updating=false;
 const ids=["celine-est-subs","celine-api-subs","celine-views","celine-api-views","celine-videos","kondzilla-est-subs","kondzilla-api-subs","kondzilla-views","kondzilla-api-views","kondzilla-videos","vystats-est-subs","vystats-api-subs","sub-diff","stream-viewers","stream-views","stream-est-views","stream-likes"];
-function meter(el){return window.Odometer&&el?new Odometer({el,value:0,format:"(,ddd)",duration:170}):null}
+function meter(el){return window.Odometer&&el?new Odometer({el,value:0,format:"(,ddd)",duration:120}):null}
 ids.forEach(id=>meters[id]=meter($(id)));
 const fmt=n=>Math.round(n).toLocaleString("en-US"),toNum=v=>v==null||v===""?NaN:typeof v==="string"?Number(v.replace(/[,\s]/g,"")):Number(v);
-function flushNums(){const item=pending.entries().next().value;if(!item){queueBusy=false;return}const[id,n]=item;pending.delete(id);const el=$(id);if(el){if(!meters[id])meters[id]=meter(el);if(meters[id])meters[id].update(n);else el.textContent=fmt(n)}setTimeout(flushNums,24)}
-function num(id,v){const n=toNum(v);if(!$(id)||!Number.isFinite(n)||lastValues[id]===n)return;lastValues[id]=n;pending.set(id,n);if(!queueBusy){queueBusy=true;flushNums()}}
+function num(id,v){const n=toNum(v),el=$(id);if(!el||!Number.isFinite(n)||lastValues[id]===n)return;lastValues[id]=n;if(!meters[id])meters[id]=meter(el);if(meters[id])meters[id].update(n);else el.textContent=fmt(n)}
 function txt(id,v){if($(id))$(id).textContent=v??"—"}
 function loadAvatar(k){const el=$(k+"-avatar");if(el&&!el.dataset.loaded){el.dataset.loaded="1";el.src="/api/avatar/"+k+"?v=3";el.onerror=()=>console.error("[Avatar] Failed: /api/avatar/"+k)}}
 function renderChannel(k,d){if(!d)return;loadAvatar(k);if(d.name)txt(k+"-name",d.name);if(d.handle)txt(k+"-handle",d.handle);[["est-subs","estimatedSubscriberCount"],["api-subs","apiSubscriberCount"],["views","viewCount"],["api-views","apiViewCount"],["videos","videoCount"]].forEach(([f,p])=>num(k+"-"+f,d[p]))}
@@ -125,6 +121,6 @@ function renderVystats(d){if(!d)return;loadAvatar("vystats");if(d.name)txt("vyst
 function renderDynamic(s){const grid=$("stream-grid"),keep=new Set();let count=0;Object.entries(s).forEach(([k,v])=>{if(["viewerCount","viewCount","estimatedViewCount","likeCount"].includes(k)||v==null||typeof v==="object"||count>=4)return;count++;const key="dynamic-"+k;keep.add(key);let x=dynamic[key];if(!x){const w=document.createElement("div"),l=document.createElement("label"),e=document.createElement("div");w.className="stream-stat";l.textContent=k.replace(/([A-Z])/g," $1").toUpperCase();e.className="value odometer";w.append(l,e);grid.append(w);x=dynamic[key]={w,e,m:meter(e),last:undefined}}x.w.style.display="";const n=toNum(v);if(Number.isFinite(n)){if(x.last!==n){if(!x.m)x.m=meter(x.e);if(x.m)x.m.update(n);else x.e.textContent=fmt(n);x.last=n}}else{const value=String(v);if(x.last!==value){x.m=null;x.e.classList.remove("odometer");x.e.textContent=value;x.last=value}}});Object.entries(dynamic).forEach(([k,x])=>{if(!keep.has(k))x.w.style.display="none"})}
 function renderStream(s){if(s)lastStream=s;else s=lastStream;if(!s)return;const i=s.info||{},st=s.stats||{},ch=i.channel||{};if(i.title)txt("stream-title",i.title);if(ch.name)txt("stream-channel",ch.name);if(i.id)txt("stream-id",i.id);if(i.uploadDate){const d=new Date(i.uploadDate);txt("stream-date",Number.isNaN(d.getTime())?"—":d.toLocaleString())}if(i.thumbnail&&$("stream-thumb").src!==i.thumbnail)$("stream-thumb").src=i.thumbnail;[["stream-viewers","viewerCount"],["stream-views","viewCount"],["stream-est-views","estimatedViewCount"],["stream-likes","likeCount"]].forEach(([id,k])=>num(id,st[k]));const extra=Object.entries(i).filter(([k,v])=>!["id","title","thumbnail","uploadDate","channel"].includes(k)&&v!=null&&typeof v!=="object").map(([k,v])=>k+": "+v);if(ch.id)extra.push("CHANNEL ID: "+ch.id);txt("stream-extra-info",extra.join(" · "));renderDynamic(st)}
 async function update(){if(updating)return;updating=true;try{const r=await fetch("/api/stats",{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);const d=await r.json();renderChannel("celine",d.celine);renderChannel("kondzilla",d.kondzilla);renderVystats(d.vystats);renderStream(d.stream);if(d.celine&&d.kondzilla){const a=toNum(d.celine.estimatedSubscriberCount),b=toNum(d.kondzilla.estimatedSubscriberCount),status=$("gap-status");if(Number.isFinite(a)&&Number.isFinite(b)){num("sub-diff",Math.abs(a-b));status.className="diff-status "+(a<b?"behind":a>b?"ahead":"tied");txt("gap-status",a>b?"CELINE IS AHEAD":a<b?"CELINE IS BEHIND":"CHANNELS ARE TIED")}}txt("updated",d.lastUpdated?"Updated "+new Date(d.lastUpdated).toLocaleTimeString():"Waiting...")}catch(e){txt("updated","Connection error · showing last stats");if(lastStream)renderStream(lastStream);console.error("[Dashboard]",e)}finally{updating=false}}
-async function updateMusic(){try{const r=await fetch("/api/music",{cache:"no-store"});if(!r.ok)return;const m=await r.json(),song=[m.artist,m.title].filter(Boolean).join(" — "),el=$("music-marquee");if(song&&el.textContent!==song){el.textContent=song;el.style.animation="none";void el.offsetWidth;el.style.animation=""}}catch(e){}}
+async function updateMusic(){try{const r=await fetch("/api/music",{cache:"no-store"});if(!r.ok)return;const m=await r.json(),song=[m.artist,m.title].filter(Boolean).join(" — "),el=$("music-marquee");if(song&&el.textContent!==song){el.textContent=song;el.style.animation="none";el.style.transform="translateX(0)";requestAnimationFrame(()=>el.style.animation="")}}catch(e){}}
 update();updateMusic();setInterval(update,5000);setInterval(updateMusic,2000);
 </script></body></html>
