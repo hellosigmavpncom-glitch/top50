@@ -16,13 +16,20 @@ async function get(url,headers={}){
  if(!r.ok)throw Error("HTTP "+r.status);
  return r;
 }
-async function json(url){return(await get(url)).json()}
+async function json(url,headers){return(await get(url,headers)).json()}
 const mix=(d,k)=>d?.counts?.find(x=>x.value===k)?.count;
 const user=(d,k)=>d?.user?.find(x=>x.value===k)?.count;
 async function fetchMixerno(ch){
- const d=await json(`https://mixerno.space/api/youtube-channel-counter/user/${ch.id}`),subs=num(mix(d,"subscribers"));
+ const d=await json(`https://mixerno.space/api/youtube-channel-counter/user/${ch.id}`,{"Referer":"https://mixerno.space/"});
+ const subs=num(mix(d,"subscribers"));
  if(!subs)throw Error("Missing Mixerno subscriber count");
  return{id:ch.id,name:user(d,"name")||ch.name,handle:ch.handle,estimatedSubscriberCount:subs,apiSubscriberCount:num(mix(d,"apisubscribers")),viewCount:num(mix(d,"views")),apiViewCount:num(mix(d,"apiviews")),videoCount:num(mix(d,"videos"))};
+}
+async function fetchSocialCounts(ch){
+ const d=await json(`https://api.socialcounts.org/youtube-live-subscriber-count/${ch.id}`,{"Referer":"https://socialcounts.org/"});
+ const e=d?.counters?.estimation,a=d?.counters?.api;
+ if(!e||!num(e.subscriberCount))throw Error("Missing SocialCounts subscriber count");
+ return{id:ch.id,name:ch.name,handle:ch.handle,estimatedSubscriberCount:num(e.subscriberCount),apiSubscriberCount:num(a?.subscriberCount),viewCount:num(e.viewCount),apiViewCount:num(a?.viewCount),videoCount:num(e.videoCount)};
 }
 async function fetchCh(k,ch){
  try{
@@ -32,9 +39,19 @@ async function fetchCh(k,ch){
   cache[k]={...cache[k],...data};
   console.log(`[${k}] FlashCounts · ${data.estimatedSubscriberCount.toLocaleString()}`);
  }catch(e){
-  console.log(`[${k}] FlashCounts: ${e.message} · trying Mixerno`);
-  try{const data=await fetchMixerno(ch);cache[k]={...cache[k],...data};console.log(`[${k}] Mixerno · ${data.estimatedSubscriberCount.toLocaleString()}`)}
-  catch(x){console.log(`[${k}] Mixerno: ${x.message}`)}
+  console.log(`[${k}] FlashCounts: ${e.message} · trying SocialCounts`);
+  try{
+   const data=await fetchSocialCounts(ch);
+   cache[k]={...cache[k],...data};
+   console.log(`[${k}] SocialCounts · ${data.estimatedSubscriberCount.toLocaleString()}`);
+  }catch(x){
+   console.log(`[${k}] SocialCounts: ${x.message} · trying Mixerno`);
+   try{
+    const data=await fetchMixerno(ch);
+    cache[k]={...cache[k],...data};
+    console.log(`[${k}] Mixerno · ${data.estimatedSubscriberCount.toLocaleString()}`);
+   }catch(y){console.log(`[${k}] Mixerno: ${y.message}`)}
+  }
  }
  return cache[k];
 }
@@ -66,9 +83,7 @@ function avatarUrl(html){
  }
  return "";
 }
-function originalAvatarUrl(url,size){
- return url.replace(/=s\d+[^?]*/,"="+size);
-}
+function originalAvatarUrl(url,size){return url.replace(/=s\d+[^?]*/,"="+size)}
 async function fetchAvatar(k){
  const old=avatars[k];
  if(old?.body&&Date.now()-old.time<AVATAR_TTL)return old;
