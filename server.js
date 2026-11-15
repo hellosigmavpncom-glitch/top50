@@ -1,6 +1,6 @@
 
 const express=require("express"),app=express(),path=require("path"),crypto=require("crypto");
-const PORT=process.env.PORT||3000,STREAM_ID="4lV2YtYQ2Uo",AVATAR_TTL=21600000;
+const PORT=process.env.PORT||3000,STREAM_ID="UWGwogBUU-k",AVATAR_TTL=21600000;
 const chs={
  celine:{id:"UC1a2ZCw7tugRZYRMnecNj3A",name:"Celine Dept",handle:"@celinedept"},
  kondzilla:{id:"UCffDXn7ycAzwL2LDlbyWOTw",name:"Canal KondZilla",handle:"@kondzilla"},
