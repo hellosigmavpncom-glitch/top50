@@ -51,9 +51,9 @@
 <div class="lc">
 <div class="cnt top-cnt">
 <div class="nc-snapshot">
-<div class="nc-item"><div class="nc-label">LINEAR ESTIMATE</div><div class="nc-value odometer" id="stLinearText">—</div></div>
-<div class="nc-item"><div class="nc-label">HOURLY GAIN</div><div class="nc-value odometer" id="stHourlyText">—</div></div>
-<div class="nc-item"><div class="nc-label">DAILY GAIN</div><div class="nc-value odometer" id="stDailyText">—</div></div>
+<div class="nc-item"><div class="nc-label">LINEAR ESTIMATE</div><div class="nc-value" id="stLinearText">—</div></div>
+<div class="nc-item"><div class="nc-label">HOURLY GAIN</div><div class="nc-value" id="stHourlyText">—</div></div>
+<div class="nc-item"><div class="nc-label">DAILY GAIN</div><div class="nc-value" id="stDailyText">—</div></div>
 </div>
 <div class="live-main">
 <div class="lbl">LUCAN · LIVE SUBSCRIBERS (SCTOOLS EST.)</div>
@@ -84,13 +84,10 @@ else nums[id].update(n);
 vals[id]=n;
 };
 const rollingText=(id,raw)=>{
-const el=$(id),valid=raw!==null&&raw!==undefined&&raw!==""&&Number.isFinite(Number(raw));
-if(!valid){if(vals[id]!==undefined){el.textContent="—";nums[id]=null;vals[id]=undefined;}else if(!nums[id])el.textContent="—";return;}
-const n=Math.floor(Number(raw));
-if(vals[id]===n)return;
-if(!nums[id]){el.textContent="0";nums[id]=new Odometer({el,value:0,format:"(,ddd)",duration:750,theme:"minimal"});nums[id].update(n);}
-else nums[id].update(n);
-vals[id]=n;
+const el=$(id);
+if(raw===null||raw===undefined||raw===""){el.textContent="—";return;}
+const n=Number(raw);
+el.textContent=Number.isFinite(n)?n.toLocaleString("en-US"):"—";
 };
 const rollingRate=v=>{
 const el=$("lucanRate"),n=Math.round(Number(v)*100)/100;
@@ -100,11 +97,11 @@ const display=Math.abs(n);
 if(!nums.lucanRate){el.textContent="0.00";nums.lucanRate=new Odometer({el,value:0,format:"(,ddd).dd",duration:650,theme:"minimal"});}
 nums.lucanRate.update(display);vals.lucanRate=n;
 };
-const av=(k,u)=>{if(u&&urls[k]!==u){urls[k]=u;$(k+"Avatar").src=`/api/avatar/${k}?v=${encodeURIComponent(u)}`;}};
+const av=(k,u)=>{if(u&&urls[k]!==u){urls[k]=u;$(`${k}Avatar`).src=`/api/avatar/${k}?v=${encodeURIComponent(u)}`;}};
 const profile=(k,c)=>{
 if(!c)return;
-$(k+"Name").textContent=c.name||(k==="lucan"?"Lucan Pevidor":"VYStats");
-$(k+"Handle").textContent=c.handle||(k==="lucan"?"@LucanPevidor":"@vystatsyt");
+$(`${k}Name`).textContent=c.name||(k==="lucan"?"Lucan Pevidor":"VYStats");
+$(`${k}Handle`).textContent=c.handle||(k==="lucan"?"@LucanPevidor":"@vystatsyt");
 if(k==="lucan")$("lucanDescription").textContent=c.description||"";
 av(k,c.avatar);
 };
@@ -122,11 +119,14 @@ const s=$("status");
 try{
 const r=await fetch("/api/stats?t="+Date.now(),{cache:"no-store"});
 if(!r.ok)throw Error("Stats request failed");
-const{lucan:l={},mine:m={}}=await r.json(),st=l.sctools??{},e=l.socialcounts?.estimation??l.estimation??{},a=l.socialcounts?.api??l.api??{},mst=m.sctools??{},me=m.socialcounts?.estimation??m.estimation??{},ma=m.socialcounts?.api??m.api??{};
+const{lucan:l={},mine:m={}}=await r.json();
+const st=l.sctools||{},e=l.socialcounts?.estimation??l.estimation??{},a=l.socialcounts?.api??l.api??{};
+const mst=m.sctools||{},me=m.socialcounts?.estimation??m.estimation??{},ma=m.socialcounts?.api??m.api??{};
 const mainSubs=st.estSubscribers??e.subscriberCount??st.apiSubscribers??a.subscriberCount;
 if(mainSubs===null||mainSubs===undefined)throw Error("Lucan subscriber data unavailable");
 rolling("lucanCount",mainSubs);rolling("lucanRemaining",60000000-Number(mainSubs));updateRate(mainSubs);
-[["mineEstSubs",mst.estSubscribers??me.subscriberCount],["mineApiSubs",mst.apiSubscribers??ma.subscriberCount],["mineEstViews",me.viewCount],["mineApiViews",mst.apiViews??ma.viewCount],["mineEstVideos",me.videoCount],["mineApiVideos",mst.apiVideos??ma.videoCount]].forEach(([id,v])=>rolling(id,v));
+const mineEstSubs=mst.estSubscribers??me.subscriberCount,mineApiSubs=mst.apiSubscribers??ma.subscriberCount,mineEstViews=me.viewCount,mineApiViews=mst.apiViews??ma.viewCount,mineEstVideos=me.videoCount,mineApiVideos=mst.apiVideos??ma.videoCount;
+[["mineEstSubs",mineEstSubs],["mineApiSubs",mineApiSubs],["mineEstViews",mineEstViews],["mineApiViews",mineApiViews],["mineEstVideos",mineEstVideos],["mineApiVideos",mineApiVideos]].forEach(([id,v])=>rolling(id,v));
 profile("lucan",l.channel);profile("mine",m.channel);
 rollingText("stLinearText",st.linearSubscribers);rollingText("stHourlyText",st.hourly);rollingText("stDailyText",st.daily);
 [["estSubs",st.estSubscribers??e.subscriberCount],["stApiSubs",st.apiSubscribers],["scEstSubs",e.subscriberCount],["apiSubs",a.subscriberCount],["stEstViews",null],["stApiViews",st.apiViews],["scEstViews",e.viewCount],["apiViews",a.viewCount],["stEstVideos",null],["stApiVideos",st.apiVideos],["scEstVideos",e.videoCount],["apiVideos",a.videoCount]].forEach(([id,v])=>rolling(id,v));
