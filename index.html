@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -50,9 +51,9 @@
 <div class="lc">
 <div class="cnt top-cnt">
 <div class="nc-snapshot">
-<div class="nc-item"><div class="nc-label">LINEAR ESTIMATE</div><div class="nc-value" id="stLinearText">—</div></div>
-<div class="nc-item"><div class="nc-label">HOURLY GAIN</div><div class="nc-value" id="stHourlyText">—</div></div>
-<div class="nc-item"><div class="nc-label">DAILY GAIN</div><div class="nc-value" id="stDailyText">—</div></div>
+<div class="nc-item"><div class="nc-label">LINEAR ESTIMATE</div><div class="nc-value odometer" id="stLinearText">—</div></div>
+<div class="nc-item"><div class="nc-label">HOURLY GAIN</div><div class="nc-value odometer" id="stHourlyText">—</div></div>
+<div class="nc-item"><div class="nc-label">DAILY GAIN</div><div class="nc-value odometer" id="stDailyText">—</div></div>
 </div>
 <div class="live-main">
 <div class="lbl">LUCAN · LIVE SUBSCRIBERS (SCTOOLS EST.)</div>
@@ -83,8 +84,13 @@ else nums[id].update(n);
 vals[id]=n;
 };
 const rollingText=(id,raw)=>{
-const el=$(id),n=Number(raw);
-el.textContent=raw===null||raw===undefined||raw===""?"—":Number.isFinite(n)?n.toLocaleString("en-US"):String(raw);
+const el=$(id),valid=raw!==null&&raw!==undefined&&raw!==""&&Number.isFinite(Number(raw));
+if(!valid){if(vals[id]!==undefined){el.textContent="—";nums[id]=null;vals[id]=undefined;}else if(!nums[id])el.textContent="—";return;}
+const n=Math.floor(Number(raw));
+if(vals[id]===n)return;
+if(!nums[id]){el.textContent="0";nums[id]=new Odometer({el,value:0,format:"(,ddd)",duration:750,theme:"minimal"});nums[id].update(n);}
+else nums[id].update(n);
+vals[id]=n;
 };
 const rollingRate=v=>{
 const el=$("lucanRate"),n=Math.round(Number(v)*100)/100;
