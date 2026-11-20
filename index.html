@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -51,12 +50,12 @@
 <div class="lc">
 <div class="cnt top-cnt">
 <div class="nc-snapshot">
-<div class="nc-item"><div class="nc-label">subscriberCountText</div><div class="nc-value" id="ncSubsText">—</div></div>
-<div class="nc-item"><div class="nc-label">totalViewsText</div><div class="nc-value" id="ncViewsText">—</div></div>
-<div class="nc-item"><div class="nc-label">videosCountText</div><div class="nc-value" id="ncVideosText">—</div></div>
+<div class="nc-item"><div class="nc-label">LINEAR ESTIMATE</div><div class="nc-value" id="stLinearText">—</div></div>
+<div class="nc-item"><div class="nc-label">HOURLY GAIN</div><div class="nc-value" id="stHourlyText">—</div></div>
+<div class="nc-item"><div class="nc-label">DAILY GAIN</div><div class="nc-value" id="stDailyText">—</div></div>
 </div>
 <div class="live-main">
-<div class="lbl">LUCAN · LIVE SUBSCRIBERS (NEXTCOUNTS EST.)</div>
+<div class="lbl">LUCAN · LIVE SUBSCRIBERS (SCTOOLS EST.)</div>
 <div class="big odometer" id="lucanCount">—</div>
 </div>
 </div>
@@ -72,8 +71,8 @@
 <script src="https://cdn.jsdelivr.net/npm/odometer@0.4.8/odometer.min.js"></script>
 <script>
 const $=id=>document.getElementById(id),nums={},vals={},urls={},samples=[];
-const rows=[["SUBSCRIBERS",[["estSubs",""],["scEstSubs","sc"],["apiSubs","api"],["ncSubs","nc"]]],["TOTAL VIEWS",[["estViews",""],["scEstViews","sc"],["apiViews","api"],["ncViews","nc"]]],["VIDEOS",[["estVideos",""],["scEstVideos","sc"],["apiVideos","api"],["ncVideos","nc"]]]];
-$("srcCard").innerHTML=`<div class="src-h"><span>DATA SOURCES</span><span>LIVE</span></div><div class="mtx"><div></div><div class="mh">NextCounts Est.</div><div class="mh">SocialCounts Est.</div><div class="mh">SocialCounts API</div><div class="mh">NextCounts Reported</div>`+rows.map(([g,c])=>`<div class="mg">${g}</div>`+c.map(([i,cl])=>`<div class="cell"><span class="vl odometer ${cl}" id="${i}">—</span></div>`).join("")).join("")+`</div>`;
+const rows=[["SUBSCRIBERS",[["estSubs","nc"],["stApiSubs","api"],["scEstSubs","sc"],["apiSubs","api"]]],["TOTAL VIEWS",[["stEstViews","nc"],["stApiViews","api"],["scEstViews","sc"],["apiViews","api"]]],["VIDEOS",[["stEstVideos","nc"],["stApiVideos","api"],["scEstVideos","sc"],["apiVideos","api"]]]];
+$("srcCard").innerHTML=`<div class="src-h"><span>DATA SOURCES</span><span>LIVE</span></div><div class="mtx"><div></div><div class="mh">SCTools Est.</div><div class="mh">SCTools API</div><div class="mh">SocialCounts Est.</div><div class="mh">SocialCounts API</div>`+rows.map(([g,c])=>`<div class="mg">${g}</div>`+c.map(([i,cl])=>`<div class="cell"><span class="vl odometer ${cl}" id="${i}">—</span></div>`).join("")).join("")+`</div>`;
 const rolling=(id,v)=>{
 const el=$(id),valid=v!==null&&v!==undefined&&v!==""&&Number.isFinite(Number(v));
 if(!valid){if(vals[id]!==undefined){el.textContent="—";nums[id]=null;vals[id]=undefined;}else if(!nums[id])el.textContent="—";return;}
@@ -83,9 +82,9 @@ if(!nums[id]){if(window.Odometer){el.textContent="0";nums[id]=new Odometer({el,v
 else nums[id].update(n);
 vals[id]=n;
 };
-const rollingText=(id,suffixId,raw)=>{
-const el=$(id);
-el.textContent=String(raw||"—");
+const rollingText=(id,raw)=>{
+const el=$(id),n=Number(raw);
+el.textContent=raw===null||raw===undefined||raw===""?"—":Number.isFinite(n)?n.toLocaleString("en-US"):String(raw);
 };
 const rollingRate=v=>{
 const el=$("lucanRate"),n=Math.round(Number(v)*100)/100;
@@ -117,14 +116,14 @@ const s=$("status");
 try{
 const r=await fetch("/api/stats?t="+Date.now(),{cache:"no-store"});
 if(!r.ok)throw Error("Stats request failed");
-const{lucan:l={},mine:m={}}=await r.json(),e=l.socialcounts?.estimation??l.estimation??{},a=l.socialcounts?.api??l.api??{},me=m.socialcounts?.estimation??m.estimation??{},ma=m.socialcounts?.api??m.api??{},nc=l.nextcounts??{};
-const mainSubs=nc.estimatedSubscribers??e.subscriberCount;
-if(!mainSubs)throw Error("Lucan subscriber data unavailable");
+const{lucan:l={},mine:m={}}=await r.json(),st=l.sctools??{},e=l.socialcounts?.estimation??l.estimation??{},a=l.socialcounts?.api??l.api??{},mst=m.sctools??{},me=m.socialcounts?.estimation??m.estimation??{},ma=m.socialcounts?.api??m.api??{};
+const mainSubs=st.estSubscribers??e.subscriberCount??st.apiSubscribers??a.subscriberCount;
+if(mainSubs===null||mainSubs===undefined)throw Error("Lucan subscriber data unavailable");
 rolling("lucanCount",mainSubs);rolling("lucanRemaining",60000000-Number(mainSubs));updateRate(mainSubs);
-[["mineEstSubs",me.subscriberCount],["mineApiSubs",ma.subscriberCount],["mineEstViews",me.viewCount],["mineApiViews",ma.viewCount],["mineEstVideos",me.videoCount],["mineApiVideos",ma.videoCount]].forEach(([id,v])=>rolling(id,v));
+[["mineEstSubs",mst.estSubscribers??me.subscriberCount],["mineApiSubs",mst.apiSubscribers??ma.subscriberCount],["mineEstViews",me.viewCount],["mineApiViews",mst.apiViews??ma.viewCount],["mineEstVideos",me.videoCount],["mineApiVideos",mst.apiVideos??ma.videoCount]].forEach(([id,v])=>rolling(id,v));
 profile("lucan",l.channel);profile("mine",m.channel);
-rollingText("ncSubsText","ncSubsSuffix",nc.subscriberCountText);rollingText("ncViewsText","ncViewsSuffix",nc.totalViewsText);rollingText("ncVideosText","ncVideosSuffix",nc.videosCountText);
-[["estSubs",nc.estimatedSubscribers??e.subscriberCount],["scEstSubs",e.subscriberCount],["apiSubs",a.subscriberCount],["ncSubs",nc.reported],["estViews",nc.estimatedViews??e.viewCount],["scEstViews",e.viewCount],["apiViews",a.viewCount],["ncViews",nc.views],["estVideos",nc.estimatedVideos??e.videoCount],["scEstVideos",e.videoCount],["apiVideos",a.videoCount],["ncVideos",nc.videos]].forEach(([id,v])=>rolling(id,v));
+rollingText("stLinearText",st.linearSubscribers);rollingText("stHourlyText",st.hourly);rollingText("stDailyText",st.daily);
+[["estSubs",st.estSubscribers??e.subscriberCount],["stApiSubs",st.apiSubscribers],["scEstSubs",e.subscriberCount],["apiSubs",a.subscriberCount],["stEstViews",null],["stApiViews",st.apiViews],["scEstViews",e.viewCount],["apiViews",a.viewCount],["stEstVideos",null],["stApiVideos",st.apiVideos],["scEstVideos",e.videoCount],["apiVideos",a.videoCount]].forEach(([id,v])=>rolling(id,v));
 const t=Math.max(l.updated||0,m.updated||0);
 $("updated").textContent=t?"UPDATED "+new Date(t).toLocaleTimeString():"WAITING FOR DATA";
 s.textContent="● CONNECTED";s.style.color="#65dfa5";
