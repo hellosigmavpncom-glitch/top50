@@ -1,147 +1,80 @@
 
-const express=require("express"),app=express(),path=require("path"),crypto=require("crypto");
-const PORT=process.env.PORT||3000,STREAM_ID="UWGwogBUU-k",AVATAR_TTL=21600000;
-const chs={
- celine:{id:"UC1a2ZCw7tugRZYRMnecNj3A",name:"Celine Dept",handle:"@celinedept"},
- kondzilla:{id:"UCffDXn7ycAzwL2LDlbyWOTw",name:"Canal KondZilla",handle:"@kondzilla"},
- vystats:{id:"UCnKrmx7XhDqbiMD3aSBwz_g",name:"VYStats",handle:"@VYStats"}
+const express=require("express"),app=express();
+const CHANNELS={lucan:{id:"UCuz_0MPcY5O0vsIfFPKFpGg"},mine:{id:"UCnKrmx7XhDqbiMD3aSBwz_g"}};
+const h={"User-Agent":"Mozilla/5.0","Accept":"application/json"};
+const clean=o=>Object.fromEntries(["subscriberCount","viewCount","videoCount"].map(k=>[k,Number(o?.[k])||0]));
+const empty=()=>({estimation:{},api:{},socialcounts:{estimation:{},api:{}},nextcounts:{},channel:{},updated:null,error:null,ncFailed:false});
+const data=Object.fromEntries(Object.keys(CHANNELS).map(k=>[k,empty()]));
+const logged={lucan:{},mine:{}};
+let busy=false;
+
+const logError=(k,s,e)=>{
+const msg=`${s} ${e.status||"NETWORK"}: ${e.message}`;
+if(logged[k][s]===msg)return;
+console.error(`[${new Date().toLocaleTimeString()}] [${k.toUpperCase()}] ${msg}`);
+logged[k][s]=msg;
 };
-let cache={celine:null,kondzilla:null,vystats:null,stream:null,lastUpdated:null},music={title:"Waiting for VLC...",artist:""},busy=false;
-const avatars={};
-app.use(express.json({limit:"2kb"}));
-app.use((q,s,n)=>{s.setHeader("Cache-Control","no-store");n()});
-const num=v=>Number(String(v??0).replace(/,/g,""))||0;
-async function get(url,headers={}){
- const r=await fetch(url,{signal:AbortSignal.timeout(15000),headers:{"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",...headers}});
- if(!r.ok)throw Error("HTTP "+r.status);
- return r;
-}
-async function json(url,headers){return(await get(url,headers)).json()}
-const mix=(d,k)=>d?.counts?.find(x=>x.value===k)?.count;
-const user=(d,k)=>d?.user?.find(x=>x.value===k)?.count;
-async function fetchMixerno(ch){
- const d=await json(`https://mixerno.space/api/youtube-channel-counter/user/${ch.id}`,{"Referer":"https://mixerno.space/"});
- const subs=num(mix(d,"subscribers"));
- if(!subs)throw Error("Missing Mixerno subscriber count");
- return{id:ch.id,name:user(d,"name")||ch.name,handle:ch.handle,estimatedSubscriberCount:subs,apiSubscriberCount:num(mix(d,"apisubscribers")),viewCount:num(mix(d,"views")),apiViewCount:num(mix(d,"apiviews")),videoCount:num(mix(d,"videos"))};
-}
-async function fetchSocialCounts(ch){
- const d=await json(`https://api.socialcounts.org/youtube-live-subscriber-count/${ch.id}`,{"Referer":"https://socialcounts.org/"});
- const e=d?.counters?.estimation,a=d?.counters?.api;
- if(!e||!num(e.subscriberCount))throw Error("Missing SocialCounts subscriber count");
- return{id:ch.id,name:ch.name,handle:ch.handle,estimatedSubscriberCount:num(e.subscriberCount),apiSubscriberCount:num(a?.subscriberCount),viewCount:num(e.viewCount),apiViewCount:num(a?.viewCount),videoCount:num(e.videoCount)};
-}
-async function fetchCh(k,ch){
- try{
-  const d=await json(`https://flashcounts.jp/api/youtube/channels/${ch.id}`),s=d.subscribers||{};
-  if(!num(s.count))throw Error("Missing estimated subscribers");
-  const c=d.channel||{},v=d.views||{},data={id:ch.id,name:c.title||ch.name,handle:c.handle||ch.handle,estimatedSubscriberCount:num(s.count),apiSubscriberCount:num(s.api),viewCount:num(v.count),apiViewCount:num(v.api),videoCount:num(d.videos?.count)};
-  cache[k]={...cache[k],...data};
-  console.log(`[${k}] FlashCounts · ${data.estimatedSubscriberCount.toLocaleString()}`);
- }catch(e){
-  console.log(`[${k}] FlashCounts: ${e.message} · trying SocialCounts`);
-  try{
-   const data=await fetchSocialCounts(ch);
-   cache[k]={...cache[k],...data};
-   console.log(`[${k}] SocialCounts · ${data.estimatedSubscriberCount.toLocaleString()}`);
-  }catch(x){
-   console.log(`[${k}] SocialCounts: ${x.message} · trying Mixerno`);
-   try{
-    const data=await fetchMixerno(ch);
-    cache[k]={...cache[k],...data};
-    console.log(`[${k}] Mixerno · ${data.estimatedSubscriberCount.toLocaleString()}`);
-   }catch(y){console.log(`[${k}] Mixerno: ${y.message}`)}
-  }
- }
- return cache[k];
-}
-function extractObject(s,start){
- start=s.indexOf("{",start);if(start<0)return null;
- let depth=0,string=false,escape=false;
- for(let i=start;i<s.length;i++){
-  const c=s[i];
-  if(string){if(escape)escape=false;else if(c==="\\")escape=true;else if(c==='"')string=false;continue}
-  if(c==='"'){string=true;continue}
-  if(c==="{")depth++;
-  if(c==="}"&&!--depth){try{return JSON.parse(s.slice(start,i+1))}catch{return null}}
- }
- return null;
-}
-function avatarUrl(html){
- const key='"channelMetadataRenderer"',pos=html.indexOf(key);
- if(pos>=0){
-  const list=extractObject(html,pos+key.length)?.avatar?.thumbnails||[];
-  const best=[...list].sort((a,b)=>(b.width||0)-(a.width||0))[0]?.url;
-  if(best)return best;
- }
- const tags=html.match(/<meta\b[^>]*>/gi)||[];
- for(const tag of tags){
-  if(/property=["']og:image["']/i.test(tag)){
-   const url=tag.match(/content=["']([^"']+)/i)?.[1];
-   if(url)return url.replace(/&amp;/g,"&");
-  }
- }
- return "";
-}
-function originalAvatarUrl(url,size){return url.replace(/=s\d+[^?]*/,"="+size)}
-async function fetchAvatar(k){
- const old=avatars[k];
- if(old?.body&&Date.now()-old.time<AVATAR_TTL)return old;
- if(old?.loading)return old.loading;
- const ch=chs[k];if(!ch)throw Error("Unknown channel");
- const loading=(async()=>{
-  try{
-   const page=await get(`https://www.youtube.com/channel/${ch.id}?hl=en`,{"Accept-Language":"en-US,en;q=0.9","Accept":"text/html"});
-   const html=await page.text();
-   if(!html.includes(ch.id))throw Error("Unexpected YouTube page");
-   const found=avatarUrl(html);if(!found)throw Error("Avatar not found");
-   const u=new URL(found);
-   if(!["yt3.ggpht.com","yt3.googleusercontent.com"].includes(u.hostname))throw Error("Unexpected avatar host");
-   let img;
-   for(const size of ["s0","s800-c-k-c0x00ffffff-no-rj"]){
-    try{img=await get(originalAvatarUrl(u.href,size),{"Referer":"https://www.youtube.com/"});break}catch(e){if(size==="s800-c-k-c0x00ffffff-no-rj")throw e}
-   }
-   const type=img.headers.get("content-type")||"image/jpeg";
-   if(!type.startsWith("image/"))throw Error("Invalid image response: "+type);
-   const body=Buffer.from(await img.arrayBuffer());
-   if(!body.length||body.length>5e6)throw Error("Invalid avatar size");
-   const result={body,type,time:Date.now()};avatars[k]=result;
-   console.log(`[Avatar ${k}] YouTube original · ${Math.round(body.length/1024)} KB`);
-   return result;
-  }catch(e){
-   console.log(`[Avatar ${k}] ${e.message}`);
-   if(old?.body)return old;
-   throw e;
-  }
- })();
- avatars[k]={...old,loading};
- try{return await loading}finally{if(avatars[k]?.loading===loading)delete avatars[k].loading}
-}
-async function update(){
- if(busy)return;busy=true;
- try{
-  const results=await Promise.all(Object.entries(chs).map(([k,c])=>fetchCh(k,c)));
-  const s=await json(`https://api.basepoint.live/youtube/stream/${STREAM_ID}`).catch(e=>{console.log("[Stream]",e.message);return null});
-  if(s)cache.stream=s;
-  if(results.some(Boolean)||s)cache.lastUpdated=new Date().toISOString();
- }catch(e){console.log("[Update]",e.message)}
- finally{busy=false}
-}
-app.get("/api/stats",(_,r)=>r.json(cache));
-app.get("/api/music",(_,r)=>r.json(music));
-app.post("/api/music",(q,r)=>{
- const a=Buffer.from(process.env.MUSIC_TOKEN||""),b=Buffer.from(String(q.headers.authorization||"").replace(/^Bearer\s+/i,""));
- if(!a.length||!b.length||a.length!==b.length||!crypto.timingSafeEqual(a,b))return r.sendStatus(401);
- const title=String(q.body?.title||"").trim(),artist=String(q.body?.artist||"").trim();
- if(!title||title.length>300||artist.length>150)return r.sendStatus(400);
- music={title,artist,updatedAt:new Date().toISOString()};r.json({ok:true});
-});
+const logSuccess=(k,s)=>{
+if(logged[k][s])console.log(`[${new Date().toLocaleTimeString()}] [${k.toUpperCase()}] ${s} recovered`);
+logged[k][s]=null;
+};
+
+app.get("/",(q,r)=>r.sendFile(__dirname+"/index.html"));
+app.get("/api/stats",(q,r)=>(r.set("Cache-Control","no-store"),r.json(data)));
 app.get("/api/avatar/:key",async(q,r)=>{
- if(!chs[q.params.key])return r.sendStatus(404);
- try{
-  const a=await fetchAvatar(q.params.key);
-  r.set("Content-Type",a.type).set("Cache-Control","public,max-age=21600").set("X-Content-Type-Options","nosniff").send(a.body);
- }catch(e){r.status(502).send("Avatar unavailable")}
+try{
+const u=data[q.params.key]?.channel?.avatar;
+if(!u)return r.sendStatus(404);
+const a=await fetch(u,{headers:h,signal:AbortSignal.timeout(15000)});
+if(!a.ok)throw Error(`HTTP ${a.status}`);
+r.set({"Content-Type":a.headers.get("content-type")||"image/jpeg","Cache-Control":"public,max-age=21600"});
+r.send(Buffer.from(await a.arrayBuffer()));
+}catch(e){console.error(`[AVATAR] ${q.params.key}: ${e.message}`);r.sendStatus(502);}
 });
-app.get("/",(_,r)=>r.sendFile(path.join(__dirname,"index.html")));
-app.listen(PORT,()=>{console.log(`[RUN] Port ${PORT}`);update();setInterval(update,5000)});
+
+const get=async u=>{
+const r=await fetch(u,{headers:h,signal:AbortSignal.timeout(12000)});
+if(!r.ok){const e=Error(`HTTP ${r.status}`);e.status=r.status;throw e;}
+return r.json();
+};
+
+const update=async k=>{
+const id=CHANNELS[k].id,d=data[k];
+const sc=get(`https://api.socialcounts.org/youtube-live-subscriber-count/${id}`).then(j=>(logSuccess(k,"SocialCounts"),j)).catch(e=>(logError(k,"SocialCounts",e),null));
+const nc=get(`https://api.nextcounts.com/api/platforms/youtube/entity/${id}?countMode=estimated`).then(j=>(logSuccess(k,"NextCounts"),j.data)).catch(e=>(logError(k,"NextCounts",e),d.ncFailed=true,null));
+const [s,n]=await Promise.all([sc,nc]);
+
+if(s?.counters){
+d.socialcounts={estimation:clean(s.counters.estimation),api:clean(s.counters.api)};
+d.estimation=d.socialcounts.estimation;d.api=d.socialcounts.api;
+d.updated=Date.now();d.error=null;
+const c=s.channel||s.info;
+if(c)d.channel={...d.channel,name:c.name||d.channel.name||"",handle:c.handle||d.channel.handle||"",description:c.description||d.channel.description||"",avatar:c.avatar||d.channel.avatar||""};
+}
+if(n){
+d.nextcounts={...d.nextcounts,reported:Number(n.reported??n.currentCount??n.subscribersCount)||0,subscribers:Number(n.subscribersCount)||0,views:Number(n.totalViews??n.secondaryCount)||0,videos:Number(n.videosCount??n.uploadsCount)||0,estimatedSubscribers:n.estimatedSubscribers!=null?Number(n.estimatedSubscribers):null,subscriberCountText:n.subscriberCountText??d.nextcounts.subscriberCountText??"",totalViewsText:n.totalViewsText??d.nextcounts.totalViewsText??"",videosCountText:n.videosCountText??d.nextcounts.videosCountText??""};
+d.channel={...d.channel,name:n.title||d.channel.name||"",handle:n.handle||d.channel.handle||"",description:k==="lucan"?"Jesus loves you! I hope to bring you joy with every video!":n.description??d.channel.description??"",avatar:n.avatar||d.channel.avatar||""};
+console.log(`[${new Date().toLocaleTimeString()}] [${k.toUpperCase()}] NextCounts DATA | Subs: ${d.nextcounts.subscribers.toLocaleString()} | Views: ${d.nextcounts.views.toLocaleString()} | Videos: ${d.nextcounts.videos.toLocaleString()}`);
+d.ncFailed=false;
+}
+d.nextcounts.estimatedSubscribers=d.nextcounts.estimatedSubscribers??d.socialcounts.estimation.subscriberCount??null;
+d.nextcounts.estimatedViews=d.socialcounts.estimation.viewCount??null;
+d.nextcounts.estimatedVideos=d.socialcounts.estimation.videoCount??null;
+if(!s&&!d.updated)d.error="SocialCounts unavailable";
+};
+
+const updateAll=async()=>{
+if(busy)return;
+busy=true;
+try{
+await Promise.all(Object.keys(CHANNELS).map(update));
+console.log(`[${new Date().toLocaleTimeString()}] Update cycle completed | Lucan: ${data.lucan.updated?"OK":"NO DATA"} | MY CHANNEL: ${data.mine.updated?"OK":"NO DATA"}`);
+}catch(e){console.error("[SERVER] Update error:",e);}
+finally{busy=false;}
+};
+
+app.listen(process.env.PORT||3000,()=>{
+console.log("Tracker running");
+updateAll();
+setInterval(updateAll,2000);
+});
