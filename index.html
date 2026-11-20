@@ -172,7 +172,7 @@ header,footer{font-size:9px;padding:0 3px}.br{font-size:11px;letter-spacing:.5px
 <div class="nc-item"><div class="nc-label">DAILY GAIN</div><div class="nc-value odometer" id="stDailyText">—</div></div>
 </div>
 <div class="live-main">
-<div class="lbl">LUCAN · LIVE SUBSCRIBERS (SCTOOLS EST.)</div>
+<div class="lbl">LUCAN · LIVE SUBSCRIBERS (LINEAR ESTIMATE)</div>
 <div class="big odometer" id="lucanCount">—</div>
 </div>
 </div>
@@ -198,13 +198,13 @@ const updateRate=count=>{const now=Date.now(),n=Number(count);if(!Number.isFinit
 async function run(){const s=$("status");try{
 const r=await fetch("/api/stats?t="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("Stats request failed");
 const {lucan:l={},mine:m={}}=await r.json(),st=l.sctools||{},fw=l.freewebtools||{},mst=m.sctools||{},mfw=m.freewebtools||{};
-const mainSubs=st.estSubscribers||fw.estimatedSubscribers||st.apiSubscribers||fw.apiSubscribers;
+const mainSubs=st.linearSubscribers??st.estSubscribers??fw.estimatedSubscribers??st.apiSubscribers??fw.apiSubscribers;
 if(mainSubs===null||mainSubs===undefined||mainSubs===0)throw Error("Lucan subscriber data unavailable");
 rolling("lucanCount",mainSubs);rolling("lucanRemaining",60000000-Number(mainSubs));updateRate(mainSubs);
-[["mineEstSubs",mst.estSubscribers||mfw.estimatedSubscribers],["mineApiSubs",mst.apiSubscribers||mfw.apiSubscribers],["mineEstViews",mst.estViews],["mineApiViews",mst.apiViews],["mineEstVideos",null],["mineApiVideos",mst.apiVideos]].forEach(([id,v])=>rolling(id,v));
+[["mineEstSubs",mst.estSubscribers??mfw.estimatedSubscribers],["mineApiSubs",mst.apiSubscribers??mfw.apiSubscribers],["mineEstViews",mst.estViews],["mineApiViews",mst.apiViews],["mineEstVideos",mst.estVideos],["mineApiVideos",mst.apiVideos]].forEach(([id,v])=>rolling(id,v));
 profile("lucan",l.channel);profile("mine",m.channel);
-rolling("stLinearText",st.linearSubscribers);rolling("stHourlyText",st.hourly||fw.hourly);rolling("stDailyText",st.daily||fw.daily);
-[["stEstSubs",st.estSubscribers],["stApiSubs",st.apiSubscribers],["fwEstSubs",fw.estimatedSubscribers],["fwApiSubs",fw.apiSubscribers],["stEstViews",st.estViews],["stApiViews",st.apiViews],["fwEstViews",null],["fwApiViews",fw.viewCount],["stEstVideos",null],["stApiVideos",st.apiVideos],["fwEstVideos",null],["fwApiVideos",fw.videoCount]].forEach(([id,v])=>rolling(id,v));
+rolling("stLinearText",st.linearSubscribers);rolling("stHourlyText",st.hourly??fw.hourly);rolling("stDailyText",st.daily??fw.daily);
+[["stEstSubs",st.estSubscribers],["stApiSubs",st.apiSubscribers],["fwEstSubs",fw.estimatedSubscribers],["fwApiSubs",fw.apiSubscribers],["stEstViews",st.estViews],["stApiViews",st.apiViews],["fwEstViews",fw.estimatedViews],["fwApiViews",fw.viewCount],["stEstVideos",st.estVideos],["stApiVideos",st.apiVideos],["fwEstVideos",fw.estimatedVideos],["fwApiVideos",fw.videoCount]].forEach(([id,v])=>rolling(id,v));
 const t=Math.max(l.updated||0,m.updated||0);$("updated").textContent=t?"UPDATED "+new Date(t).toLocaleTimeString():"WAITING FOR DATA";
 s.textContent="● CONNECTED";s.style.color="#65dfa5";
 }catch(e){s.textContent="● RECONNECTING";s.style.color="#ff667b";}}
