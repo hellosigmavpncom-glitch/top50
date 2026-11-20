@@ -1,5 +1,7 @@
 const express=require("express"),app=express();
 const {chromium}=require("playwright");
+console.log("PLAYWRIGHT:",require("playwright/package.json").version);
+console.log("BROWSER PATH:",require("playwright").chromium.executablePath());
 const CHANNELS={lucan:{id:"UCuz_0MPcY5O0vsIfFPKFpGg"},mine:{id:"UCnKrmx7XhDqbiMD3aSBwz_g"}};
 const h={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36","Accept":"application/json,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","Accept-Language":"en-US,en;q=0.9","Cache-Control":"no-cache","Pragma":"no-cache","Sec-Ch-Ua":'"Chromium";v="122","Not(A:Brand";v="8","Google Chrome";v="122"',"Sec-Ch-Ua-Mobile":"?0","Sec-Ch-Ua-Platform":'"Windows"',"Sec-Fetch-Dest":"empty","Sec-Fetch-Mode":"cors","Sec-Fetch-Site":"cross-site","DNT":"1","Connection":"keep-alive","X-Forwarded-For":"192.168.1.1","X-Client-IP":"192.168.1.1","Referer":"https://socialcounts.org/"};
 
