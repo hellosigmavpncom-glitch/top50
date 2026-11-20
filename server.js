@@ -3,24 +3,30 @@ const express=require("express"),app=express();
 const CHANNELS={lucan:{id:"UCuz_0MPcY5O0vsIfFPKFpGg"},mine:{id:"UCnKrmx7XhDqbiMD3aSBwz_g"}};
 const h={"User-Agent":"Mozilla/5.0","Accept":"application/json"};
 const clean=o=>Object.fromEntries(["subscriberCount","viewCount","videoCount"].map(k=>[k,Number(o?.[k])||0]));
-const empty=()=>({estimation:{},api:{},socialcounts:{estimation:{},api:{}},nextcounts:{},channel:{},updated:null,error:null,ncFailed:false});
+const empty=()=>({estimation:{},api:{},socialcounts:{estimation:{},api:{}},nextcounts:{},channel:{},updated:null,error:null,ncFailed:false,sourceErrors:{}});
 const data=Object.fromEntries(Object.keys(CHANNELS).map(k=>[k,empty()]));
 const logged={lucan:{},mine:{}};
 let busy=false;
 
 const logError=(k,s,e)=>{
-const msg=`${s} ${e.status||"NETWORK"}: ${e.message}`;
+const url=e.url?new URL(e.url):null;
+const headers=e.headers||{};
+const msg=`${s} ${e.status||e.code||"NETWORK"}: ${e.message}${e.body?` | BODY: ${e.body}`:""}${url?` | URL: ${url.host}${url.pathname}`:""}${headers.server?` | SERVER: ${headers.server}`:""}${headers["cf-ray"]?` | CF-RAY: ${headers["cf-ray"]}`:""}${headers["content-type"]?` | TYPE: ${headers["content-type"]}`:""}`;
+data[k].sourceErrors[s]=msg;
 if(logged[k][s]===msg)return;
 console.error(`[${new Date().toLocaleTimeString()}] [${k.toUpperCase()}] ${msg}`);
 logged[k][s]=msg;
 };
 const logSuccess=(k,s)=>{
+data[k].sourceErrors[s]=null;
 if(logged[k][s])console.log(`[${new Date().toLocaleTimeString()}] [${k.toUpperCase()}] ${s} recovered`);
 logged[k][s]=null;
 };
 
 app.get("/",(q,r)=>r.sendFile(__dirname+"/index.html"));
 app.get("/api/stats",(q,r)=>(r.set("Cache-Control","no-store"),r.json(data)));
+app.get("/api/diagnostics",(q,r)=>(r.set("Cache-Control","no-store"),r.json(Object.fromEntries(Object.entries(data).map(([k,d])=>[k,{updated:d.updated,error:d.error,ncFailed:d.ncFailed,sourceErrors:d.sourceErrors}])))));
+
 app.get("/api/avatar/:key",async(q,r)=>{
 try{
 const u=data[q.params.key]?.channel?.avatar;
@@ -33,9 +39,18 @@ r.send(Buffer.from(await a.arrayBuffer()));
 });
 
 const get=async u=>{
-const r=await fetch(u,{headers:h,signal:AbortSignal.timeout(12000)});
-if(!r.ok){const e=Error(`HTTP ${r.status}`);e.status=r.status;throw e;}
-return r.json();
+let r;
+try{r=await fetch(u,{headers:h,signal:AbortSignal.timeout(12000)});}
+catch(e){e.url=u;e.code=e.cause?.code||e.code;throw e;}
+const body=await r.text();
+const headers=Object.fromEntries(["server","cf-ray","content-type","retry-after"].map(k=>[k,r.headers.get(k)]).filter(x=>x[1]));
+if(!r.ok){
+const e=Error(`HTTP ${r.status}`);
+e.status=r.status;e.url=u;e.body=body.slice(0,500);e.headers=headers;
+throw e;
+}
+try{return JSON.parse(body);}
+catch(e){e.url=u;e.status=r.status;e.body=body.slice(0,500);e.headers=headers;e.message=`Invalid JSON: ${e.message}`;throw e;}
 };
 
 const update=async k=>{
