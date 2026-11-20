@@ -1,170 +1,21 @@
-
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Lucan vs VYStats | Live Tracker</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/odometer@0.4.8/themes/odometer-theme-minimal.css">
-<style>
-:root{--bg:#080910;--bd:#292e43;--mut:#c4cce8;--w:#fff;--green:#70d9c0}
-*{box-sizing:border-box}
-html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--w);font-family:Inter,sans-serif}
-.pg{width:99%;height:100dvh;margin:auto;padding:5px 0;display:grid;grid-template-rows:25px minmax(0,1fr) 205px 18px;gap:6px}
-header,footer{display:flex;justify-content:space-between;align-items:center;padding:0 6px;font-size:14px;font-weight:900;color:var(--mut);min-width:0}
-.br{font-size:18px;letter-spacing:2px;color:#aab2ca}.lv{color:#ff667b}
-.hero{display:grid;grid-template-columns:380px minmax(0,1fr);gap:10px;min-height:0;min-width:0}
-.profile{background:linear-gradient(135deg,#1b223a,#0d101b 80%);border:1px solid #343b57;border-radius:15px;padding:18px 12px;display:flex;align-items:flex-start;gap:12px;min-width:0;min-height:0;overflow:hidden;box-shadow:0 12px 30px #0005}
-.profile .av{width:245px;height:245px;max-width:245px;max-height:245px;flex-shrink:0}
-.av{border-radius:50%;object-fit:cover;background:#242941;border:3px solid #ffffff25;box-shadow:0 10px 25px #000a}
-.p-info{min-width:0;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;padding-top:5px}
-.nm{font-size:clamp(18px,1.5vw,24px);font-weight:900;line-height:1.1;letter-spacing:-.7px;overflow-wrap:anywhere}
-.hd{font-size:11px;color:var(--mut);font-weight:700;margin-top:6px}
-.desc{font-size:11px;color:#c4cce8;font-weight:900;margin-top:10px;line-height:1.4;max-width:105px;white-space:pre-wrap;overflow-wrap:anywhere}
-.badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-.tag{padding:7px 9px;border-radius:6px;background:#8795ff30;color:#c4cdff;font-size:11px;font-weight:900;letter-spacing:.4px;white-space:nowrap}
-.main-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;min-width:0;min-height:0}
-.stat-card{background:linear-gradient(145deg,#1b2034,#0d101b 85%);border:1px solid #343b57;border-radius:15px;padding:15px 12px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center;min-width:0;min-height:0;overflow:hidden;box-shadow:0 12px 30px #0005}
-.stat-top{font-size:clamp(12px,.95vw,15px);font-weight:900;letter-spacing:.4px;color:#c4cdff;line-height:1.25;min-height:34px;display:flex;align-items:center;justify-content:center;width:100%;overflow-wrap:anywhere}
-.stat-value{font-size:clamp(48px,5.15vw,86px);font-weight:900;line-height:1;color:#fff;letter-spacing:-.085em;white-space:nowrap;max-width:100%;min-width:0;display:block;text-shadow:0 0 35px #8795ff35;font-variant-numeric:tabular-nums}
-.stat-bottom{font-size:11px;font-weight:900;letter-spacing:.7px;color:var(--green);text-align:center;line-height:1.2}
-.rate-value{font-size:clamp(70px,7vw,112px);letter-spacing:-.08em}
-.rate-line{display:flex;align-items:center;justify-content:center;gap:2px;white-space:nowrap;max-width:100%;min-width:0}
-.rate-sign{font-size:clamp(65px,6.5vw,105px);font-weight:900;line-height:1;letter-spacing:-.08em}
-.odometer{font-family:Inter,sans-serif!important;white-space:nowrap!important;display:inline-block!important}
-.odometer-inside{display:inline-block!important;white-space:nowrap!important}
-.odometer-digit,.odometer-digit-spacer{display:inline-block!important;vertical-align:baseline!important}
-.sub-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;width:100%;border-top:1px solid #ffffff25;padding:15px 0 5px;min-height:82px}
-.sub-metric{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-width:0;padding:0 3px}
-.sub-metric+.sub-metric{border-left:1px solid #ffffff25}
-.sub-label{font-size:clamp(11px,.85vw,13px);font-weight:900;color:#c4cce8;white-space:nowrap;letter-spacing:.2px}
-.sub-value{font-size:clamp(19px,1.65vw,25px);font-weight:900;color:var(--green);white-space:nowrap;letter-spacing:-.8px;max-width:100%;line-height:1.1}
-.lower{display:grid;grid-template-columns:440px minmax(0,1fr);gap:9px;min-width:0;min-height:0}
-.panel{background:linear-gradient(145deg,#171d32,#0b0e17 85%);border:1px solid var(--bd);border-radius:13px;padding:9px 10px;min-width:0;min-height:0;overflow:hidden;box-shadow:0 8px 25px #0004}
-.panel-title{font-size:15px;font-weight:900;letter-spacing:1px;color:#c4cdff;white-space:nowrap}
-.mine-panel{display:flex;flex-direction:column;gap:9px}
-.mine-head{display:flex;align-items:center;gap:12px;min-width:0;min-height:70px}
-.mine-id{display:flex;align-items:center;gap:11px;min-width:0;flex:1}
-.mine-id .av{width:70px;height:70px;max-width:70px;max-height:70px;flex-shrink:0;border-width:2px;box-shadow:0 0 15px #8795ff30}
-.mine-nm{font-size:16px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mine-hd{font-size:12px;color:var(--mut);font-weight:700;margin-top:5px;white-space:nowrap}
-.mine-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;flex:1;min-height:0}
-.mine-stat{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-width:0;border-left:1px solid #ffffff25;padding:0 5px}
-.mine-stat:first-child{border:0}
-.mine-stat-title{font-size:12px;color:#c4cce8;font-weight:900;white-space:nowrap;letter-spacing:.3px}
-.mine-values{display:flex;flex-direction:column;gap:10px;width:100%;min-width:0}
-.mine-source{display:flex;align-items:center;justify-content:space-between;gap:5px;min-width:0;width:100%}
-.mine-label{font-size:11px;color:#aab2ca;font-weight:900;white-space:nowrap}
-.mc{font-size:clamp(14px,1.05vw,17px);font-weight:900;letter-spacing:-.5px;white-space:nowrap;line-height:1.15;max-width:100%;font-variant-numeric:tabular-nums}
-.sources-panel{display:flex;flex-direction:column;gap:7px}
-.src-h{font-size:14px;font-weight:900;letter-spacing:1px;color:#c4cdff;border-bottom:1px solid var(--bd);padding-bottom:7px;display:flex;justify-content:space-between;align-items:center;gap:5px;white-space:nowrap}
-.src-status{font-size:10px;color:var(--green);letter-spacing:.4px}
-.mtx{display:grid;grid-template-columns:90px repeat(4,minmax(0,1fr));gap:6px 7px;align-items:center;flex:1;min-height:0}
-.mh{font-size:clamp(9px,.72vw,11px);font-weight:900;color:var(--mut);text-align:center;white-space:nowrap;overflow:hidden}
-.mg{font-size:10px;font-weight:900;color:#8795ff;letter-spacing:.3px;white-space:nowrap}
-.cell{background:#0b0e17;border:1px solid #ffffff10;border-radius:6px;padding:6px 7px;min-width:0;overflow:hidden}
-.vl{display:block!important;font-size:clamp(12px,1.2vw,18px);font-weight:900;white-space:nowrap!important;letter-spacing:-.5px;font-variant-numeric:tabular-nums;line-height:1.1}
-.vl .odometer-digit{display:inline-block!important}.api{color:#c4cdff}.fw{color:#70d9c0}
-</style>
-</head>
-<body>
-<div class="pg">
-<header><div class="br">LUCAN PEVIDOR · ROAD TO 60M</div><div class="lv">● LIVE</div></header>
-<section class="hero">
-<div class="profile">
-<img class="av" id="lucanAvatar" alt="Lucan">
-<div class="p-info">
-<div class="nm" id="lucanName">Lucan Pevidor</div>
-<div class="hd" id="lucanHandle">@LucanPevidor</div>
-<div class="desc" id="lucanDescription"></div>
-<div class="badges"><div class="tag">ROAD TO 60M</div></div>
-</div>
-</div>
-<div class="main-stats">
-<div class="stat-card">
-<div class="stat-top">LUCAN · LIVE SUBSCRIBERS<br>(LINEAR ESTIMATE)</div>
-<div class="stat-value odometer" id="lucanCount">—</div>
-<div class="stat-bottom">LIVE SUBSCRIBER COUNT</div>
-<div class="sub-metrics">
-<div class="sub-metric"><div class="sub-label">LINEAR ESTIMATE</div><div class="sub-value odometer" id="stLinearText">—</div></div>
-<div class="sub-metric"><div class="sub-label">HOURLY GAIN</div><div class="sub-value odometer" id="stHourlyText">—</div></div>
-<div class="sub-metric"><div class="sub-label">DAILY GAIN</div><div class="sub-value odometer" id="stDailyText">—</div></div>
-</div>
-</div>
-<div class="stat-card">
-<div class="stat-top">SUBS GAINED PER SEC</div>
-<div class="rate-line"><span class="rate-sign" id="lucanRateSign">+</span><span class="stat-value rate-value odometer" id="lucanRate">—</span></div>
-<div class="stat-bottom">LIVE AVERAGE</div>
-</div>
-<div class="stat-card">
-<div class="stat-top">SUBSCRIBERS REMAINING<br>TO 60,000,000</div>
-<div class="stat-value odometer" id="lucanRemaining">—</div>
-<div class="stat-bottom">SUBSCRIBERS LEFT</div>
-</div>
-</div>
-</section>
-<section class="lower">
-<div class="panel mine-panel">
-<div class="mine-head">
-<div class="panel-title">MY CHANNEL</div>
-<div class="mine-id">
-<img class="av" id="mineAvatar" alt="VYStats">
-<div><div class="mine-nm" id="mineName">VYStats</div><div class="mine-hd" id="mineHandle">@vystatsyt</div></div>
-</div>
-</div>
-<div class="mine-stats">
-<div class="mine-stat">
-<div class="mine-stat-title">SUBSCRIBERS</div>
-<div class="mine-values">
-<div class="mine-source"><span class="mine-label">EST.</span><span class="mc odometer" id="mineEstSubs">—</span></div>
-<div class="mine-source"><span class="mine-label">API</span><span class="mc odometer" id="mineApiSubs">—</span></div>
-</div>
-</div>
-<div class="mine-stat">
-<div class="mine-stat-title">VIEWS</div>
-<div class="mine-values">
-<div class="mine-source"><span class="mine-label">EST.</span><span class="mc odometer" id="mineEstViews">—</span></div>
-<div class="mine-source"><span class="mine-label">API</span><span class="mc odometer" id="mineApiViews">—</span></div>
-</div>
-</div>
-<div class="mine-stat">
-<div class="mine-stat-title">VIDEOS</div>
-<div class="mine-values">
-<div class="mine-source"><span class="mine-label">EST.</span><span class="mc odometer" id="mineEstVideos">—</span></div>
-<div class="mine-source"><span class="mine-label">API</span><span class="mc odometer" id="mineApiVideos">—</span></div>
-</div>
-</div>
-</div>
-</div>
-<div class="panel sources-panel" id="srcCard"></div>
-</section>
-<footer><span id="updated">WAITING FOR DATA</span><span id="status">● CONNECTING</span></footer>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/odometer@0.4.8/odometer.min.js"></script>
-<script>
-const $=id=>document.getElementById(id),nums={},vals={},urls={},samples=[];
-const rows=[["SUBSCRIBERS",[["stEstSubs","fw"],["stApiSubs","api"],["fwEstSubs","fw"],["fwApiSubs","api"]]],["TOTAL VIEWS",[["stEstViews","fw"],["stApiViews","api"],["fwEstViews","fw"],["fwApiViews","api"]]],["VIDEOS",[["stEstVideos","fw"],["stApiVideos","api"],["fwEstVideos","fw"],["fwApiVideos","api"]]]];
-$("srcCard").innerHTML=`<div class="src-h"><span>DATA SOURCES</span><span class="src-status">LIVE · BOTH PROVIDERS</span></div><div class="mtx"><div></div><div class="mh">SCTools Est.</div><div class="mh">SCTools API</div><div class="mh">FreeWebTools Est.</div><div class="mh">FreeWebTools API</div>`+rows.map(([g,c])=>`<div class="mg">${g}</div>`+c.map(([i,cl])=>`<div class="cell"><span class="vl odometer ${cl}" id="${i}">—</span></div>`).join("")).join("")+`</div>`;
-const rolling=(id,v)=>{const el=$(id),valid=v!==null&&v!==undefined&&v!==""&&Number.isFinite(Number(v));if(!valid){if(vals[id]!==undefined){el.textContent="—";nums[id]=null;vals[id]=undefined;}else if(!nums[id])el.textContent="—";return;}const n=Math.max(0,Math.floor(Number(v)));if(vals[id]===n)return;if(!nums[id]){if(window.Odometer){el.textContent="0";nums[id]=new Odometer({el,value:0,format:"(,ddd)",duration:550,theme:"minimal"});nums[id].update(n);}else el.textContent=n.toLocaleString("en-US");}else nums[id].update(n);vals[id]=n;};
-const rollingRate=v=>{const el=$("lucanRate"),n=Math.round(Number(v)*100)/100;if(!Number.isFinite(n)||vals.lucanRate===n)return;$("lucanRateSign").textContent=n<0?"-":"+";const display=Math.abs(n);if(!nums.lucanRate){el.textContent="0.00";nums.lucanRate=new Odometer({el,value:0,format:"(,ddd).dd",duration:500,theme:"minimal"});}nums.lucanRate.update(display);vals.lucanRate=n;};
-const av=(k,u)=>{if(u&&urls[k]!==u){urls[k]=u;$(k+"Avatar").src="/api/avatar/"+k+"?v="+encodeURIComponent(u);}};
-const profile=(k,c)=>{if(!c)return;$(k+"Name").textContent=c.name||(k==="lucan"?"Lucan Pevidor":"VYStats");$(k+"Handle").textContent=c.handle||(k==="lucan"?"@LucanPevidor":"@vystatsyt");if(k==="lucan")$("lucanDescription").textContent=c.description||"";av(k,c.avatar);};
-const updateRate=count=>{const now=Date.now(),n=Number(count);if(!Number.isFinite(n))return;samples.push({t:now,n});if(samples.length>2)samples.shift();if(samples.length<2)return;const first=samples[0],seconds=(now-first.t)/1000;if(seconds>0)rollingRate((n-first.n)/seconds);};
-async function run(){const s=$("status");try{
-const r=await fetch("/api/stats?t="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("Stats request failed");
-const {lucan:l={},mine:m={}}=await r.json(),st=l.sctools||{},fw=l.freewebtools||{},mst=m.sctools||{},mfw=m.freewebtools||{};
-const mainSubs=st.linearSubscribers??st.estSubscribers??fw.estimatedSubscribers??st.apiSubscribers??fw.apiSubscribers;
-if(mainSubs===null||mainSubs===undefined||mainSubs===0)throw Error("Lucan subscriber data unavailable");
-rolling("lucanCount",mainSubs);rolling("lucanRemaining",60000000-Number(mainSubs));updateRate(mainSubs);
-[["mineEstSubs",mst.estSubscribers??mfw.estimatedSubscribers],["mineApiSubs",mst.apiSubscribers??mfw.apiSubscribers],["mineEstViews",mst.estViews],["mineApiViews",mst.apiViews],["mineEstVideos",mst.estVideos],["mineApiVideos",mst.apiVideos]].forEach(([id,v])=>rolling(id,v));
-profile("lucan",l.channel);profile("mine",m.channel);
-rolling("stLinearText",st.linearSubscribers);rolling("stHourlyText",st.hourly??fw.hourly);rolling("stDailyText",st.daily??fw.daily);
-[["stEstSubs",st.estSubscribers],["stApiSubs",st.apiSubscribers],["fwEstSubs",fw.estimatedSubscribers],["fwApiSubs",fw.apiSubscribers],["stEstViews",st.estViews],["stApiViews",st.apiViews],["fwEstViews",fw.estimatedViews],["fwApiViews",fw.viewCount],["stEstVideos",st.estVideos],["stApiVideos",st.apiVideos],["fwEstVideos",fw.estimatedVideos],["fwApiVideos",fw.videoCount]].forEach(([id,v])=>rolling(id,v));
-const t=Math.max(l.updated||0,m.updated||0);$("updated").textContent=t?"UPDATED "+new Date(t).toLocaleTimeString():"WAITING FOR DATA";
-s.textContent="● CONNECTED";s.style.color="#65dfa5";
-}catch(e){s.textContent="● RECONNECTING";s.style.color="#ff667b";}}
-run();setInterval(run,2000);
-</script>
-</body>
-</html>
+const express=require("express"),app=express();
+const CHANNELS={lucan:{id:"UCuz_0MPcY5O0vsIfFPKFpGg",user:"LucanPevidor"},mine:{id:"UCnKrmx7XhDqbiMD3aSBwz_g",user:"vystatsyt"}};
+const headers={"User-Agent":"Mozilla/5.0","Accept":"application/json","Accept-Language":"en-US,en;q=0.9","Cache-Control":"no-cache","Pragma":"no-cache"};
+const num=v=>v===null||v===undefined||v===""||!Number.isFinite(Number(v))?null:Number(v);
+const empty=()=>({sctools:{},freewebtools:{},channel:{},updated:null,error:null,sourceErrors:{}});
+const data=Object.fromEntries(Object.keys(CHANNELS).map(k=>[k,empty()]));
+const logged={lucan:{},mine:{}};let busy=false;
+const log=(k,s,e)=>{const msg=e?`${e.message}${e.status?` | STATUS: ${e.status}`:""}${e.body?` | BODY: ${e.body}`:""}${e.url?` | URL: ${e.url}`:""}`:"";data[k].sourceErrors[s]=msg||null;if(msg&&logged[k][s]!==msg)console.error(`[${new Date().toLocaleTimeString()}] [${k.toUpperCase()}] [${s}] ${msg}`);if(!msg&&logged[k][s])console.log(`[${k.toUpperCase()}] ${s} recovered`);logged[k][s]=msg||null;};
+const get=async url=>{const r=await fetch(url,{headers,signal:AbortSignal.timeout(12000)}),body=await r.text();if(!r.ok){const e=Error(`HTTP ${r.status}`);e.status=r.status;e.body=body.slice(0,400);e.url=url;throw e;}try{return JSON.parse(body);}catch(e){e.body=body.slice(0,400);e.url=url;throw e;}};
+app.get("/",(q,r)=>r.sendFile(__dirname+"/index.html"));
+app.get("/api/stats",(q,r)=>(r.set("Cache-Control","no-store"),r.json(data)));
+app.get("/api/diagnostics",(q,r)=>(r.set("Cache-Control","no-store"),r.json(Object.fromEntries(Object.entries(data).map(([k,d])=>[k,{updated:d.updated,error:d.error,sourceErrors:d.sourceErrors}])))));
+app.get("/api/avatar/:key",async(q,r)=>{try{const u=data[q.params.key]?.channel?.avatar;if(!u)return r.sendStatus(404);const url=new URL(u);if(url.protocol!=="https:")return r.sendStatus(400);const x=await fetch(url,{signal:AbortSignal.timeout(12000)});if(!x.ok)throw Error(`HTTP ${x.status}`);r.set({"Content-Type":x.headers.get("content-type")||"image/jpeg","Cache-Control":"public,max-age=21600"});r.send(Buffer.from(await x.arrayBuffer()));}catch(e){console.error(`[AVATAR] ${q.params.key}: ${e.message}`);if(!r.headersSent)r.sendStatus(502);}});
+const update=async k=>{const {id,user}=CHANNELS[k],d=data[k],urls=[`https://ests.sctools.org/api/get/${id}`,`https://www.freewebtools.com/api/youtube/channel?user=${encodeURIComponent(user)}&_t=${Date.now()}`];
+const [st,fw]=await Promise.all(urls.map((u,i)=>get(u).then(j=>{if(i===1&&j.refreshFailed)throw Error(j.refreshFailure||"FreeWebTools refresh failed");log(k,i?"FreeWebTools":"SCTools");return j;}).catch(e=>(log(k,i?"FreeWebTools":"SCTools",e),null))));
+if(st?.stats){const x=st.stats;d.sctools={estSubscribers:num(x.estCount),linearSubscribers:num(x.linearCount),apiSubscribers:num(x.apiCount),estViews:num(x.viewCount),apiViews:null,estVideos:null,apiVideos:num(x.videoCount),hourly:num(st.averages?.hourly),daily:num(st.averages?.daily),nextUpdate:st.nextUpdate??null};d.channel={...d.channel,name:st.info?.name||d.channel.name||"",avatar:st.info?.avatar||d.channel.avatar||"",country:st.info?.country||d.channel.country||""};}
+if(fw){const e=fw.estimation||{};d.freewebtools={estimatedSubscribers:num(e.estimated_count),apiSubscribers:num(fw.subscriberCount),estimatedViews:null,viewCount:num(fw.viewCount),estimatedVideos:null,videoCount:num(fw.videoCount),hourly:num(e.growth_rate_per_hour),daily:num(e.growth_rate_per_day),confidence:e.confidence??null,fromCache:!!fw.fromCache};d.channel={...d.channel,name:d.channel.name||fw.title||"",handle:fw.customUrl||d.channel.handle||"",avatar:d.channel.avatar||fw.thumbnail||"",description:d.channel.description||fw.description||""};}
+d.updated=Date.now();d.error=!st&&!fw?"Both sources unavailable":null;
+};
+const updateAll=async()=>{if(busy)return;busy=true;try{await Promise.all(Object.keys(CHANNELS).map(update));console.log(`[${new Date().toLocaleTimeString()}] Updated | Lucan: ${data.lucan.updated?"OK":"NO DATA"} | MY CHANNEL: ${data.mine.updated?"OK":"NO DATA"}`);}catch(e){console.error("[SERVER]",e.message);}finally{busy=false;}};
+app.listen(process.env.PORT||3000,()=>{console.log("SCTools + FreeWebTools Tracker running");updateAll();setInterval(updateAll,5000);});
