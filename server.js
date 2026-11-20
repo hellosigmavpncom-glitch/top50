@@ -22,14 +22,21 @@ if(logged[k][s])console.log(`[${new Date().toLocaleTimeString()}] [${k.toUpperCa
 logged[k][s]=null;
 };
 
-// Initialize Headless Playwright Browser Context once for performance
 async function getBrowserContext(){
-if(!browserInstance){
-browserInstance=await chromium.launch({headless:true,args:["--disable-blink-features=AutomationControlled","--no-sandbox","--disable-setuid-sandbox"]});
-contextInstance=await browserInstance.newContext({extraHTTPHeaders:h});
-await contextInstance.addInitScript(()=>{Object.defineProperty(navigator,'webdriver',{get:()=>undefined});});
-}
-return contextInstance;
+  if(!browserInstance){
+    browserInstance=await chromium.launch({
+      headless:true,
+      args:[
+        "--disable-blink-features=AutomationControlled",
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage"
+      ]
+    });
+    contextInstance=await browserInstance.newContext({extraHTTPHeaders:h});
+    await contextInstance.addInitScript(()=>{Object.defineProperty(navigator,'webdriver',{get:()=>undefined});});
+  }
+  return contextInstance;
 }
 
 app.get("/",(q,r)=>r.sendFile(__dirname+"/index.html"));
