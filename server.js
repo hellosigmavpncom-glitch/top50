@@ -1,7 +1,6 @@
-
 const express=require("express"),app=express();
 const CHANNELS={lucan:{id:"UCuz_0MPcY5O0vsIfFPKFpGg"},mine:{id:"UCnKrmx7XhDqbiMD3aSBwz_g"}};
-const h={"User-Agent":"Mozilla/5.0","Accept":"application/json"};
+const h={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36","Accept":"application/json,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","Accept-Language":"en-US,en;q=0.9","Cache-Control":"no-cache","Pragma":"no-cache","Sec-Ch-Ua":'"Chromium";v="122","Not(A:Brand";v="8","Google Chrome";v="122"',"Sec-Ch-Ua-Mobile":"?0","Sec-Ch-Ua-Platform":'"Windows"',"Sec-Fetch-Dest":"empty","Sec-Fetch-Mode":"cors","Sec-Fetch-Site":"cross-site","DNT":"1","Connection":"keep-alive","X-Forwarded-For":"192.168.1.1","X-Client-IP":"192.168.1.1","Referer":"https://socialcounts.org/"};
 const clean=o=>Object.fromEntries(["subscriberCount","viewCount","videoCount"].map(k=>[k,Number(o?.[k])||0]));
 const empty=()=>({estimation:{},api:{},socialcounts:{estimation:{},api:{}},nextcounts:{},channel:{},updated:null,error:null,ncFailed:false,sourceErrors:{}});
 const data=Object.fromEntries(Object.keys(CHANNELS).map(k=>[k,empty()]));
@@ -42,10 +41,11 @@ const get=async u=>{
 let r;
 try{r=await fetch(u,{headers:h,signal:AbortSignal.timeout(12000)});}
 catch(e){e.url=u;e.code=e.cause?.code||e.code;throw e;}
+const ct=r.headers.get("content-type")||"";
 const body=await r.text();
 const headers=Object.fromEntries(["server","cf-ray","content-type","retry-after"].map(k=>[k,r.headers.get(k)]).filter(x=>x[1]));
-if(!r.ok){
-const e=Error(`HTTP ${r.status}`);
+if(!r.ok||!ct.includes("application/json")){
+const e=Error(`HTTP ${r.status} (Blocked/Non-JSON)`);
 e.status=r.status;e.url=u;e.body=body.slice(0,500);e.headers=headers;
 throw e;
 }
