@@ -1,18 +1,18 @@
+
 const express=require("express"),app=express();
 const {chromium}=require("playwright");
 console.log("PLAYWRIGHT:",require("playwright/package.json").version);
-console.log("BROWSER PATH:",require("playwright").chromium.executablePath());
+console.log("BROWSER PATH:",chromium.executablePath());
 const CHANNELS={lucan:{id:"UCuz_0MPcY5O0vsIfFPKFpGg"},mine:{id:"UCnKrmx7XhDqbiMD3aSBwz_g"}};
-const h={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36","Accept":"application/json,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","Accept-Language":"en-US,en;q=0.9","Cache-Control":"no-cache","Pragma":"no-cache","Sec-Ch-Ua":'"Chromium";v="122","Not(A:Brand";v="8","Google Chrome";v="122"',"Sec-Ch-Ua-Mobile":"?0","Sec-Ch-Ua-Platform":'"Windows"',"Sec-Fetch-Dest":"empty","Sec-Fetch-Mode":"cors","Sec-Fetch-Site":"cross-site","DNT":"1","Connection":"keep-alive","X-Forwarded-For":"192.168.1.1","X-Client-IP":"192.168.1.1","Referer":"https://socialcounts.org/"};
-
+const h={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36","Accept":"application/json,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","Accept-Language":"en-US,en;q=0.9","Cache-Control":"no-cache","Pragma":"no-cache","Referer":"https://socialcounts.org/"};
 const clean=o=>Object.fromEntries(["subscriberCount","viewCount","videoCount"].map(k=>[k,Number(o?.[k])||0]));
 const empty=()=>({estimation:{},api:{},socialcounts:{estimation:{},api:{}},nextcounts:{},channel:{},updated:null,error:null,ncFailed:false,sourceErrors:{}});
 const data=Object.fromEntries(Object.keys(CHANNELS).map(k=>[k,empty()]));
 const logged={lucan:{},mine:{}};
-let busy=false, browserInstance=null, contextInstance=null;
+let busy=false,browserInstance=null,contextInstance=null;
 
 const logError=(k,s,e)=>{
-const msg=`[${s}] ${e.message}`;
+const msg=`[${s}] ${e.message}${e.status?` | STATUS: ${e.status}`:""}${e.body?` | BODY: ${e.body}`:""}${e.url?` | URL: ${e.url}`:""}${e.contentType?` | TYPE: ${e.contentType}`:""}`;
 data[k].sourceErrors[s]=msg;
 if(logged[k][s]===msg)return;
 console.error(`[${new Date().toLocaleTimeString()}] [${k.toUpperCase()}] ${msg}`);
@@ -25,20 +25,12 @@ logged[k][s]=null;
 };
 
 async function getBrowserContext(){
-  if(!browserInstance){
-    browserInstance=await chromium.launch({
-      headless:true,
-      args:[
-        "--disable-blink-features=AutomationControlled",
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage"
-      ]
-    });
-    contextInstance=await browserInstance.newContext({extraHTTPHeaders:h});
-    await contextInstance.addInitScript(()=>{Object.defineProperty(navigator,'webdriver',{get:()=>undefined});});
-  }
-  return contextInstance;
+if(!browserInstance){
+browserInstance=await chromium.launch({headless:true,channel:"chromium",args:["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage"]});
+browserInstance.on("disconnected",()=>{browserInstance=null;contextInstance=null;});
+contextInstance=await browserInstance.newContext({extraHTTPHeaders:h});
+}
+return contextInstance;
 }
 
 app.get("/",(q,r)=>r.sendFile(__dirname+"/index.html"));
@@ -46,18 +38,19 @@ app.get("/api/stats",(q,r)=>(r.set("Cache-Control","no-store"),r.json(data)));
 app.get("/api/diagnostics",(q,r)=>(r.set("Cache-Control","no-store"),r.json(Object.fromEntries(Object.entries(data).map(([k,d])=>[k,{updated:d.updated,error:d.error,ncFailed:d.ncFailed,sourceErrors:d.sourceErrors}])))));
 
 app.get("/api/avatar/:key",async(q,r)=>{
+let page;
 try{
 const u=data[q.params.key]?.channel?.avatar;
 if(!u)return r.sendStatus(404);
 const ctx=await getBrowserContext();
-const page=await ctx.newPage();
-const resp=await page.goto(u,{timeout:15000});
-if(!resp.ok())throw Error(`HTTP ${resp.status()}`);
+page=await ctx.newPage();
+const resp=await page.goto(u,{waitUntil:"domcontentloaded",timeout:15000});
+if(!resp?.ok())throw Error(`HTTP ${resp?.status()||"NO RESPONSE"}`);
 const buffer=await resp.body();
 r.set({"Content-Type":resp.headers()["content-type"]||"image/jpeg","Cache-Control":"public,max-age=21600"});
 r.send(buffer);
-await page.close();
-}catch(e){console.error(`[AVATAR] ${q.params.key}: ${e.message}`);r.sendStatus(502);}
+}catch(e){console.error(`[AVATAR] ${q.params.key}: ${e.message}`);if(!r.headersSent)r.sendStatus(502);}
+finally{if(page&&!page.isClosed())await page.close().catch(()=>{});}
 });
 
 const get=async u=>{
@@ -66,20 +59,16 @@ try{
 const ctx=await getBrowserContext();
 page=await ctx.newPage();
 const resp=await page.goto(u,{waitUntil:"domcontentloaded",timeout:12000});
-const status=resp.status();
-const contentType=resp.headers()["content-type"]||"";
-const body=await resp.text();
-await page.close();
-
+if(!resp)throw Error("No HTTP response");
+const status=resp.status(),headers=resp.headers(),contentType=headers["content-type"]||"",body=await resp.text();
 if(status!==200||!contentType.includes("application/json")){
-const e=Error(`HTTP ${status} (Cloudflare Block or Non-JSON)`);
-e.status=status;e.body=body.slice(0,500);throw e;
+const e=Error(`HTTP ${status}`);
+e.status=status;e.body=body.slice(0,500);e.contentType=contentType;throw e;
 }
-return JSON.parse(body);
-}catch(e){
-if(page&&!page.isClosed())await page.close().catch(()=>{});
-e.url=u;throw e;
-}
+try{return JSON.parse(body);}
+catch(e){e.status=status;e.body=body.slice(0,500);e.contentType=contentType;throw e;}
+}catch(e){e.url=u;throw e;}
+finally{if(page&&!page.isClosed())await page.close().catch(()=>{});}
 };
 
 const update=async k=>{
@@ -111,6 +100,7 @@ if(busy)return;
 busy=true;
 try{
 await Promise.all(Object.keys(CHANNELS).map(update));
+console.log(`[${new Date().toLocaleTimeString()}] Update cycle completed | Lucan: ${data.lucan.updated?"OK":"NO DATA"} | MY CHANNEL: ${data.mine.updated?"OK":"NO DATA"}`);
 }catch(e){console.error("[SERVER] Update error:",e);}
 finally{busy=false;}
 };
