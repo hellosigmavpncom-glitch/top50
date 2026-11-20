@@ -1,8 +1,12 @@
 
 const express=require("express"),app=express();
+process.env.PLAYWRIGHT_BROWSERS_PATH="0";
 const {chromium}=require("playwright");
+const fs=require("fs");
 console.log("PLAYWRIGHT:",require("playwright/package.json").version);
 console.log("BROWSER PATH:",chromium.executablePath());
+console.log("BROWSER EXISTS:",fs.existsSync(chromium.executablePath()));
+
 const CHANNELS={lucan:{id:"UCuz_0MPcY5O0vsIfFPKFpGg"},mine:{id:"UCnKrmx7XhDqbiMD3aSBwz_g"}};
 const h={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36","Accept":"application/json,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","Accept-Language":"en-US,en;q=0.9","Cache-Control":"no-cache","Pragma":"no-cache","Referer":"https://socialcounts.org/"};
 const clean=o=>Object.fromEntries(["subscriberCount","viewCount","videoCount"].map(k=>[k,Number(o?.[k])||0]));
@@ -26,7 +30,7 @@ logged[k][s]=null;
 
 async function getBrowserContext(){
 if(!browserInstance){
-browserInstance=await chromium.launch({headless:true,channel:"chromium",args:["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage"]});
+browserInstance=await chromium.launch({headless:true,args:["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage"]});
 browserInstance.on("disconnected",()=>{browserInstance=null;contextInstance=null;});
 contextInstance=await browserInstance.newContext({extraHTTPHeaders:h});
 }
