@@ -1,16 +1,16 @@
 const express=require("express"),app=express();
+const {chromium}=require("playwright");
 const CHANNELS={lucan:{id:"UCuz_0MPcY5O0vsIfFPKFpGg"},mine:{id:"UCnKrmx7XhDqbiMD3aSBwz_g"}};
 const h={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36","Accept":"application/json,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","Accept-Language":"en-US,en;q=0.9","Cache-Control":"no-cache","Pragma":"no-cache","Sec-Ch-Ua":'"Chromium";v="122","Not(A:Brand";v="8","Google Chrome";v="122"',"Sec-Ch-Ua-Mobile":"?0","Sec-Ch-Ua-Platform":'"Windows"',"Sec-Fetch-Dest":"empty","Sec-Fetch-Mode":"cors","Sec-Fetch-Site":"cross-site","DNT":"1","Connection":"keep-alive","X-Forwarded-For":"192.168.1.1","X-Client-IP":"192.168.1.1","Referer":"https://socialcounts.org/"};
+
 const clean=o=>Object.fromEntries(["subscriberCount","viewCount","videoCount"].map(k=>[k,Number(o?.[k])||0]));
 const empty=()=>({estimation:{},api:{},socialcounts:{estimation:{},api:{}},nextcounts:{},channel:{},updated:null,error:null,ncFailed:false,sourceErrors:{}});
 const data=Object.fromEntries(Object.keys(CHANNELS).map(k=>[k,empty()]));
 const logged={lucan:{},mine:{}};
-let busy=false;
+let busy=false, browserInstance=null, contextInstance=null;
 
 const logError=(k,s,e)=>{
-const url=e.url?new URL(e.url):null;
-const headers=e.headers||{};
-const msg=`${s} ${e.status||e.code||"NETWORK"}: ${e.message}${e.body?` | BODY: ${e.body}`:""}${url?` | URL: ${url.host}${url.pathname}`:""}${headers.server?` | SERVER: ${headers.server}`:""}${headers["cf-ray"]?` | CF-RAY: ${headers["cf-ray"]}`:""}${headers["content-type"]?` | TYPE: ${headers["content-type"]}`:""}`;
+const msg=`[${s}] ${e.message}`;
 data[k].sourceErrors[s]=msg;
 if(logged[k][s]===msg)return;
 console.error(`[${new Date().toLocaleTimeString()}] [${k.toUpperCase()}] ${msg}`);
@@ -22,6 +22,16 @@ if(logged[k][s])console.log(`[${new Date().toLocaleTimeString()}] [${k.toUpperCa
 logged[k][s]=null;
 };
 
+// Initialize Headless Playwright Browser Context once for performance
+async function getBrowserContext(){
+if(!browserInstance){
+browserInstance=await chromium.launch({headless:true,args:["--disable-blink-features=AutomationControlled","--no-sandbox","--disable-setuid-sandbox"]});
+contextInstance=await browserInstance.newContext({extraHTTPHeaders:h});
+await contextInstance.addInitScript(()=>{Object.defineProperty(navigator,'webdriver',{get:()=>undefined});});
+}
+return contextInstance;
+}
+
 app.get("/",(q,r)=>r.sendFile(__dirname+"/index.html"));
 app.get("/api/stats",(q,r)=>(r.set("Cache-Control","no-store"),r.json(data)));
 app.get("/api/diagnostics",(q,r)=>(r.set("Cache-Control","no-store"),r.json(Object.fromEntries(Object.entries(data).map(([k,d])=>[k,{updated:d.updated,error:d.error,ncFailed:d.ncFailed,sourceErrors:d.sourceErrors}])))));
@@ -30,27 +40,37 @@ app.get("/api/avatar/:key",async(q,r)=>{
 try{
 const u=data[q.params.key]?.channel?.avatar;
 if(!u)return r.sendStatus(404);
-const a=await fetch(u,{headers:h,signal:AbortSignal.timeout(15000)});
-if(!a.ok)throw Error(`HTTP ${a.status}`);
-r.set({"Content-Type":a.headers.get("content-type")||"image/jpeg","Cache-Control":"public,max-age=21600"});
-r.send(Buffer.from(await a.arrayBuffer()));
+const ctx=await getBrowserContext();
+const page=await ctx.newPage();
+const resp=await page.goto(u,{timeout:15000});
+if(!resp.ok())throw Error(`HTTP ${resp.status()}`);
+const buffer=await resp.body();
+r.set({"Content-Type":resp.headers()["content-type"]||"image/jpeg","Cache-Control":"public,max-age=21600"});
+r.send(buffer);
+await page.close();
 }catch(e){console.error(`[AVATAR] ${q.params.key}: ${e.message}`);r.sendStatus(502);}
 });
 
 const get=async u=>{
-let r;
-try{r=await fetch(u,{headers:h,signal:AbortSignal.timeout(12000)});}
-catch(e){e.url=u;e.code=e.cause?.code||e.code;throw e;}
-const ct=r.headers.get("content-type")||"";
-const body=await r.text();
-const headers=Object.fromEntries(["server","cf-ray","content-type","retry-after"].map(k=>[k,r.headers.get(k)]).filter(x=>x[1]));
-if(!r.ok||!ct.includes("application/json")){
-const e=Error(`HTTP ${r.status} (Blocked/Non-JSON)`);
-e.status=r.status;e.url=u;e.body=body.slice(0,500);e.headers=headers;
-throw e;
+let page;
+try{
+const ctx=await getBrowserContext();
+page=await ctx.newPage();
+const resp=await page.goto(u,{waitUntil:"domcontentloaded",timeout:12000});
+const status=resp.status();
+const contentType=resp.headers()["content-type"]||"";
+const body=await resp.text();
+await page.close();
+
+if(status!==200||!contentType.includes("application/json")){
+const e=Error(`HTTP ${status} (Cloudflare Block or Non-JSON)`);
+e.status=status;e.body=body.slice(0,500);throw e;
 }
-try{return JSON.parse(body);}
-catch(e){e.url=u;e.status=r.status;e.body=body.slice(0,500);e.headers=headers;e.message=`Invalid JSON: ${e.message}`;throw e;}
+return JSON.parse(body);
+}catch(e){
+if(page&&!page.isClosed())await page.close().catch(()=>{});
+e.url=u;throw e;
+}
 };
 
 const update=async k=>{
@@ -69,7 +89,6 @@ if(c)d.channel={...d.channel,name:c.name||d.channel.name||"",handle:c.handle||d.
 if(n){
 d.nextcounts={...d.nextcounts,reported:Number(n.reported??n.currentCount??n.subscribersCount)||0,subscribers:Number(n.subscribersCount)||0,views:Number(n.totalViews??n.secondaryCount)||0,videos:Number(n.videosCount??n.uploadsCount)||0,estimatedSubscribers:n.estimatedSubscribers!=null?Number(n.estimatedSubscribers):null,subscriberCountText:n.subscriberCountText??d.nextcounts.subscriberCountText??"",totalViewsText:n.totalViewsText??d.nextcounts.totalViewsText??"",videosCountText:n.videosCountText??d.nextcounts.videosCountText??""};
 d.channel={...d.channel,name:n.title||d.channel.name||"",handle:n.handle||d.channel.handle||"",description:k==="lucan"?"Jesus loves you! I hope to bring you joy with every video!":n.description??d.channel.description??"",avatar:n.avatar||d.channel.avatar||""};
-console.log(`[${new Date().toLocaleTimeString()}] [${k.toUpperCase()}] NextCounts DATA | Subs: ${d.nextcounts.subscribers.toLocaleString()} | Views: ${d.nextcounts.views.toLocaleString()} | Videos: ${d.nextcounts.videos.toLocaleString()}`);
 d.ncFailed=false;
 }
 d.nextcounts.estimatedSubscribers=d.nextcounts.estimatedSubscribers??d.socialcounts.estimation.subscriberCount??null;
@@ -83,13 +102,12 @@ if(busy)return;
 busy=true;
 try{
 await Promise.all(Object.keys(CHANNELS).map(update));
-console.log(`[${new Date().toLocaleTimeString()}] Update cycle completed | Lucan: ${data.lucan.updated?"OK":"NO DATA"} | MY CHANNEL: ${data.mine.updated?"OK":"NO DATA"}`);
 }catch(e){console.error("[SERVER] Update error:",e);}
 finally{busy=false;}
 };
 
 app.listen(process.env.PORT||3000,()=>{
-console.log("Tracker running");
+console.log("Playwright Tracker running");
 updateAll();
 setInterval(updateAll,2000);
 });
