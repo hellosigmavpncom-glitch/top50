@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -18,7 +19,7 @@ header,footer{display:flex;justify-content:space-between;align-items:center;padd
 .lucan-profile{display:flex;align-items:center;gap:12px;min-width:0;min-height:0;padding:4px 0 10px}
 .lucan-profile .av{width:205px;height:205px;max-width:205px;max-height:205px;flex-shrink:0}
 .av{border-radius:50%;object-fit:cover;background:#242941;border:3px solid #ffffff25;box-shadow:0 10px 25px #000a}
-.p-info{min-width:0;display:flex;flex-direction:column;align-items:flex-start;justify-content:center}
+.p-info{min-width:0;flex:1;display:flex;flex-direction:column;align-items:flex-start;justify-content:center}
 .nm{font-size:clamp(19px,1.5vw,25px);font-weight:900;line-height:1.1;letter-spacing:-.7px;overflow-wrap:anywhere}
 .hd{font-size:11px;color:var(--mut);font-weight:700;margin-top:7px}
 .desc{font-size:11px;color:#c4cce8;font-weight:900;margin-top:10px;line-height:1.4;max-width:145px;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -43,12 +44,12 @@ header,footer{display:flex;justify-content:space-between;align-items:center;padd
 .stat-card{background:linear-gradient(145deg,#1b2034,#0d101b 85%);border:1px solid #343b57;border-radius:15px;padding:16px 12px;display:grid;grid-template-rows:36px minmax(0,1fr) 91px;text-align:center;min-width:0;min-height:0;overflow:hidden;box-shadow:0 12px 30px #0005}
 .stat-top{font-size:clamp(12px,.95vw,15px);font-weight:900;letter-spacing:.4px;color:#c4cdff;line-height:1.25;min-height:36px;display:flex;align-items:center;justify-content:center;width:100%;overflow-wrap:anywhere}
 .stat-middle{position:relative;display:flex;align-items:center;justify-content:center;min-width:0;min-height:0;width:100%}
-.stat-value{font-size:clamp(48px,4.8vw,82px);font-weight:900;line-height:1;color:#fff;letter-spacing:-.085em;white-space:nowrap;max-width:100%;min-width:0;display:block;text-shadow:0 0 35px #8795ff35;font-variant-numeric:tabular-nums}
+.stat-value{font-size:var(--main-number-size,92px);font-weight:900;line-height:1;color:#fff;letter-spacing:-.085em;white-space:nowrap;max-width:100%;min-width:0;display:block;text-shadow:0 0 35px #8795ff35;font-variant-numeric:tabular-nums}
 .stat-bottom{font-size:11px;font-weight:900;letter-spacing:.7px;color:var(--green);text-align:center;line-height:1.2;display:flex;align-items:center;justify-content:center}
 .stat-middle .stat-bottom{position:absolute;bottom:0;left:0;right:0}
-.rate-value{font-size:clamp(48px,4.8vw,82px);letter-spacing:-.085em}
+.rate-value{font-size:var(--main-number-size,92px);letter-spacing:-.085em}
 .rate-line{display:flex;align-items:center;justify-content:center;gap:0;width:100%;white-space:nowrap;max-width:100%;min-width:0}
-.rate-sign{font-size:clamp(48px,4.8vw,82px);font-weight:900;line-height:1;letter-spacing:-.085em}
+.rate-sign{font-size:var(--main-number-size,92px);font-weight:900;line-height:1;letter-spacing:-.085em}
 .odometer{font-family:Inter,sans-serif!important;white-space:nowrap!important;display:inline-block!important}
 .odometer-inside{display:inline-block!important;white-space:nowrap!important}
 .odometer-digit,.odometer-digit-spacer{display:inline-block!important;vertical-align:baseline!important}
@@ -157,6 +158,8 @@ const rollingRate=v=>{const el=$("lucanRate"),n=Math.round(Number(v)*100)/100;if
 const av=(k,u)=>{if(u&&urls[k]!==u){urls[k]=u;$(k+"Avatar").src="/api/avatar/"+k+"?v="+encodeURIComponent(u);}};
 const profile=(k,c)=>{if(!c)return;$(k+"Name").textContent=c.name||(k==="lucan"?"Lucan Pevidor":"VYStats");$(k+"Handle").textContent=c.handle||(k==="lucan"?"@LucanPevidor":"@vystatsyt");if(k==="lucan")$("lucanDescription").textContent=c.description||"";av(k,c.avatar);};
 const updateRate=count=>{const now=Date.now(),n=Number(count);if(!Number.isFinite(n))return;samples.push({t:now,n});if(samples.length>2)samples.shift();if(samples.length<2)return;const first=samples[0],seconds=(now-first.t)/1000;if(seconds>0)rollingRate((n-first.n)/seconds);};
+const fitMainNumbers=()=>{const cards=[["lucanCount",false],["lucanRate",true],["lucanRemaining",false]],mids=cards.map(([id])=>$(id).closest(".stat-middle"));let size=Math.min(96,Math.max(68,window.innerWidth*.058));for(;size>=50;size--){cards.forEach(([id,isRate])=>{const el=$(id);el.style.fontSize=size+"px";if(isRate){$("lucanRateSign").style.fontSize=size+"px";$("lucanRate").style.fontSize=size+"px";}});if(cards.every(([id,isRate],i)=>{const el=$(id),box=mids[i];return isRate?el.parentElement.scrollWidth<=box.clientWidth:el.scrollWidth<=box.clientWidth;}))break;}document.documentElement.style.setProperty("--main-number-size",size+"px");};
+window.addEventListener("resize",fitMainNumbers);
 async function run(){const s=$("status");try{
 const r=await fetch("/api/stats?t="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("Stats request failed");
 const {lucan:l={},mine:m={}}=await r.json(),st=l.sctools||{},fw=l.freewebtools||{},mst=m.sctools||{},mfw=m.freewebtools||{};
@@ -167,6 +170,7 @@ rolling("lucanCount",mainSubs);rolling("lucanRemaining",60000000-Number(mainSubs
 profile("lucan",l.channel);profile("mine",m.channel);
 rolling("stLinearText",st.linearSubscribers);rolling("stHourlyText",st.hourly??fw.hourly);rolling("stDailyText",st.daily??fw.daily);
 [["stEstSubs",st.estSubscribers],["stApiSubs",st.apiSubscribers],["fwEstSubs",fw.estimatedSubscribers],["fwApiSubs",fw.apiSubscribers],["stEstViews",st.estViews],["stApiViews",st.apiViews],["fwEstViews",fw.estimatedViews],["fwApiViews",fw.viewCount],["stEstVideos",st.estVideos],["stApiVideos",st.apiVideos],["fwEstVideos",fw.estimatedVideos],["fwApiVideos",fw.videoCount]].forEach(([id,v])=>rolling(id,v));
+fitMainNumbers();
 const t=Math.max(l.updated||0,m.updated||0);$("updated").textContent=t?"UPDATED "+new Date(t).toLocaleTimeString():"WAITING FOR DATA";
 s.textContent="● CONNECTED";s.style.color="#65dfa5";
 }catch(e){s.textContent="● RECONNECTING";s.style.color="#ff667b";}}
