@@ -20,11 +20,11 @@ header,footer{display:flex;align-items:center;justify-content:space-between;padd
 .hero{display:grid;grid-template-columns:420px minmax(0,1fr);gap:14px;min-width:0;min-height:0}
 .sidebar{display:grid;grid-template-rows:minmax(0,1fr) 240px;gap:12px;min-width:0;min-height:0}
 .panel,.stat-card,.sources-panel{background:linear-gradient(145deg,#111a35ed,#070b19f5 80%);border:1px solid var(--border);border-radius:19px;box-shadow:0 10px 35px #0008,inset 0 1px #ffffff0c;min-width:0;min-height:0;overflow:hidden;position:relative}
-.profile-card{display:flex;align-items:center;gap:18px;padding:18px;border-color:#743dff;box-shadow:0 0 20px #6e29ff28,inset 0 0 25px #6124ff0c}
-.profile-card:before,.stat-card:before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(125deg,#873aff12,transparent 42%,#148bff0b)}
-.lucan-avatar{width:205px;height:205px;max-width:48%;flex-shrink:0;border-radius:50%;object-fit:cover;border:3px solid var(--blue);box-shadow:0 0 20px #168fff77,0 0 38px #8b36ff44}
-.p-info{min-width:0;position:relative;z-index:1}
-.nm{font-size:clamp(22px,1.8vw,29px);font-weight:900;line-height:1.08;overflow-wrap:anywhere}
+.profile-card{display:flex;align-items:flex-start;gap:18px;padding:30px 18px 18px;border-color:#743dff;box-shadow:0 0 20px #6e29ff28,inset 0 0 25px #6124ff0c;overflow:visible}
+.profile-card:before,.stat-card:before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(125deg,#873aff12,transparent 42%,#148bff0b);border-radius:inherit}
+.lucan-avatar{width:190px;height:190px;max-width:48%;flex-shrink:0;border-radius:50%;object-fit:cover;object-position:center 15%;border:3px solid var(--blue);box-shadow:0 0 20px #168fff77,0 0 38px #8b36ff44;margin-top:4px;position:relative;z-index:1}
+.p-info{min-width:0;position:relative;z-index:1;padding-top:10px}
+.nm{font-size:clamp(22px,1.8vw,29px);font-weight:900;line-height:1.2;overflow-wrap:anywhere;padding-top:2px}
 .hd{font-size:12px;color:var(--muted);font-weight:800;margin-top:9px}
 .desc{font-size:12px;color:#dce5ff;font-weight:800;line-height:1.45;margin-top:12px;max-width:180px;overflow-wrap:anywhere}
 .tag{display:inline-block;margin-top:13px;padding:8px 12px;border-radius:8px;background:linear-gradient(90deg,#6423d9,#2549bc);font-size:11px;font-weight:900;letter-spacing:.5px;box-shadow:0 0 14px #712dff44}
@@ -83,18 +83,6 @@ footer{font-size:13px;font-weight:900;color:#b9caff;border-top:1px solid #ffffff
 .odometer{font-family:Inter,sans-serif!important;white-space:nowrap!important;display:inline-block!important}
 .odometer-inside{display:inline-block!important;white-space:nowrap!important}
 .odometer-digit,.odometer-digit-spacer{display:inline-block!important;vertical-align:baseline!important}
-@media(max-width:1250px){
-.pg{grid-template-rows:38px minmax(0,1fr) 185px 25px;gap:7px}
-.hero{grid-template-columns:340px minmax(0,1fr);gap:9px}
-.sidebar{grid-template-rows:minmax(0,1fr) 215px;gap:9px}
-.main-stats{gap:9px}
-.stat-card{padding:14px 9px;grid-template-rows:55px minmax(0,1fr) 100px}
-.lucan-avatar{width:165px;height:165px}
-.profile-card{gap:12px;padding:13px}
-.mine-card{padding:9px}
-.mine-avatar{width:55px;height:55px}
-.mtx{grid-template-columns:105px repeat(4,minmax(0,1fr))}
-}
 </style>
 </head>
 <body>
@@ -118,8 +106,7 @@ footer{font-size:13px;font-weight:900;color:#b9caff;border-top:1px solid #ffffff
 <div class="main-stats">
 <div class="stat-card">
 <div class="stat-top"><span class="stat-icon">↗</span><span>LUCAN · LIVE SUBSCRIBERS<br>(LINEAR ESTIMATE)</span></div>
-<div class="stat-middle">
-<div class="stat-value odometer fit-number" id="lucanCount">—</div>
+<div class="stat-middle"><div class="stat-value odometer fit-number" id="lucanCount">—</div>
 <svg class="chart" viewBox="0 0 400 80" preserveAspectRatio="none"><defs><linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#18e9d9" stop-opacity=".35"/><stop offset="100%" stop-color="#18e9d9" stop-opacity="0"/></linearGradient></defs><polygon class="chart-fill" id="chartFill" points="0,75 400,75"/><polyline id="chartLine" points="0,65 60,55 120,52 180,45 240,38 300,30 360,22 400,15"/></svg>
 </div>
 <div class="metric-row">
