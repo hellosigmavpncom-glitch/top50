@@ -7,16 +7,24 @@ const os=require("node:os");
 const WIDTH=1600,HEIGHT=900,FPS=30,MAX_BYTES=16*1024*1024;
 const URL=process.env.DASHBOARD_URL||"https://zhong-vs-fede.onrender.com/";
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const stage=s=>console.log(`[INIT ${new Date().toLocaleTimeString()}] ${s}`);
 let browser,dashboard,recorder,recordPath,recordingActive=false,started=0,outputBytes=0,error=null,statusTimer=null,lastStats=null;
 
 async function initialize(){
   if(browser)return;
+  stage("1/6 BEFORE PUPPETEER.LAUNCH");
   browser=await puppeteer.launch({headless:true,executablePath:await puppeteer.executablePath(),args:["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage","--disable-background-timer-throttling","--disable-renderer-backgrounding","--disable-backgrounding-occluded-windows","--renderer-process-limit=2","--disable-extensions","--window-size=1600,900","--force-device-scale-factor=1"]});
+  stage("2/6 CHROME LAUNCHED");
   dashboard=await browser.newPage();
+  stage("3/6 PAGE CREATED");
   await dashboard.setViewport({width:WIDTH,height:HEIGHT,deviceScaleFactor:1});
+  stage(`4/6 VIEWPORT SET: ${WIDTH}x${HEIGHT}`);
   await dashboard.goto(URL,{waitUntil:"domcontentloaded",timeout:60000});
+  stage(`5/6 DASHBOARD NAVIGATED: ${URL}`);
   await sleep(3000);
-  if(typeof dashboard.record!=="function")throw Error("Puppeteer page.record() is unavailable");
+  const available=typeof dashboard.record==="function";
+  stage(`6/6 PAGE.RECORD CHECK: ${available?"AVAILABLE":"UNAVAILABLE"}`);
+  if(!available)throw Error("Puppeteer page.record() is unavailable");
 }
 
 async function diagnostics(){
