@@ -1,10 +1,13 @@
 
 const puppeteer=require("puppeteer");
 const {performance}=require("node:perf_hooks");
-const WIDTH=640,HEIGHT=360,FPS=30,FRAME_MS=1000/FPS,MAX_BYTES=16*1024*1024;
-let browser,dashboard,recordingActive=false,started=0,outputBytes=0,error=null,container="VP8 elementary stream (not WebM)",statusPoll=null,diagnosticsBefore=null;
-let stats={frames:0,encodedFrames:0,missedDeadlines:0,frameTimes:[],intervals:[],encodeTimes:[],drawTimes:[],maxQueue:0,queueSamples:[]};
 
+const WIDTH=640,HEIGHT=360,FPS=30,FRAME_MS=1000/FPS,MAX_BYTES=16*1024*1024;
+const DASHBOARD_URL=process.env.DASHBOARD_URL||"https://zhong-vs-fede.onrender.com/";
+
+let browser,dashboard,running=false,recordingActive=false,started=0,outputBytes=0,error=null,container="VP8 elementary stream (not WebM)",statusTimer=null,polling=false,lastBrowserStats=null;
+
+let stats={frames:0,encodedFrames:0,missedDeadlines:0,maxQueue:0};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const average=a=>a.length?+(a.reduce((x,y)=>x+y,0)/a.length).toFixed(2):0;
 const percentile=(a,p)=>a.length?[...a].sort((x,y)=>x-y)[Math.min(a.length-1,Math.floor(a.length*p))]:0;
@@ -27,15 +30,17 @@ async function initialize(){
     window.setInterval=(cb,ms,...args)=>interval(()=>{window.__probe.timers++;cb(...args)},ms);
     new MutationObserver(list=>window.__probe.mutations+=list.length).observe(document,{subtree:true,childList:true,attributes:true,characterData:true});
   });
-  await dashboard.goto(process.env.DASHBOARD_URL||"https://zhong-vs-fede.onrender.com/",{waitUntil:"domcontentloaded",timeout:60000});
+  await dashboard.goto(DASHBOARD_URL,{waitUntil:"domcontentloaded",timeout:60000});
   await sleep(3000);
 }
 
 async function diagnostics(){
-  try{return await dashboard.evaluate(()=>{
-    const p=window.__probe||{};
-    return {visibility:document.visibilityState,hidden:document.hidden,hasFocus:document.hasFocus(),rafTicks:p.raf||0,timerTicks:p.timers||0,domMutations:p.mutations||0,title:document.title,url:location.href};
-  });}catch(e){return {diagnosticError:e.message};}
+  try{
+    return await dashboard.evaluate(()=>{
+      const p=window.__probe||{};
+      return {visibility:document.visibilityState,hidden:document.hidden,hasFocus:document.hasFocus(),rafTicks:p.raf||0,timerTicks:p.timers||0,domMutations:p.mutations||0,title:document.title,url:location.href};
+    });
+  }catch(e){return {diagnosticError:e.message};}
 }
 
 function getStatus(){
@@ -51,122 +56,136 @@ function getStatus(){
 }
 
 async function setupEncoder(){
-  return dashboard.evaluate(async({width,height,fps,maxBytes,frameMs})=>{
-    if(!("VideoEncoder" in window)||!("VideoFrame" in window))throw Error("WebCodecs VideoEncoder/VideoFrame unavailable");
-    if(window.__capture?.canvas)window.__capture.canvas.remove();
+  return dashboard.evaluate(async({width,height,fps,frameMs,maxBytes})=>{
+    if(!("VideoEncoder" in window)||!("VideoFrame" in window))throw Error("WebCodecs unavailable");
     const config={codec:"vp8",width,height,bitrate:900000,framerate:fps,latencyMode:"realtime",hardwareAcceleration:"prefer-software"};
     const supported=await VideoEncoder.isConfigSupported(config);
-    if(!supported.supported)throw Error("Chrome does not support this VP8 encoder configuration");
+    if(!supported.supported)throw Error("VP8 encoder configuration unsupported");
+
     const canvas=document.createElement("canvas");
     canvas.width=width;canvas.height=height;
     canvas.style.cssText="position:fixed;left:-10000px;top:0";
     document.documentElement.appendChild(canvas);
     const ctx=canvas.getContext("2d",{alpha:false,desynchronized:true});
     if(!ctx)throw Error("Canvas 2D unavailable");
+
     const chunks=[];
-    let total=0,frames=0,encodedFrames=0,missedDeadlines=0,limitReached=false,encoderError=null,active=false,timer=null,lastAt=0,nextAt=0,maxQueue=0;
-    const frameTimes=[],intervals=[],encodeTimes=[],drawTimes=[],queueSamples=[];
-    const sample=(a,v)=>{a.push(v);if(a.length>900)a.splice(0,100);};
+    const data={frames:0,encodedFrames:0,missedDeadlines:0,maxQueue:0,outputBytes:0,error:null,frameTimes:[],intervals:[],encodeTimes:[],drawTimes:[],queueSamples:[]};
+    let total=0,active=false,timer=null,lastAt=0,nextAt=0,encoderError=null,limitReached=false;
+
+    const record=(array,value)=>{
+      array.push(value);
+      if(array.length>900)array.shift();
+    };
+
     const encoder=new VideoEncoder({
       output(chunk){
-        const data=new Uint8Array(chunk.byteLength);
-        chunk.copyTo(data);
-        total+=data.byteLength;
-        encodedFrames++;
-        if(total>maxBytes){limitReached=true;active=false;if(timer)clearTimeout(timer);return;}
-        chunks.push(data);
+        const bytes=new Uint8Array(chunk.byteLength);
+        chunk.copyTo(bytes);
+        total+=bytes.length;
+        if(total>maxBytes){limitReached=true;return;}
+        chunks.push(bytes);
+        data.encodedFrames++;
+        data.outputBytes=total;
       },
-      error(e){encoderError=e.message||String(e);active=false;if(timer)clearTimeout(timer);}
+      error(e){encoderError=e.message||String(e);data.error=encoderError;active=false;}
     });
     encoder.configure(supported.config);
 
-    const draw=frame=>{
+    function draw(frame){
       const t=performance.now();
       ctx.fillStyle="#101522";ctx.fillRect(0,0,width,height);
       ctx.fillStyle="#7187ff";ctx.fillRect(0,0,width,5);
-      ctx.fillStyle="#ffffff";ctx.font="bold 25px Arial";ctx.fillText("WEBCODECS BENCHMARK",25,48);
+      ctx.fillStyle="#fff";ctx.font="bold 25px Arial";ctx.fillText("WEBCODECS BENCHMARK",25,48);
       ctx.fillStyle="#aab4ca";ctx.font="14px Arial";ctx.fillText("DIRECT CANVAS → VP8 ENCODER",26,73);
-      ctx.fillStyle="#ffffff";ctx.font="bold 36px Arial";ctx.fillText((81208850+frame).toLocaleString("en-US"),25,145);
+      ctx.fillStyle="#fff";ctx.font="bold 36px Arial";ctx.fillText((81208850+frame).toLocaleString("en-US"),25,145);
       ctx.fillStyle="#8995ad";ctx.font="15px Arial";ctx.fillText("LIVE SUBSCRIBERS",27,170);
       ctx.fillStyle="#bd82ff";ctx.fillRect(25,205,590,12);
-      ctx.fillStyle="#ffffff";ctx.font="15px Arial";ctx.fillText("FRAME "+frame,25,255);
+      ctx.fillStyle="#fff";ctx.font="15px Arial";ctx.fillText("FRAME "+frame,25,255);
       ctx.fillStyle="#8995ad";ctx.fillText(new Date().toISOString().slice(11,19),25,285);
       return performance.now()-t;
-    };
+    }
 
-    const tick=()=>{
-      if(!active)return;
-      const frameStart=performance.now();
-      if(lastAt)sample(intervals,frameStart-lastAt);
-      lastAt=frameStart;
+    function tick(){
+      if(!active||encoderError||limitReached)return;
+      const begin=performance.now();
+      if(lastAt)record(data.intervals,begin-lastAt);
+      lastAt=begin;
+
       try{
-        const drawMs=draw(frames);
-        const videoFrame=new VideoFrame(canvas,{timestamp:Math.round(frames*1000000/fps)});
+        const drawMs=draw(data.frames);
+        const frame=new VideoFrame(canvas,{timestamp:Math.round(data.frames*1000000/fps)});
         const before=performance.now();
-        encoder.encode(videoFrame,{keyFrame:frames%(fps*2)===0});
-        videoFrame.close();
-        const encodeMs=performance.now()-before;
-        const queue=encoder.encodeQueueSize;
-        frames++;
-        maxQueue=Math.max(maxQueue,queue);
-        sample(drawTimes,drawMs);
-        sample(encodeTimes,encodeMs);
-        sample(queueSamples,queue);
-        const elapsed=performance.now()-frameStart;
-        sample(frameTimes,elapsed);
-        if(elapsed>frameMs)missedDeadlines++;
-        if(queue>fps*2){encoderError="Encoder queue exceeded 2 seconds of frames";active=false;return;}
-      }catch(e){encoderError=e.message||String(e);active=false;return;}
-      if(!active)return;
+        encoder.encode(frame,{keyFrame:data.frames%(fps*2)===0});
+        frame.close();
+
+        record(data.drawTimes,drawMs);
+        record(data.encodeTimes,performance.now()-before);
+        data.maxQueue=Math.max(data.maxQueue,encoder.encodeQueueSize);
+        record(data.queueSamples,encoder.encodeQueueSize);
+        data.frames++;
+        record(data.frameTimes,performance.now()-begin);
+
+        if(encoder.encodeQueueSize>fps*2)throw Error("Encoder queue exceeded 2 seconds");
+      }catch(e){
+        data.error=e.message||String(e);
+        active=false;
+        return;
+      }
+
+      if(limitReached){data.error="Recording reached the 16 MB limit";active=false;return;}
+
       nextAt+=frameMs;
       const now=performance.now();
-      if(nextAt<now-frameMs)nextAt=now;
+      if(now-nextAt>frameMs)nextAt=now;
       timer=setTimeout(tick,Math.max(0,nextAt-now));
-    };
+    }
 
     window.__capture={
-      canvas,
+      config:supported.config,
       start(){
-        if(active)throw Error("Browser encoder is already running");
-        active=true;frames=0;lastAt=0;nextAt=performance.now();
+        if(active)throw Error("Capture already running");
+        active=true;lastAt=0;nextAt=performance.now();
         tick();
         return true;
       },
-      stats:()=>({frames,encodedFrames,missedDeadlines,total,maxQueue,queue:encoder.encodeQueueSize,limitReached,encoderError}),
-      stop:async()=>{
+      stats(){return {...data,outputBytes:total,encoderError,limitReached};},
+      async stop(){
         active=false;
         if(timer)clearTimeout(timer);
         await encoder.flush();
-        const finalStats={frames,encodedFrames,missedDeadlines,total,maxQueue,queue:encoder.encodeQueueSize,limitReached,encoderError};
+        const finalStats={...data,outputBytes:total,encoderError,limitReached};
         encoder.close();
+        canvas.remove();
         const combined=new Uint8Array(chunks.reduce((n,c)=>n+c.length,0));
         let offset=0;
         for(const chunk of chunks){combined.set(chunk,offset);offset+=chunk.length;}
-        let base64="";
-        if(combined.length){
-          const blob=new Blob([combined],{type:"application/octet-stream"});
-          base64=await new Promise((resolve,reject)=>{
-            const reader=new FileReader();
-            reader.onload=()=>resolve(reader.result.split(",")[1]);
-            reader.onerror=reject;
-            reader.readAsDataURL(blob);
-          });
-        }
-        return {...finalStats,base64,size:combined.length,frameTimes,intervals,encodeTimes,drawTimes,queueSamples};
+        const blob=new Blob([combined],{type:"application/octet-stream"});
+        const base64=await new Promise((resolve,reject)=>{
+          const reader=new FileReader();
+          reader.onload=()=>resolve(reader.result.split(",")[1]);
+          reader.onerror=reject;
+          reader.readAsDataURL(blob);
+        });
+        return {...finalStats,base64,size:combined.length};
       }
     };
-    return {supported:true,codec:supported.config.codec,bitrate:supported.config.bitrate,framerate:supported.config.framerate,loop:"browser-side"};
-  },{width:WIDTH,height:HEIGHT,fps:FPS,maxBytes:MAX_BYTES,frameMs:FRAME_MS});
+    return {supported:true,codec:supported.config.codec,bitrate:supported.config.bitrate,framerate:supported.config.framerate};
+  },{width:WIDTH,height:HEIGHT,fps:FPS,frameMs:FRAME_MS,maxBytes:MAX_BYTES});
 }
 
-function updateStats(s){
-  stats.frames=s.frames;
-  stats.encodedFrames=s.encodedFrames;
-  stats.missedDeadlines=s.missedDeadlines;
-  stats.maxQueue=s.maxQueue;
-  outputBytes=s.total;
-  if(s.encoderError)error=s.encoderError;
-  if(s.limitReached)error="Recording reached the 16 MB safety limit";
+async function refreshStatus(){
+  if(!recordingActive||polling)return;
+  polling=true;
+  try{
+    const s=await dashboard.evaluate(()=>window.__capture?.stats());
+    if(s){
+      stats={frames:s.frames,encodedFrames:s.encodedFrames,missedDeadlines:s.missedDeadlines,maxQueue:s.maxQueue};
+      outputBytes=s.outputBytes;
+      if(s.error)error=s.error;
+    }
+  }catch(e){error=e.message;}
+  finally{polling=false;}
 }
 
 async function startRecording(){
@@ -175,74 +194,87 @@ async function startRecording(){
   await dashboard.bringToFront();
   console.log("[CAPTURE PAGE]",JSON.stringify(await dashboard.evaluate(()=>({visibility:document.visibilityState,hidden:document.hidden}))));
   const setup=await setupEncoder();
-  console.log("[WEBCODECS]",JSON.stringify(setup));
-  stats={frames:0,encodedFrames:0,missedDeadlines:0,frameTimes:[],intervals:[],encodeTimes:[],drawTimes:[],maxQueue:0,queueSamples:[]};
-  outputBytes=0;container="VP8 elementary stream (not WebM)";error=null;
+  console.log("[WEBCODECS]",JSON.stringify({...setup,loop:"browser-side"}));
+
+  stats={frames:0,encodedFrames:0,missedDeadlines:0,maxQueue:0};
+  outputBytes=0;error=null;lastBrowserStats=null;
+  container="VP8 elementary stream (not WebM)";
   started=Date.now();recordingActive=true;
-  try{
-    await dashboard.evaluate(()=>window.__capture.start());
-    statusPoll=setInterval(async()=>{
-      try{
-        const s=await dashboard.evaluate(()=>window.__capture.stats());
-        updateStats(s);
-      }catch(e){error=e.message;}
-    },1000);
-  }catch(e){recordingActive=false;throw e;}
+  await dashboard.evaluate(()=>window.__capture.start());
+  statusTimer=setInterval(refreshStatus,1000);
   console.log(`[CAPTURE] Browser-side WebCodecs started | ${WIDTH}x${HEIGHT} | ${FPS} FPS target`);
   return getStatus();
 }
 
 async function stopRecording(){
   if(!recordingActive)throw Error("No recording is active");
-  if(statusPoll){clearInterval(statusPoll);statusPoll=null;}
+  recordingActive=false;
+  if(statusTimer){clearInterval(statusTimer);statusTimer=null;}
+  await refreshStatus();
   try{
     const result=await dashboard.evaluate(()=>window.__capture.stop());
     const buffer=Buffer.from(result.base64||"","base64");
-    updateStats(result);
-    stats.frameTimes=result.frameTimes;
-    stats.intervals=result.intervals;
-    stats.encodeTimes=result.encodeTimes;
-    stats.drawTimes=result.drawTimes;
-    stats.queueSamples=result.queueSamples;
+    lastBrowserStats=result;
+    stats={frames:result.frames,encodedFrames:result.encodedFrames,missedDeadlines:result.missedDeadlines,maxQueue:result.maxQueue};
     outputBytes=buffer.length;
     if(result.encoderError)throw Error(result.encoderError);
+    if(result.error)throw Error(result.error);
     if(result.limitReached||buffer.length>MAX_BYTES)throw Error("Recording exceeded the 16 MB safety limit");
     if(!buffer.length)throw Error("WebCodecs returned no encoded frames");
     console.log(`[CAPTURE] Stopped | ${((Date.now()-started)/1000).toFixed(1)}s | ${stats.frames} submitted | ${stats.encodedFrames} encoded | ${(buffer.length/1024/1024).toFixed(2)} MB`);
-    recordingActive=false;
     return buffer;
-  }catch(e){error=e.message;recordingActive=false;throw e;}
+  }catch(e){error=e.message;throw e;}
 }
 
-async function runBenchmark(seconds=15){
-  console.log(`[DIAGNOSTIC] Browser-side WebCodecs test starting | ${seconds}s`);
-  await initialize();
-  diagnosticsBefore=await diagnostics();
-  console.log("[PAGE BEFORE]",JSON.stringify(diagnosticsBefore));
+function captureSummary(buffer){
+  const s=lastBrowserStats||{};
+  return {
+    ...getStatus(),recordingBytes:buffer.length,
+    frameTime:summary(s.frameTimes||[]),
+    frameInterval:summary(s.intervals||[]),
+    encodeTime:summary(s.encodeTimes||[]),
+    drawTime:summary(s.drawTimes||[]),
+    queue:{max:s.maxQueue||0,avg:average(s.queueSamples||[])}
+  };
+}
+
+async function runCase(name,seconds){
+  const before=await diagnostics();
+  console.log(`[TEST] ${name} starting`);
   await startRecording();
   await sleep(seconds*1000);
   const after=await diagnostics();
-  console.log("[PAGE AFTER]",JSON.stringify(after));
   const buffer=await stopRecording();
-  const result={
-    before:diagnosticsBefore,after,
-    capture:{
-      ...getStatus(),recordingBytes:buffer.length,
-      frameTime:summary(stats.frameTimes),
-      frameInterval:summary(stats.intervals),
-      encodeTime:summary(stats.encodeTimes),
-      drawTime:summary(stats.drawTimes),
-      queue:{max:stats.maxQueue,avg:average(stats.queueSamples)}
-    },
-    benchmarkSeconds:seconds
-  };
-  console.log("[WEBCODECS RESULT]",JSON.stringify(result));
+  const result={name,before,after,capture:captureSummary(buffer)};
+  console.log(`[TEST RESULT] ${name}`,JSON.stringify(result));
+  return result;
+}
+
+async function runBenchmark(seconds=15){
+  if(recordingActive)throw Error("Stop the current recording before benchmarking");
+  console.log(`[DIAGNOSTIC] Blank page vs dashboard | ${seconds}s each`);
+  await initialize();
+
+  await dashboard.goto("about:blank",{waitUntil:"load"});
+  await sleep(500);
+  const blank=await runCase("BLANK PAGE",seconds);
+
+  await dashboard.goto(DASHBOARD_URL,{waitUntil:"domcontentloaded",timeout:60000});
+  await sleep(3000);
+  const actual=await runCase("DASHBOARD PAGE",seconds);
+
+  const result={blank,dashboard:actual,comparison:{
+    blankFps:blank.capture.actualFps,
+    dashboardFps:actual.capture.actualFps,
+    fpsDifference:+(blank.capture.actualFps-actual.capture.actualFps).toFixed(2)
+  }};
+  console.log("[WEBCODECS COMPARISON]",JSON.stringify(result));
   return result;
 }
 
 async function close(){
-  if(statusPoll){clearInterval(statusPoll);statusPoll=null;}
   if(recordingActive){try{await stopRecording()}catch(e){console.error("[CAPTURE STOP]",e.message)}}
+  if(statusTimer){clearInterval(statusTimer);statusTimer=null;}
   if(browser){await browser.close();browser=null;dashboard=null;}
 }
 
