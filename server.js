@@ -1,16 +1,21 @@
-const express=require("express"),app=express();
+const express=require("express"),app=express(),capture=require("./capture");
 const CHANNELS={lucan:{id:"UCuz_0MPcY5O0vsIfFPKFpGg",user:"LucanPevidor"},mine:{id:"UCnKrmx7XhDqbiMD3aSBwz_g",user:"vystatsyt"}};
 const headers={"User-Agent":"Mozilla/5.0","Accept":"application/json","Accept-Language":"en-US,en;q=0.9","Cache-Control":"no-cache","Pragma":"no-cache"};
 const num=v=>v===null||v===undefined||v===""||!Number.isFinite(Number(v))?null:Number(v);
 const empty=()=>({sctools:{},freewebtools:{},channel:{},updated:null,error:null,sourceErrors:{}});
 const data=Object.fromEntries(Object.keys(CHANNELS).map(k=>[k,empty()]));
-const logged={lucan:{},mine:{}};let busy=false;
+const logged={lucan:{},mine:{}};let busy=false,lastRecording=null;
 const log=(k,s,e)=>{const msg=e?`${e.message}${e.status?` | STATUS: ${e.status}`:""}${e.body?` | BODY: ${e.body}`:""}${e.url?` | URL: ${e.url}`:""}`:"";data[k].sourceErrors[s]=msg||null;if(msg&&logged[k][s]!==msg)console.error(`[${new Date().toLocaleTimeString()}] [${k.toUpperCase()}] [${s}] ${msg}`);if(!msg&&logged[k][s])console.log(`[${k.toUpperCase()}] ${s} recovered`);logged[k][s]=msg||null;};
 const get=async url=>{const r=await fetch(url,{headers,signal:AbortSignal.timeout(12000)}),body=await r.text();if(!r.ok){const e=Error(`HTTP ${r.status}`);e.status=r.status;e.body=body.slice(0,400);e.url=url;throw e;}try{return JSON.parse(body);}catch(e){e.body=body.slice(0,400);e.url=url;throw e;}};
 app.get("/",(q,r)=>r.sendFile(__dirname+"/index.html"));
+app.get("/health",(q,r)=>r.json({ok:true}));
 app.get("/api/stats",(q,r)=>(r.set("Cache-Control","no-store"),r.json(data)));
 app.get("/api/diagnostics",(q,r)=>(r.set("Cache-Control","no-store"),r.json(Object.fromEntries(Object.entries(data).map(([k,d])=>[k,{updated:d.updated,error:d.error,sourceErrors:d.sourceErrors}])))));
 app.get("/api/avatar/:key",async(q,r)=>{try{const u=data[q.params.key]?.channel?.avatar;if(!u)return r.sendStatus(404);const url=new URL(u);if(url.protocol!=="https:")return r.sendStatus(400);const x=await fetch(url,{signal:AbortSignal.timeout(12000)});if(!x.ok)throw Error(`HTTP ${x.status}`);r.set({"Content-Type":x.headers.get("content-type")||"image/jpeg","Cache-Control":"public,max-age=21600"});r.send(Buffer.from(await x.arrayBuffer()));}catch(e){console.error(`[AVATAR] ${q.params.key}: ${e.message}`);if(!r.headersSent)r.sendStatus(502);}});
+app.post("/recording/start",async(q,r)=>{try{lastRecording=null;const result=await capture.startRecording();r.json({ok:true,status:result||capture.getStatus()});}catch(e){console.error("[RECORDING START]",e.message);r.status(500).json({ok:false,error:e.message});}});
+app.post("/recording/stop",async(q,r)=>{try{const result=await capture.stopRecording();if(!result||!Buffer.isBuffer(result))throw Error("No recording data was returned");lastRecording=result;r.json({ok:true,size:lastRecording.length,url:"/recording.webm"});}catch(e){console.error("[RECORDING STOP]",e.message);r.status(500).json({ok:false,error:e.message});}});
+app.get("/recording/status",(q,r)=>{try{r.set("Cache-Control","no-store");r.json(capture.getStatus());}catch(e){r.status(500).json({error:e.message});}});
+app.get("/recording.webm",(q,r)=>{if(!lastRecording)return r.status(404).send("No recording available");r.set({"Content-Type":"video/webm","Content-Length":lastRecording.length,"Content-Disposition":"attachment; filename=recording.webm","Cache-Control":"no-store"});r.send(lastRecording);});
 const update=async k=>{const {id,user}=CHANNELS[k],d=data[k],urls=[`https://ests.sctools.org/api/get/${id}`,`https://www.freewebtools.com/api/youtube/channel?user=${encodeURIComponent(user)}&_t=${Date.now()}`];
 const [st,fw]=await Promise.all(urls.map((u,i)=>get(u).then(j=>{if(i===1&&j.refreshFailed)throw Error(j.refreshFailure||"FreeWebTools refresh failed");log(k,i?"FreeWebTools":"SCTools");return j;}).catch(e=>(log(k,i?"FreeWebTools":"SCTools",e),null))));
 if(st?.stats){const x=st.stats;d.sctools={estSubscribers:num(x.estCount),linearSubscribers:num(x.linearCount),apiSubscribers:num(x.apiCount),estViews:num(x.viewCount),apiViews:null,estVideos:null,apiVideos:num(x.videoCount),hourly:num(st.averages?.hourly),daily:num(st.averages?.daily),nextUpdate:st.nextUpdate??null};d.channel={...d.channel,name:st.info?.name||d.channel.name||"",avatar:st.info?.avatar||d.channel.avatar||"",country:st.info?.country||d.channel.country||""};}
@@ -18,4 +23,6 @@ if(fw){const e=fw.estimation||{};d.freewebtools={estimatedSubscribers:num(e.esti
 d.updated=Date.now();d.error=!st&&!fw?"Both sources unavailable":null;
 };
 const updateAll=async()=>{if(busy)return;busy=true;try{await Promise.all(Object.keys(CHANNELS).map(update));console.log(`[${new Date().toLocaleTimeString()}] Updated | Lucan: ${data.lucan.updated?"OK":"NO DATA"} | MY CHANNEL: ${data.mine.updated?"OK":"NO DATA"}`);}catch(e){console.error("[SERVER]",e.message);}finally{busy=false;}};
-app.listen(process.env.PORT||3000,()=>{console.log("SCTools + FreeWebTools Tracker running");updateAll();setInterval(updateAll,5000);});
+const server=app.listen(process.env.PORT||3000,()=>{console.log("SCTools + FreeWebTools Tracker running");updateAll();setInterval(updateAll,5000);});
+process.on("SIGTERM",async()=>{console.log("Shutting down");try{await capture.close();}catch(e){console.error("[CAPTURE CLOSE]",e.message);}server.close();});
+process.on("SIGINT",async()=>{try{await capture.close();}catch(e){}server.close();});
