@@ -4,10 +4,9 @@ process.env.PUPPETEER_CACHE_DIR=process.env.PUPPETEER_CACHE_DIR||path.join(__dir
 const puppeteer=require("puppeteer");
 
 const DASHBOARD_URL=process.env.DASHBOARD_URL||"https://zhong-vs-fede.onrender.com/";
-const WIDTH=640,HEIGHT=360,TEST_SECONDS=30;
+const WIDTH=640,HEIGHT=360,TEST_SECONDS=15;
 let browser=null,page=null,recorderPage=null,cdp=null;
 let active=false,recording=false,frames=0,dropped=0,error=null,startedAt=0,drawBusy=false,pendingDraw=null;
-let screencastFrames=[],ackTimes=[],frameSizes=[],captureMode=null;
 
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const round=n=>Number(n.toFixed(2));
@@ -28,22 +27,14 @@ async function initialize(){
   cdp=await page.createCDPSession();
   await cdp.send("Page.enable");
   cdp.on("Page.screencastFrame",params=>{
-    const arrived=performance.now(),id=params.sessionId;
-    if(captureMode==="benchmark"){
-      screencastFrames.push(arrived);
-      frameSizes.push(Buffer.byteLength(params.data,"base64")*.75);
-    }
-    cdp.send("Page.screencastFrameAck",{sessionId:id}).then(()=>{
-      if(captureMode==="benchmark")ackTimes.push(performance.now()-arrived);
-    }).catch(e=>{error=e.message;});
-    if(recording){
-      if(drawBusy){dropped++;return;}
-      drawBusy=true;
-      pendingDraw=recorderPage.evaluate(data=>window.__draw(data),params.data)
-        .then(()=>{frames++;})
-        .catch(e=>{error=e.message;console.error("[FRAME]",e.message);})
-        .finally(()=>{drawBusy=false;});
-    }
+    cdp.send("Page.screencastFrameAck",{sessionId:params.sessionId}).catch(e=>{error=e.message;});
+    if(!recording)return;
+    if(drawBusy){dropped++;return;}
+    drawBusy=true;
+    pendingDraw=recorderPage.evaluate(data=>window.__draw(data),params.data)
+      .then(()=>frames++)
+      .catch(e=>{error=e.message;console.error("[FRAME]",e.message);})
+      .finally(()=>{drawBusy=false;});
   });
   recorderPage=await browser.newPage();
   await recorderPage.setViewport({width:WIDTH,height:HEIGHT,deviceScaleFactor:1});
@@ -61,7 +52,7 @@ async function initialize(){
   };
   window.__draw=data=>new Promise((resolve,reject)=>{
     const img=new Image();
-    img.onload=()=>{ctx.drawImage(img,0,0,canvas.width,canvas.height);track.requestFrame();resolve();};
+    img.onload=()=>{ctx.drawImage(img,0,0,canvas.width,canvas.height);track.requestFrame();resolve()};
     img.onerror=()=>reject(Error("Screencast frame could not be decoded"));
     img.src="data:image/jpeg;base64,"+data;
   });
@@ -83,54 +74,90 @@ async function initialize(){
   </script></body></html>`);
 }
 
-async function startScreencast(mode){
-  captureMode=mode;
-  await cdp.send("Page.startScreencast",{format:"jpeg",quality:55,maxWidth:WIDTH,maxHeight:HEIGHT,everyNthFrame:1});
-}
-async function stopScreencast(){
-  try{await cdp.send("Page.stopScreencast");}catch(e){}
-  captureMode=null;
-  if(pendingDraw)await pendingDraw.catch(()=>{});
+async function testScreencast(target,label){
+  const session=await target.createCDPSession();
+  await session.send("Page.enable");
+  const arrivals=[],acks=[],sizes=[];
+  let pending=0,ackErrors=0;
+  const handler=params=>{
+    const arrived=performance.now();
+    arrivals.push(arrived);
+    sizes.push(Buffer.byteLength(params.data,"base64")*.75);
+    pending++;
+    session.send("Page.screencastFrameAck",{sessionId:params.sessionId})
+      .then(()=>acks.push(performance.now()-arrived))
+      .catch(()=>ackErrors++)
+      .finally(()=>pending--);
+  };
+  session.on("Page.screencastFrame",handler);
+  try{
+    await session.send("Page.startScreencast",{format:"jpeg",quality:55,maxWidth:WIDTH,maxHeight:HEIGHT,everyNthFrame:1});
+    console.log(`[CDP] ${label} started`);
+    const start=performance.now();
+    await sleep(TEST_SECONDS*1000);
+    const elapsed=(performance.now()-start)/1000;
+    await session.send("Page.stopScreencast");
+    await sleep(300);
+    const intervals=arrivals.slice(1).map((t,i)=>t-arrivals[i]);
+    const result={
+      frames:arrivals.length,
+      fps:round(arrivals.length/elapsed),
+      frameIntervalsMs:stats(intervals),
+      frameSizeKB:stats(sizes.map(x=>x/1024)),
+      ackMs:stats(acks),
+      pendingAcks:pending,
+      ackErrors
+    };
+    console.log(`[CDP] ${label} finished | ${result.frames} frames | ${result.fps} FPS`);
+    return result;
+  }finally{
+    session.off("Page.screencastFrame",handler);
+    await session.detach().catch(()=>{});
+  }
 }
 
 async function runBenchmark(){
   if(active)throw Error("Stop recording before running benchmark");
   await initialize();
-  console.log("[BENCHMARK] Screenshot vs CDP screencast |",WIDTH+"x"+HEIGHT);
-  const screenshotTimes=[];
-  for(let i=0;i<3;i++)await page.screenshot({type:"jpeg",quality:55});
-  for(let i=0;i<8;i++){
-    const start=performance.now();
-    await page.screenshot({type:"jpeg",quality:55});
-    const ms=performance.now()-start;
-    screenshotTimes.push(ms);
-    console.log(`[SCREENSHOT] ${i+1}/8 | ${round(ms)}ms`);
+  console.log("[BENCHMARK] Static vs animated vs dashboard CDP |",WIDTH+"x"+HEIGHT);
+  const blank=await browser.newPage();
+  const animated=await browser.newPage();
+  await Promise.all([blank,animated].map(p=>p.setViewport({width:WIDTH,height:HEIGHT,deviceScaleFactor:1})));
+  await blank.setContent("<!doctype html><html><body style='margin:0;background:white'></body></html>");
+  await animated.setContent(`<html><head><style>
+  *{margin:0}body{background:white;overflow:hidden}
+  #moving{position:absolute;top:30px;left:0;width:8px;height:8px;background:black;will-change:transform;animation:move 1s linear infinite}
+  @keyframes move{from{transform:translateX(0)}to{transform:translateX(500px)}}
+  </style></head><body><div id="moving"></div></body></html>`);
+  try{
+    const results={};
+    results.staticBlank=await testScreencast(blank,"STATIC BLANK");
+    results.animatedBlank=await testScreencast(animated,"ANIMATED BLANK");
+    results.dashboard=await testScreencast(page,"DASHBOARD");
+    const screenshotTimes=[];
+    for(let i=0;i<8;i++){
+      const start=performance.now();
+      await page.screenshot({type:"jpeg",quality:55});
+      screenshotTimes.push(performance.now()-start);
+      console.log(`[SCREENSHOT] ${i+1}/8 | ${round(screenshotTimes[i])}ms`);
+    }
+    const report={
+      resolution:`${WIDTH}x${HEIGHT}`,
+      testSecondsPerPage:TEST_SECONDS,
+      screenshotMethod:stats(screenshotTimes),
+      cdp:results,
+      interpretation:{
+        animatedVsStaticFPS:results.staticBlank.fps?round(results.animatedBlank.fps/results.staticBlank.fps):null,
+        dashboardVsAnimatedFPS:results.animatedBlank.fps?round(results.dashboard.fps/results.animatedBlank.fps):null
+      }
+    };
+    console.log("\n========== THREE-WAY CDP RESULTS ==========");
+    console.log(JSON.stringify(report,null,2));
+    console.log("===========================================\n");
+    return report;
+  }finally{
+    await Promise.all([blank.close().catch(()=>{}),animated.close().catch(()=>{})]);
   }
-  screencastFrames=[];ackTimes=[];frameSizes=[];
-  await startScreencast("benchmark");
-  const testStart=performance.now();
-  await sleep(TEST_SECONDS*1000);
-  await stopScreencast();
-  const elapsed=(performance.now()-testStart)/1000;
-  const intervals=screencastFrames.slice(1).map((t,i)=>t-screencastFrames[i]);
-  const report={
-    resolution:`${WIDTH}x${HEIGHT}`,
-    screenshotMethod:{...stats(screenshotTimes),estimatedFPS:round(1000/(screenshotTimes.reduce((a,b)=>a+b,0)/screenshotTimes.length))},
-    cdpScreencast:{
-      durationSeconds:round(elapsed),
-      frames:screencastFrames.length,
-      fps:round(screencastFrames.length/elapsed),
-      frameIntervalMs:stats(intervals),
-      frameSizeKB:stats(frameSizes.map(x=>x/1024)),
-      acknowledgementMs:stats(ackTimes),
-      droppedFrames:0
-    },
-    comparison:"CDP frames are compositor-delivered; screenshot FPS is the reciprocal of screenshot completion time."
-  };
-  console.log("\n========== SCREENSHOT VS CDP RESULTS ==========");
-  console.log(JSON.stringify(report,null,2));
-  console.log("===============================================\n");
-  return report;
 }
 
 async function startRecording(){
@@ -139,15 +166,16 @@ async function startRecording(){
   frames=0;dropped=0;error=null;drawBusy=false;pendingDraw=null;
   await recorderPage.evaluate(()=>window.__start());
   recording=true;active=true;startedAt=Date.now();
-  try{await startScreencast("recording");}
-  catch(e){recording=false;active=false;throw e;}
+  try{
+    await cdp.send("Page.startScreencast",{format:"jpeg",quality:55,maxWidth:WIDTH,maxHeight:HEIGHT,everyNthFrame:1});
+  }catch(e){recording=false;active=false;throw e;}
   console.log("[RECORDING] CDP screencast started");
   return getStatus();
 }
 
 async function stopRecording(){
   if(!active)throw Error("Recording is not running");
-  await stopScreencast();
+  try{await cdp.send("Page.stopScreencast");}catch(e){}
   recording=false;active=false;
   if(pendingDraw)await pendingDraw.catch(()=>{});
   const base64=await recorderPage.evaluate(()=>window.__stop());
@@ -165,7 +193,7 @@ function getStatus(){
 
 async function close(){
   active=false;recording=false;
-  if(captureMode)await stopScreencast();
+  if(cdp)try{await cdp.send("Page.stopScreencast");}catch(e){}
   if(browser)await browser.close().catch(()=>{});
   browser=null;page=null;recorderPage=null;cdp=null;drawBusy=false;pendingDraw=null;
 }
