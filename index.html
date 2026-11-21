@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -55,7 +54,7 @@ const rows=[["SUBSCRIBERS",[["stEstSubs","fw"],["stApiSubs","api"],["fwEstSubs",
 $("srcCard").innerHTML=`<div class="src-h"><span>▤ &nbsp; DATA SOURCES</span><span class="src-status">● LIVE · BOTH PROVIDERS</span></div><div class="mtx"><div></div><div class="mh">SCTools Est.</div><div class="mh">SCTools API</div><div class="mh">FreeWebTools Est.</div><div class="mh">FreeWebTools API</div>`+rows.map(([g,c])=>`<div class="mg">${g}</div>`+c.map(([i,cl])=>`<div class="cell"><span class="vl odometer ${cl}" id="${i}">—</span></div>`).join("")).join("")+`</div>`;
 const rolling=(id,v,decimals=0)=>{const el=$(id),valid=v!==null&&v!==undefined&&v!==""&&Number.isFinite(Number(v));if(!valid){if(vals[id]!==undefined){el.textContent="—";nums[id]=null;vals[id]=undefined;}else if(!nums[id])el.textContent="—";return;}const n=decimals?Number(v):Math.max(0,Math.floor(Number(v)));if(vals[id]===n)return;if(!nums[id]){if(window.Odometer){el.textContent=decimals?"0.00":"0";nums[id]=new Odometer({el,value:0,format:decimals?"(,ddd).dd":"(,ddd)",duration:550,theme:"minimal"});nums[id].update(n);}else el.textContent=decimals?n.toFixed(2):n.toLocaleString("en-US");}else nums[id].update(n);vals[id]=n;};
 const rollingRate=v=>{const n=Number(v);if(!Number.isFinite(n)||vals.lucanRate===Math.round(n*100)/100)return;$("lucanRateSign").textContent=n<0?"−":"+";rolling("lucanRate",Math.abs(n),2);vals.lucanRate=Math.round(n*100)/100;};
-const fitNumbers=()=>{document.querySelectorAll(".fit-number").forEach(el=>{if(!el.dataset.baseFont)el.dataset.baseFont=getComputedStyle(el).fontSize;el.style.fontSize=el.dataset.baseFont;const width=el.clientWidth,content=el.scrollWidth;if(width>0&&content>width+2){const base=parseFloat(el.dataset.baseFont),target=Math.max(35,base*(width-2)/content);el.style.fontSize=target+"px";}});};
+const fitNumbers=()=>{};
 const av=(k,u)=>{if(u&&urls[k]!==u){urls[k]=u;$(k+"Avatar").src="/api/avatar/"+k+"?v="+encodeURIComponent(u);}};
 const profile=(k,c)=>{if(!c)return;$(k+"Name").textContent=c.name||(k==="lucan"?"Lucan Pevidor":"VYStats");$(k+"Handle").textContent=c.handle||(k==="lucan"?"@LucanPevidor":"@vystatsyt");if(k==="lucan")$("lucanDescription").textContent="Jesus loves you! I hope every video makes you smile!";av(k,c.avatar);};
 const updateChart=count=>{history.push(Number(count));if(history.length>18)history.shift();if(history.length<2)return;const min=Math.min(...history),max=Math.max(...history),range=Math.max(1,max-min);const points=history.map((v,i)=>`${(i/(history.length-1)*400).toFixed(1)},${(68-((v-min)/range)*52).toFixed(1)}`).join(" ");$("chartLine").setAttribute("points",points);$("chartFill").setAttribute("points",`0,80 ${points} 400,80`);};
