@@ -1,7 +1,7 @@
 
 const puppeteer=require("puppeteer");
-const WIDTH=640,HEIGHT=360,FPS=30,BITRATE=900000,MAX_BYTES=16*1024*1024;
-let browser,dashboard,cdp,listener,running=false,drawing=false,pending=null,resolveFirst=null,started=0,sourceFrames=0,paintedFrames=0,dropped=0,outputBytes=0,chunks=[],error=null,overflow=false,trackSettings=null,frameTimes=[],ackTimes=[],lastCdpTimestamp=null;
+const WIDTH=640,HEIGHT=360,FPS=30,MAX_BYTES=16*1024*1024;
+let browser,dashboard,cdp,running=false,started=0,outputBytes=0,error=null,recordingHandle=null,container="unknown",diagnosticsBefore=null;
 
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
@@ -11,183 +11,128 @@ async function initialize(){
   dashboard=await browser.newPage();
   await dashboard.setViewport({width:WIDTH,height:HEIGHT,deviceScaleFactor:1});
   await dashboard.evaluateOnNewDocument(()=>{
-    window.__probe={raf:0,timers:0,mutations:0,start:performance.now()};
-    const raf=window.requestAnimationFrame.bind(window);
-    window.requestAnimationFrame=function(cb){return raf(t=>{window.__probe.raf++;cb(t)})};
-    const interval=window.setInterval.bind(window);
-    window.setInterval=function(cb,ms,...args){return interval(()=>{window.__probe.timers++;cb(...args)},ms)};
+    window.__probe={raf:0,timers:0,mutations:0};
+    const raf=requestAnimationFrame.bind(window);
+    window.requestAnimationFrame=cb=>raf(t=>{window.__probe.raf++;cb(t)});
+    const interval=setInterval.bind(window);
+    window.setInterval=(cb,ms,...args)=>interval(()=>{window.__probe.timers++;cb(...args)},ms);
     new MutationObserver(list=>window.__probe.mutations+=list.length).observe(document,{subtree:true,childList:true,attributes:true,characterData:true});
   });
   await dashboard.goto(process.env.DASHBOARD_URL||"https://zhong-vs-fede.onrender.com/",{waitUntil:"domcontentloaded",timeout:60000});
   await sleep(3000);
-  await dashboard.evaluate(({w,h})=>{
-    const source=document.createElement("canvas"),output=document.createElement("canvas");
-    source.width=output.width=w;source.height=output.height=h;
-    Object.assign(source.style,{position:"fixed",left:"-10000px",top:"0",pointerEvents:"none"});
-    Object.assign(output.style,{position:"fixed",left:"-10000px",top:"0",pointerEvents:"none"});
-    document.documentElement.append(source,output);
-    const sctx=source.getContext("2d",{alpha:false}),octx=output.getContext("2d",{alpha:false});
-    sctx.fillStyle=octx.fillStyle="#000";sctx.fillRect(0,0,w,h);octx.fillRect(0,0,w,h);
-    let last=0,stream,rec,jobs=new Set();
-    const paint=t=>{if(t-last>=1000/30){octx.drawImage(source,0,0);last=t;}requestAnimationFrame(paint);};
-    requestAnimationFrame(paint);
-    window.__capture={
-      draw:data=>new Promise((resolve,reject)=>{
-        const img=new Image();
-        img.onload=()=>{sctx.drawImage(img,0,0,w,h);resolve(true)};
-        img.onerror=()=>reject(Error("Frame decode failed"));
-        img.src="data:image/jpeg;base64,"+data;
-      }),
-      start:()=>{
-        stream=output.captureStream(30);
-        const type=MediaRecorder.isTypeSupported("video/webm;codecs=vp8")?"video/webm;codecs=vp8":"video/webm";
-        rec=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:900000});
-        rec.ondataavailable=e=>{
-          if(!e.data.size)return;
-          const job=new Promise(resolve=>{
-            const reader=new FileReader();
-            reader.onload=()=>window.__captureChunk(String(reader.result).split(",")[1]).then(resolve).catch(resolve);
-            reader.onerror=resolve;
-            reader.readAsDataURL(e.data);
-          });
-          jobs.add(job);job.finally(()=>jobs.delete(job));
-        };
-        rec.start(1000);
-        return {mimeType:type,track:stream.getVideoTracks()[0].getSettings()};
-      },
-      stop:()=>new Promise(resolve=>{
-        if(!rec||rec.state==="inactive"){resolve(false);return;}
-        rec.onstop=async()=>{await Promise.all([...jobs]);stream.getTracks().forEach(t=>t.stop());resolve(true)};
-        rec.stop();
-      })
-    };
-  },{w:WIDTH,h:HEIGHT});
-  await dashboard.exposeFunction("__captureChunk",base64=>{
-    if(overflow)return;
-    const chunk=Buffer.from(base64,"base64");
-    if(outputBytes+chunk.length>MAX_BYTES){overflow=true;error="Recording reached the 16 MB safety limit";return;}
-    chunks.push(chunk);outputBytes+=chunk.length;
-  });
 }
 
 async function diagnostics(){
   try{
     return await dashboard.evaluate(()=>{
-      const p=window.__probe||{},resources=performance.getEntriesByType("resource");
-      return {
-        visibility:document.visibilityState,hidden:document.hidden,hasFocus:document.hasFocus(),
-        uptime:Math.round(performance.now()),rafTicks:p.raf||0,timerTicks:p.timers||0,
-        domMutations:p.mutations||0,resourceCount:resources.length,
-        recentResources:resources.slice(-8).map(r=>({name:r.name.split("?")[0].slice(-120),type:r.initiatorType,duration:Math.round(r.duration)})),
-        title:document.title,url:location.href
-      };
+      const p=window.__probe||{};
+      return {visibility:document.visibilityState,hidden:document.hidden,hasFocus:document.hasFocus(),rafTicks:p.raf||0,timerTicks:p.timers||0,domMutations:p.mutations||0,title:document.title,url:location.href};
     });
   }catch(e){return {diagnosticError:e.message};}
 }
 
-async function pump(){
-  if(drawing)return;
-  drawing=true;
-  try{
-    while(pending){
-      const frame=pending;pending=null;
-      try{
-        await dashboard.evaluate(data=>window.__capture.draw(data),frame);
-        paintedFrames++;
-        if(resolveFirst){resolveFirst();resolveFirst=null;}
-      }catch(e){error=e.message;console.error("[CAPTURE FRAME]",e.message);}
-    }
-  }finally{drawing=false;if(pending)pump();}
+function detectContainer(buffer){
+  if(buffer.length>=4&&buffer.subarray(0,4).toString("hex")==="1a45dfa3")return "WebM/Matroska";
+  if(buffer.length>=8&&buffer.toString("ascii",4,8)==="ftyp")return "MP4";
+  return "unknown";
 }
 
 function getStatus(){
-  const elapsed=started?Date.now()-started:0;
-  return {running,method:"CDP + Same-Page Canvas MediaRecorder",width:WIDTH,height:HEIGHT,targetFps:FPS,bitrate:BITRATE,sourceFrames,paintedFrames,dropped,elapsed,fps:elapsed?+(paintedFrames/(elapsed/1000)).toFixed(2):0,track:trackSettings,outputBytes,error};
+  return {running,method:"Native CDP Page.startScreenRecording",width:WIDTH,height:HEIGHT,targetFps:FPS,elapsed:started?Date.now()-started:0,outputBytes,container,error};
+}
+
+async function readStream(handle){
+  const chunks=[];
+  let total=0,eof=false;
+  try{
+    while(!eof){
+      const result=await cdp.send("IO.read",{handle,size:1024*1024});
+      const chunk=result.base64Encoded?Buffer.from(result.data,"base64"):Buffer.from(result.data,"utf8");
+      if(chunk.length){
+        total+=chunk.length;
+        if(total>MAX_BYTES)throw Error("Recording reached the 16 MB safety limit");
+        chunks.push(chunk);
+      }
+      eof=result.eof;
+    }
+    return Buffer.concat(chunks,total);
+  }finally{
+    try{await cdp.send("IO.close",{handle})}catch{}
+  }
 }
 
 async function startRecording(){
   if(running)throw Error("Recording is already running");
   await initialize();
-  chunks=[];outputBytes=0;sourceFrames=paintedFrames=dropped=0;error=null;overflow=false;pending=null;drawing=false;trackSettings=null;frameTimes=[];ackTimes=[];lastCdpTimestamp=null;
   await dashboard.bringToFront();
   const visibility=await dashboard.evaluate(()=>({visibility:document.visibilityState,hidden:document.hidden}));
   console.log("[CAPTURE PAGE]",JSON.stringify(visibility));
-  const settings=await dashboard.evaluate(()=>window.__capture.start());
-  trackSettings=settings.track;
-  started=Date.now();running=true;
-  const firstFrame=new Promise(resolve=>{resolveFirst=resolve});
   cdp=await dashboard.createCDPSession();
   await cdp.send("Page.enable");
-  listener=params=>{
-    const now=Date.now();
-    sourceFrames++;frameTimes.push(now);
-    if(params.metadata?.timestamp!=null){
-      if(lastCdpTimestamp!==null)ackTimes.push(params.metadata.timestamp-lastCdpTimestamp);
-      lastCdpTimestamp=params.metadata.timestamp;
-    }
-    cdp.send("Page.screencastFrameAck",{sessionId:params.sessionId}).catch(()=>{});
-    if(pending!==null)dropped++;
-    pending=params.data;pump();
-  };
-  cdp.on("Page.screencastFrame",listener);
   try{
-    await cdp.send("Page.startScreencast",{format:"jpeg",quality:55,maxWidth:WIDTH,maxHeight:HEIGHT,everyNthFrame:1});
-    await Promise.race([firstFrame,sleep(15000).then(()=>{throw Error("No dashboard frame received within 15 seconds")})]);
+    const result=await cdp.send("Page.startScreenRecording",{frameRate:FPS,maxWidth:WIDTH,maxHeight:HEIGHT,audio:false});
+    recordingHandle=result.stream||null;
+    console.log("[NATIVE CDP START]",JSON.stringify({hasStream:!!recordingHandle,resultKeys:Object.keys(result)}));
+    running=true;started=Date.now();outputBytes=0;container="recording";error=null;
+    console.log(`[CAPTURE] Native recording started | ${WIDTH}x${HEIGHT} | ${FPS} FPS target`);
+    return getStatus();
   }catch(e){
-    error=e.message;running=false;resolveFirst=null;
-    try{await cdp.send("Page.stopScreencast")}catch{}
-    if(listener)cdp.off("Page.screencastFrame",listener);
-    try{await dashboard.evaluate(()=>window.__capture.stop())}catch{}
-    throw e;
+    error=e.message;
+    try{await cdp.detach()}catch{}
+    cdp=null;
+    throw Error("Native CDP recording could not start: "+e.message);
   }
-  console.log(`[CAPTURE] Started | ${WIDTH}x${HEIGHT} | ${FPS} FPS target`);
-  return getStatus();
 }
 
 async function stopRecording(){
   if(!running)throw Error("No recording is active");
   running=false;
-  try{await cdp.send("Page.stopScreencast")}catch{}
-  if(listener)cdp.off("Page.screencastFrame",listener);
-  while(drawing||pending!==null)await sleep(10);
-  await dashboard.evaluate(()=>window.__capture.stop());
-  const buffer=Buffer.concat(chunks,outputBytes);
-  chunks=[];
-  if(overflow)throw Error(error);
-  if(!buffer.length)throw Error("No recording data was received");
-  console.log(`[CAPTURE] Stopped | ${((Date.now()-started)/1000).toFixed(1)}s | ${sourceFrames} source frames | ${paintedFrames} painted frames | ${(buffer.length/1024/1024).toFixed(2)} MB`);
-  return buffer;
+  let handle=null;
+  try{
+    const result=await cdp.send("Page.stopScreenRecording");
+    handle=result.stream||recordingHandle;
+    console.log("[NATIVE CDP STOP]",JSON.stringify({hasStream:!!result.stream,resultKeys:Object.keys(result)}));
+    if(!handle)throw Error("Chrome did not return an IO stream handle");
+    const buffer=await readStream(handle);
+    outputBytes=buffer.length;
+    container=detectContainer(buffer);
+    if(!buffer.length)throw Error("Chrome returned an empty recording");
+    console.log(`[CAPTURE] Stopped | ${((Date.now()-started)/1000).toFixed(1)}s | ${(buffer.length/1024/1024).toFixed(2)} MB | ${container} | ${buffer.subarray(0,16).toString("hex")}`);
+    return buffer;
+  }catch(e){
+    error=e.message;
+    throw e;
+  }finally{
+    if(recordingHandle&&recordingHandle!==handle){
+      try{await cdp.send("IO.close",{handle:recordingHandle})}catch{}
+    }
+    recordingHandle=null;
+  }
 }
 
 async function runBenchmark(seconds=15){
-  console.log(`[DIAGNOSTIC] Starting ${seconds}s dashboard test`);
+  console.log(`[DIAGNOSTIC] Native CDP test starting | ${seconds}s`);
   await initialize();
-  const before=await diagnostics();
-  console.log("[PAGE BEFORE]",JSON.stringify(before));
+  diagnosticsBefore=await diagnostics();
+  console.log("[PAGE BEFORE]",JSON.stringify(diagnosticsBefore));
   await startRecording();
-  const snapshots=[];
-  for(let i=0;i<seconds;i++){await sleep(1000);snapshots.push(await diagnostics());}
+  await sleep(seconds*1000);
   const after=await diagnostics();
+  console.log("[PAGE AFTER]",JSON.stringify(after));
   const buffer=await stopRecording();
-  const intervals=arr=>arr.length>1?arr.slice(1).map((t,i)=>t-arr[i]):[];
-  const gaps=intervals(frameTimes),avg=a=>a.length?+(a.reduce((s,v)=>s+v,0)/a.length).toFixed(2):0;
-  const sorted=[...gaps].sort((a,b)=>a-b);
   const result={
-    before,after,
-    perSecond:snapshots.map((s,i)=>({second:i+1,raf:s.rafTicks,timers:s.timerTicks,mutations:s.domMutations,resources:s.resourceCount,visible:s.visibility})),
-    capture:{...getStatus(),recordingBytes:buffer.length},
-    frameIntervals:{count:gaps.length,avg:avg(gaps),min:gaps.length?Math.min(...gaps):0,max:gaps.length?Math.max(...gaps):0,p95:sorted.length?sorted[Math.floor(sorted.length*.95)]:0},
-    cdpIntervals:{count:ackTimes.length,avg:avg(ackTimes),min:ackTimes.length?Math.min(...ackTimes):0,max:ackTimes.length?Math.max(...ackTimes):0},
-    recordingSeconds:+((Date.now()-started)/1000).toFixed(2)
+    before:diagnosticsBefore,after,
+    capture:{...getStatus(),recordingBytes:buffer.length,signature:buffer.subarray(0,32).toString("hex"),firstBytes:buffer.subarray(0,16).toString("ascii")},
+    benchmarkSeconds:seconds
   };
-  console.log("[DIAGNOSTIC RESULT]",JSON.stringify(result));
+  console.log("[NATIVE CDP RESULT]",JSON.stringify(result));
   return result;
 }
 
 async function close(){
   try{if(running)await stopRecording()}catch(e){console.error("[CAPTURE STOP]",e.message)}
-  try{if(cdp)await cdp.detach()}catch{}
-  if(browser){await browser.close();browser=null;dashboard=cdp=null;}
+  if(cdp){try{await cdp.detach()}catch{}cdp=null;}
+  if(browser){await browser.close();browser=null;dashboard=null;}
 }
 
 module.exports={initialize,startRecording,stopRecording,getStatus,diagnostics,close,runBenchmark};
