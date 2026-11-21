@@ -4,22 +4,29 @@ process.env.PUPPETEER_CACHE_DIR=process.env.PUPPETEER_CACHE_DIR||path.join(__dir
 const puppeteer=require("puppeteer");
 
 const DASHBOARD_URL=process.env.DASHBOARD_URL||"https://zhong-vs-fede.onrender.com/";
-const WIDTH=640,HEIGHT=360,FPS=1,INTERVAL=1000;
+const WIDTH=640,HEIGHT=360,FPS=1,INTERVAL=1000,WARMUPS=8,TESTS=40;
 let browser=null,page=null,recorderPage=null;
 let active=false,busy=false,frames=0,dropped=0,error=null,startedAt=0,loopPromise=null;
 
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const round=n=>Number(n.toFixed(2));
 const percentile=(values,p)=>{
   const sorted=[...values].sort((a,b)=>a-b);
-  return Number(sorted[Math.min(sorted.length-1,Math.ceil(sorted.length*p)-1)].toFixed(2));
+  return sorted[Math.min(sorted.length-1,Math.ceil(sorted.length*p)-1)];
 };
-const stats=values=>({
-  min:Number(Math.min(...values).toFixed(2)),
-  avg:Number((values.reduce((a,b)=>a+b,0)/values.length).toFixed(2)),
-  median:percentile(values,.5),
-  p95:percentile(values,.95),
-  max:Number(Math.max(...values).toFixed(2))
-});
+const stats=values=>{
+  if(!values.length)return null;
+  const avg=values.reduce((a,b)=>a+b,0)/values.length;
+  return {
+    samples:values.length,
+    min:round(Math.min(...values)),
+    avg:round(avg),
+    median:round(percentile(values,.5)),
+    p95:round(percentile(values,.95)),
+    max:round(Math.max(...values)),
+    stdDev:round(Math.sqrt(values.reduce((s,v)=>s+(v-avg)**2,0)/values.length))
+  };
+};
 
 async function initialize(){
   if(browser)return;
@@ -30,8 +37,10 @@ async function initialize(){
   page=await browser.newPage();
   await page.setViewport({width:WIDTH,height:HEIGHT,deviceScaleFactor:1});
   await page.goto(DASHBOARD_URL,{waitUntil:"domcontentloaded",timeout:60000});
+  await sleep(5000);
+  console.log("[DASHBOARD] Loaded:",await page.title());
   recorderPage=await browser.newPage();
-  await recorderPage.setViewport({width:WIDTH,height:HEIGHT});
+  await recorderPage.setViewport({width:WIDTH,height:HEIGHT,deviceScaleFactor:1});
   await recorderPage.setContent(`<html><body style="margin:0"><canvas id="c" width="${WIDTH}" height="${HEIGHT}"></canvas><script>
   const canvas=document.getElementById("c"),ctx=canvas.getContext("2d"),stream=canvas.captureStream(1);
   const mime="video/webm;codecs=vp8";
@@ -67,38 +76,63 @@ async function initialize(){
   </script></body></html>`);
 }
 
-
 async function runBenchmark(){
   if(active)throw Error("Stop recording before running benchmark");
-  console.log("[BENCHMARK] Dashboard vs blank page | 2 warmups + 10 tests each");
   await initialize();
+  console.log(`[BENCHMARK] ${WIDTH}x${HEIGHT} | ${WARMUPS} warmups + ${TESTS} measured captures per page`);
   const blankPage=await browser.newPage();
   await blankPage.setViewport({width:WIDTH,height:HEIGHT,deviceScaleFactor:1});
   await blankPage.setContent("<!doctype html><html><head><style>*{margin:0;padding:0}</style></head><body></body></html>");
-  const results={dashboard:[],blank:[]};
-  const measure=async(target,label)=>{
-    for(let i=0;i<12;i++){
-      const start=Date.now();
-      await target.screenshot({type:"jpeg",quality:55,encoding:"base64"});
-      const ms=Date.now()-start;
-      if(i>=2)results[label].push(ms);
-      console.log(`[${label.toUpperCase()}] ${i+1}/12 ${i<2?"WARMUP":"TEST"} | screenshot ${ms}ms`);
-    }
+  const results={dashboard:[],blank:[]},sizes={dashboard:[],blank:[]};
+  const targets={dashboard:page,blank:blankPage};
+  const capture=async label=>{
+    const start=performance.now();
+    const data=await targets[label].screenshot({type:"jpeg",quality:55,encoding:"base64"});
+    const ms=performance.now()-start;
+    results[label].push(ms);
+    sizes[label].push(Buffer.byteLength(data,"base64")*.75);
+    return ms;
   };
+  const cpuBefore=process.cpuUsage(),memoryBefore=process.memoryUsage(),metricsBefore=await page.metrics();
+  const started=Date.now();
   try{
-    await measure(page,"dashboard");
-    await measure(blankPage,"blank");
+    for(let i=0;i<WARMUPS;i++){
+      const order=i%2?["blank","dashboard"]:["dashboard","blank"];
+      for(const label of order)await targets[label].screenshot({type:"jpeg",quality:55,encoding:"base64"});
+      console.log(`[WARMUP] ${i+1}/${WARMUPS}`);
+    }
+    for(let i=0;i<TESTS;i++){
+      const order=i%2?["blank","dashboard"]:["dashboard","blank"];
+      for(const label of order){
+        const ms=await capture(label);
+        console.log(`[${label.toUpperCase()}] ${i+1}/${TESTS} | ${round(ms)}ms`);
+      }
+    }
     const dashboard=stats(results.dashboard),blank=stats(results.blank);
+    const dashboardBytes=stats(sizes.dashboard),blankBytes=stats(sizes.blank);
+    const metricsAfter=await page.metrics(),cpuAfter=process.cpuUsage(cpuBefore),memoryAfter=process.memoryUsage();
+    const dashboardFps=1000/dashboard.avg,blankFps=1000/blank.avg;
     const report={
       resolution:`${WIDTH}x${HEIGHT}`,
-      testsPerPage:10,
+      screenshot:"JPEG quality 55",
+      warmupsPerPage:WARMUPS,
+      testsPerPage:TESTS,
+      testDurationSeconds:round((Date.now()-started)/1000),
       dashboard,
       blank,
-      dashboardSlowerByMs:Number((dashboard.avg-blank.avg).toFixed(2)),
-      dashboardSlowerByPercent:Number(((dashboard.avg/blank.avg-1)*100).toFixed(1)),
-      estimatedFPS:{
-        dashboard:Number((1000/dashboard.avg).toFixed(2)),
-        blank:Number((1000/blank.avg).toFixed(2))
+      screenshotSizeKB:{dashboard:round(dashboardBytes.avg/1024),blank:round(blankBytes.avg/1024)},
+      dashboardSlowerByMs:round(dashboard.avg-blank.avg),
+      dashboardSlowerByPercent:round((dashboard.avg/blank.avg-1)*100),
+      estimatedCaptureFPS:{dashboard:round(dashboardFps),blank:round(blankFps)},
+      browser:{
+        taskDurationSeconds:round((metricsAfter.TaskDuration-metricsBefore.TaskDuration)),
+        jsHeapUsedMB:round(metricsAfter.JSHeapUsedSize/1048576),
+        jsHeapDeltaMB:round((metricsAfter.JSHeapUsedSize-metricsBefore.JSHeapUsedSize)/1048576)
+      },
+      node:{
+        cpuUsedMs:round((cpuAfter.user+cpuAfter.system)/1000),
+        rssBeforeMB:round(memoryBefore.rss/1048576),
+        rssAfterMB:round(memoryAfter.rss/1048576)
       }
     };
     console.log("\n========== DASHBOARD VS BLANK RESULTS ==========");
@@ -110,10 +144,11 @@ async function runBenchmark(){
   }
 }
 
-
 async function captureLoop(){
+  let nextFrameAt=performance.now();
   while(active){
     busy=true;
+    const frameStart=performance.now();
     try{
       const screenshot=await page.screenshot({type:"jpeg",quality:55,encoding:"base64"});
       await recorderPage.evaluate(data=>window.__draw(data),screenshot);
@@ -124,7 +159,13 @@ async function captureLoop(){
       console.error("[FRAME]",e.message);
       break;
     }finally{busy=false}
-    if(active)await sleep(INTERVAL);
+    nextFrameAt+=INTERVAL;
+    const delay=nextFrameAt-performance.now();
+    if(delay>0)await sleep(delay);
+    else{
+      dropped+=Math.max(1,Math.floor(-delay/INTERVAL)+1);
+      nextFrameAt=performance.now();
+    }
   }
 }
 
@@ -152,7 +193,8 @@ async function stopRecording(){
 }
 
 function getStatus(){
-  return {running:active,frames,dropped,elapsed:startedAt?Math.round((Date.now()-startedAt)/1000):0,fps:startedAt?Number((frames/((Date.now()-startedAt)/1000)).toFixed(2)):0,error};
+  const elapsed=startedAt?(Date.now()-startedAt)/1000:0;
+  return {running:active,frames,dropped,elapsed:Math.round(elapsed),fps:elapsed?round(frames/elapsed):0,error};
 }
 
 async function close(){
