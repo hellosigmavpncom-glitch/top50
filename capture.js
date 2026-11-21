@@ -67,53 +67,49 @@ async function initialize(){
   </script></body></html>`);
 }
 
+
 async function runBenchmark(){
   if(active)throw Error("Stop recording before running benchmark");
-  console.log("[BENCHMARK] Starting 2 warmups + 10 measured capture cycles...");
+  console.log("[BENCHMARK] Dashboard vs blank page | 2 warmups + 10 tests each");
   await initialize();
-  const results={screenshot:[],draw:[],cycle:[],ping:[],imageKB:[]};
-  const cpuBefore=process.cpuUsage(),metricsBefore=await page.metrics(),started=Date.now();
-  for(let i=0;i<12;i++){
-    const pingStart=Date.now();
-    await page.evaluate(()=>document.readyState);
-    const ping=Date.now()-pingStart;
-    const shotStart=Date.now();
-    const screenshot=await page.screenshot({type:"jpeg",quality:55,encoding:"base64"});
-    const screenshotMs=Date.now()-shotStart;
-    const drawStart=Date.now();
-    await recorderPage.evaluate(data=>window.__draw(data),screenshot);
-    const drawMs=Date.now()-drawStart;
-    const cycleMs=Date.now()-shotStart;
-    if(i>=2){
-      results.ping.push(ping);
-      results.screenshot.push(screenshotMs);
-      results.draw.push(drawMs);
-      results.cycle.push(cycleMs);
-      results.imageKB.push(Buffer.byteLength(screenshot,"base64")/1024);
+  const blankPage=await browser.newPage();
+  await blankPage.setViewport({width:WIDTH,height:HEIGHT,deviceScaleFactor:1});
+  await blankPage.setContent("<!doctype html><html><head><style>*{margin:0;padding:0}</style></head><body></body></html>");
+  const results={dashboard:[],blank:[]};
+  const measure=async(target,label)=>{
+    for(let i=0;i<12;i++){
+      const start=Date.now();
+      await target.screenshot({type:"jpeg",quality:55,encoding:"base64"});
+      const ms=Date.now()-start;
+      if(i>=2)results[label].push(ms);
+      console.log(`[${label.toUpperCase()}] ${i+1}/12 ${i<2?"WARMUP":"TEST"} | screenshot ${ms}ms`);
     }
-    console.log(`[BENCHMARK] ${i+1}/12 ${i<2?"WARMUP":"TEST"} | screenshot ${screenshotMs}ms | draw ${drawMs}ms | total ${cycleMs}ms`);
-  }
-  const cpu=process.cpuUsage(cpuBefore),metricsAfter=await page.metrics(),elapsed=(Date.now()-started)/1000;
-  const report={
-    resolution:`${WIDTH}x${HEIGHT}`,
-    measuredCycles:10,
-    elapsedSeconds:Number(elapsed.toFixed(2)),
-    screenshot:stats(results.screenshot),
-    canvasDraw:stats(results.draw),
-    fullCycle:stats(results.cycle),
-    pagePing:stats(results.ping),
-    screenshotSizeKB:stats(results.imageKB),
-    estimatedMaxFPS:Number((1000/(results.cycle.reduce((a,b)=>a+b,0)/results.cycle.length)).toFixed(2)),
-    nodeCPU:{userMs:Number((cpu.user/1000).toFixed(2)),systemMs:Number((cpu.system/1000).toFixed(2))},
-    chrome:{taskDurationDeltaSeconds:Number(((metricsAfter.TaskDuration||0)-(metricsBefore.TaskDuration||0)).toFixed(3)),jsHeapMB:Number(((metricsAfter.JSHeapUsedSize||0)/1048576).toFixed(2))},
-    nodeMemoryMB:{rss:Number((process.memoryUsage().rss/1048576).toFixed(2)),heapUsed:Number((process.memoryUsage().heapUsed/1048576).toFixed(2))},
-    systemLoadAverage:os.loadavg().map(n=>Number(n.toFixed(2)))
   };
-  console.log("\n========== CAPTURE BENCHMARK RESULTS ==========");
-  console.log(JSON.stringify(report,null,2));
-  console.log("================================================\n");
-  return report;
+  try{
+    await measure(page,"dashboard");
+    await measure(blankPage,"blank");
+    const dashboard=stats(results.dashboard),blank=stats(results.blank);
+    const report={
+      resolution:`${WIDTH}x${HEIGHT}`,
+      testsPerPage:10,
+      dashboard,
+      blank,
+      dashboardSlowerByMs:Number((dashboard.avg-blank.avg).toFixed(2)),
+      dashboardSlowerByPercent:Number(((dashboard.avg/blank.avg-1)*100).toFixed(1)),
+      estimatedFPS:{
+        dashboard:Number((1000/dashboard.avg).toFixed(2)),
+        blank:Number((1000/blank.avg).toFixed(2))
+      }
+    };
+    console.log("\n========== DASHBOARD VS BLANK RESULTS ==========");
+    console.log(JSON.stringify(report,null,2));
+    console.log("================================================\n");
+    return report;
+  }finally{
+    await blankPage.close().catch(()=>{});
+  }
 }
+
 
 async function captureLoop(){
   while(active){
