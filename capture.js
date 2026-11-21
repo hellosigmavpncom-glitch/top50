@@ -10,48 +10,57 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const now=()=>new Date().toLocaleTimeString();
 const log=(s,d)=>console.log(`[CAPTURE ${now()}] ${s}`,d===undefined?"":JSON.stringify(d));
 const memory=()=>{const m=process.memoryUsage();return {rssMB:+(m.rss/1048576).toFixed(1),heapMB:+(m.heapUsed/1048576).toFixed(1),externalMB:+(m.external/1048576).toFixed(1)};};
-let browser,dashboard,recorder,recordPath,recordingActive=false,started=0,outputBytes=0,error=null,statusTimer=null,lastStats=null;
+const timeout=(promise,ms,label)=>Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(Error(`${label} timed out after ${ms}ms`)),ms))]);
+
+let browser,dashboard,recorder,recordPath,recordingActive=false,started=0,outputBytes=0,error=null,statusTimer=null,lastStats=null,initializing=null;
 
 process.on("uncaughtExceptionMonitor",e=>log("UNCAUGHT EXCEPTION",{message:e.message,stack:e.stack,memory:memory()}));
 process.on("unhandledRejection",e=>log("UNHANDLED REJECTION",{message:e?.message||String(e),stack:e?.stack,memory:memory()}));
 process.on("exit",code=>console.log(`[CAPTURE ${now()}] PROCESS EXIT | code=${code}`));
 
 async function initialize(){
-  if(browser){log("INITIALIZE SKIPPED: BROWSER ALREADY EXISTS");return;}
-  try{
-    log("INIT 1/6: BEFORE PUPPETEER.LAUNCH",{version:puppeteer.version||"unknown",memory:memory()});
-    const executablePath=await puppeteer.executablePath();
-    log("CHROME EXECUTABLE PATH",executablePath);
-    browser=await puppeteer.launch({headless:true,executablePath,args:["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage","--disable-background-timer-throttling","--disable-renderer-backgrounding","--disable-backgrounding-occluded-windows","--renderer-process-limit=2","--disable-extensions","--window-size=1600,900","--force-device-scale-factor=1"]});
-    log("INIT 2/6: CHROME LAUNCHED",{connected:browser.connected,memory:memory()});
-    browser.on("disconnected",()=>log("BROWSER DISCONNECTED",{memory:memory()}));
-    dashboard=await browser.newPage();
-    log("INIT 3/6: PAGE CREATED");
-    dashboard.on("error",e=>log("PAGE ERROR",e.message));
-    dashboard.on("pageerror",e=>log("PAGE JAVASCRIPT ERROR",e.message));
-    dashboard.on("requestfailed",r=>log("PAGE REQUEST FAILED",{url:r.url(),error:r.failure()?.errorText}));
-    dashboard.on("console",m=>{if(m.type()==="error")log("BROWSER CONSOLE ERROR",m.text());});
-    await dashboard.setViewport({width:WIDTH,height:HEIGHT,deviceScaleFactor:1});
-    log("INIT 4/6: FORCED VIEWPORT SET",{width:WIDTH,height:HEIGHT,deviceScaleFactor:1});
-    log("NAVIGATION START",{url:URL});
-    await dashboard.goto(URL,{waitUntil:"domcontentloaded",timeout:60000});
-    log("INIT 5/6: DASHBOARD NAVIGATED",{url:dashboard.url(),title:await dashboard.title()});
-    await sleep(3000);
-    const available=typeof dashboard.record==="function";
-    log("INIT 6/6: PAGE.RECORD CHECK",{available,memory:memory()});
-    if(!available)throw Error("Puppeteer page.record() is unavailable");
-    log("INITIALIZATION COMPLETE");
-  }catch(e){
-    error=e.message;
-    log("INITIALIZATION FAILED",{message:e.message,stack:e.stack,memory:memory()});
-    throw e;
-  }
+  if(browser&&browser.connected)return;
+  if(initializing)return initializing;
+  initializing=(async()=>{
+    try{
+      log("INIT 1/6: BEFORE PUPPETEER.LAUNCH",{version:puppeteer.version||"unknown",memory:memory()});
+      const executablePath=await puppeteer.executablePath();
+      log("CHROME EXECUTABLE PATH",executablePath);
+      browser=await timeout(puppeteer.launch({headless:true,executablePath,args:["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage","--disable-background-timer-throttling","--disable-renderer-backgrounding","--disable-backgrounding-occluded-windows","--renderer-process-limit=2","--disable-extensions","--window-size=1600,900","--force-device-scale-factor=1"]}),60000,"Chrome launch");
+      log("INIT 2/6: CHROME LAUNCHED",{connected:browser.connected,memory:memory()});
+      browser.on("disconnected",()=>{log("BROWSER DISCONNECTED",{memory:memory()});browser=null;dashboard=null;});
+      dashboard=await timeout(browser.newPage(),30000,"Page creation");
+      log("INIT 3/6: PAGE CREATED");
+      dashboard.on("error",e=>log("PAGE ERROR",e.message));
+      dashboard.on("pageerror",e=>log("PAGE JAVASCRIPT ERROR",e.message));
+      dashboard.on("requestfailed",r=>log("PAGE REQUEST FAILED",{url:r.url(),error:r.failure()?.errorText}));
+      dashboard.on("console",m=>{if(m.type()==="error")log("BROWSER CONSOLE ERROR",m.text());});
+      await timeout(dashboard.setViewport({width:WIDTH,height:HEIGHT,deviceScaleFactor:1}),15000,"Initial viewport");
+      log("INIT 4/6: VIEWPORT SET",{width:WIDTH,height:HEIGHT,deviceScaleFactor:1,memory:memory()});
+      log("NAVIGATION START",{url:URL});
+      await timeout(dashboard.goto(URL,{waitUntil:"domcontentloaded",timeout:60000}),65000,"Dashboard navigation");
+      log("INIT 5/6: DASHBOARD NAVIGATED",{url:dashboard.url(),title:await dashboard.title(),memory:memory()});
+      await sleep(3000);
+      const available=typeof dashboard.record==="function";
+      log("INIT 6/6: PAGE.RECORD CHECK",{available,memory:memory()});
+      if(!available)throw Error("Puppeteer page.record() is unavailable");
+      log("INITIALIZATION COMPLETE");
+    }catch(e){
+      error=e.message;
+      log("INITIALIZATION FAILED",{message:e.message,stack:e.stack,memory:memory()});
+      if(browser){await browser.close().catch(()=>{});browser=null;dashboard=null;}
+      throw e;
+    }finally{
+      initializing=null;
+    }
+  })();
+  return initializing;
 }
 
 async function diagnostics(){
   log("DIAGNOSTICS START");
   try{
-    const result=await dashboard.evaluate(()=>({visibility:document.visibilityState,hidden:document.hidden,width:innerWidth,height:innerHeight,screenWidth:screen.width,screenHeight:screen.height,title:document.title,url:location.href}));
+    const result=await timeout(dashboard.evaluate(()=>({visibility:document.visibilityState,hidden:document.hidden,width:innerWidth,height:innerHeight,screenWidth:screen.width,screenHeight:screen.height,title:document.title,url:location.href})),10000,"Page diagnostics");
     log("DIAGNOSTICS COMPLETE",result);
     return result;
   }catch(e){
@@ -68,36 +77,30 @@ async function startRecording(){
   log("START RECORDING ENTERED",{running:recordingActive,memory:memory()});
   if(recordingActive)throw Error("Recording is already running");
   await initialize();
-  log("START: BEFORE SECOND VIEWPORT");
-  await dashboard.setViewport({width:WIDTH,height:HEIGHT,deviceScaleFactor:1});
-  log("START: VIEWPORT CONFIRMED",{width:WIDTH,height:HEIGHT});
-  log("START: BEFORE BRING TO FRONT");
-  await dashboard.bringToFront();
-  log("START: BRING TO FRONT COMPLETE");
-  log("START: BEFORE PAGE DIAGNOSTICS");
+  if(!dashboard||!browser?.connected)throw Error("Chrome browser is not connected");
   const d=await diagnostics();
-  log("START: PAGE DIAGNOSTICS COMPLETE",d);
   log("CAPTURE PAGE",d);
   recordPath=path.join(os.tmpdir(),`dashboard-${process.pid}-${Date.now()}.mp4`);
-  log("RECORDING FILE PATH",recordPath);
   try{
     log("RECORD: BEFORE DASHBOARD.RECORD",{width:WIDTH,height:HEIGHT,frameRate:FPS,memory:memory()});
-    recorder=await dashboard.record({path:recordPath,maxWidth:WIDTH,maxHeight:HEIGHT,frameRate:FPS});
-    log("RECORD: DASHBOARD.RECORD RETURNED",{recorder:!!recorder,memory:memory()});
+    recorder=await timeout(dashboard.record({path:recordPath,maxWidth:WIDTH,maxHeight:HEIGHT,frameRate:FPS}),30000,"Native recording startup");
+    if(!recorder)throw Error("Chrome returned no recorder");
+    recordingActive=true;
+    started=Date.now();
+    outputBytes=0;
+    error=null;
+    lastStats=null;
+    log("RECORDING STARTED",{width:WIDTH,height:HEIGHT,fps:FPS,memory:memory()});
+    return getStatus();
   }catch(e){
     recorder=null;
+    recordingActive=false;
+    error=e.message;
     log("RECORD START FAILED",{message:e.message,stack:e.stack,memory:memory()});
-    await fs.unlink(recordPath).catch(()=>{});
+    if(recordPath)await fs.unlink(recordPath).catch(()=>{});
     recordPath=null;
     throw Error(`Native MP4 recording failed: ${e.message}`);
   }
-  recordingActive=true;
-  started=Date.now();
-  outputBytes=0;
-  error=null;
-  lastStats=null;
-  log("RECORDING STARTED",{width:WIDTH,height:HEIGHT,fps:FPS,memory:memory()});
-  return getStatus();
 }
 
 async function stopRecording(){
@@ -108,7 +111,7 @@ async function stopRecording(){
   recorder=null;
   try{
     log("STOP: BEFORE RECORDER.STOP");
-    await activeRecorder.stop();
+    await timeout(activeRecorder.stop(),30000,"Recorder stop");
     log("STOP: RECORDER.STOP COMPLETE");
     const info=await fs.stat(recordPath);
     outputBytes=info.size;
@@ -142,9 +145,6 @@ async function runBenchmark(seconds=15){
   if(recordingActive)throw Error("Stop recording before benchmarking");
   try{
     await initialize();
-    log("BENCHMARK: INITIALIZATION RETURNED");
-    await dashboard.setViewport({width:WIDTH,height:HEIGHT,deviceScaleFactor:1});
-    log("BENCHMARK: VIEWPORT SET");
     const before=await diagnostics();
     log("BENCHMARK: BEFORE RECORDING",before);
     await startRecording();
@@ -171,7 +171,7 @@ async function close(){
   if(recordPath)await fs.unlink(recordPath).catch(()=>{});
   if(browser){
     log("CLOSE: BEFORE BROWSER.CLOSE");
-    await browser.close();
+    await browser.close().catch(e=>log("BROWSER CLOSE ERROR",e.message));
     browser=null;
     dashboard=null;
     log("CLOSE: BROWSER CLOSED");
