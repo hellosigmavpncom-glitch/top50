@@ -255,7 +255,7 @@ async function runBenchmark(seconds=15){
   console.log(`[DIAGNOSTIC] Blank page vs dashboard | ${seconds}s each`);
   await initialize();
 
-  await dashboard.goto("about:blank",{waitUntil:"load"});
+ await dashboard.evaluate(()=>{document.documentElement.innerHTML="<head><title>Blank Benchmark</title></head><body></body>";});
   await sleep(500);
   const blank=await runCase("BLANK PAGE",seconds);
 
