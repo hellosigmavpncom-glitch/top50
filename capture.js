@@ -37,8 +37,13 @@ async function initialize(){
   };
   window.__stop=()=>new Promise(resolve=>{
     recorder.addEventListener("stop",async()=>{
-      const blob=new Blob(chunks,{type:"video/webm"});
-      resolve(await blob.arrayBuffer());
+      try{
+        const blob=new Blob(chunks,{type:"video/webm"});
+        const bytes=new Uint8Array(await blob.arrayBuffer());
+        let binary="";
+        for(let i=0;i<bytes.length;i+=32768)binary+=String.fromCharCode(...bytes.subarray(i,i+32768));
+        resolve(btoa(binary));
+      }catch(e){reject(e)}
     },{once:true});
     recorder.stop();
   });
@@ -50,14 +55,10 @@ async function initialize(){
     if(screencastEvents<=5||screencastEvents%50===0)console.log("[SCREENCAST] Event:",screencastEvents);
     if(!active||busy){dropped++;return}
     busy=true;
-    recorderPage.evaluate(data=>window.__draw(data),event.data).then(()=>{
-      frames++;
-    }).catch(e=>{
+    recorderPage.evaluate(data=>window.__draw(data),event.data).then(()=>{frames++}).catch(e=>{
       error=e.message;
       console.error("[FRAME]",e.message);
-    }).finally(()=>{
-      busy=false;
-    });
+    }).finally(()=>{busy=false});
   });
 }
 
@@ -81,8 +82,9 @@ async function stopRecording(){
   active=false;
   await cdp.send("Page.stopScreencast").catch(()=>{});
   while(busy)await new Promise(resolve=>setTimeout(resolve,20));
-  const video=await recorderPage.evaluate(()=>window.__stop());
-  return Buffer.from(video);
+  const base64=await recorderPage.evaluate(()=>window.__stop());
+  if(typeof base64!=="string"||!base64.length)throw Error("Recording returned empty or invalid Base64 data");
+  return Buffer.from(base64,"base64");
 }
 
 function getStatus(){
