@@ -1,5 +1,5 @@
 
-
+process.env.PUPPETEER_CACHE_DIR=process.env.PUPPETEER_CACHE_DIR||"/opt/render/.cache/puppeteer";
 const puppeteer=require("puppeteer");
 
 const DASHBOARD_URL=process.env.DASHBOARD_URL||"https://zhong-vs-fede.onrender.com/";
@@ -40,12 +40,7 @@ async function initialize(){
   window.__stop=()=>new Promise(resolve=>{
     recorder.addEventListener("stop",async()=>{
       const blob=new Blob(chunks,{type:"video/webm"});
-      const buffer=await blob.arrayBuffer();
-      let binary="";
-      const bytes=new Uint8Array(buffer);
-      for(let i=0;i<bytes.length;i+=32768)
-        binary+=String.fromCharCode(...bytes.subarray(i,i+32768));
-      resolve(btoa(binary));
+      resolve(await blob.arrayBuffer());
     },{once:true});
     recorder.stop();
   });
@@ -77,13 +72,7 @@ async function startRecording(){
   active=true;
   startedAt=Date.now();
   try{
-    await cdp.send("Page.startScreencast",{
-      format:"jpeg",
-      quality:65,
-      maxWidth:WIDTH,
-      maxHeight:HEIGHT,
-      everyNthFrame:1
-    });
+    await cdp.send("Page.startScreencast",{format:"jpeg",quality:65,maxWidth:WIDTH,maxHeight:HEIGHT,everyNthFrame:1});
   }catch(e){
     active=false;
     throw e;
@@ -96,11 +85,8 @@ async function stopRecording(){
   active=false;
   await cdp.send("Page.stopScreencast").catch(()=>{});
   while(busy)await new Promise(resolve=>setTimeout(resolve,20));
-  const base64=await recorderPage.evaluate(()=>window.__stop());
-  return {
-    video:Buffer.from(base64,"base64"),
-    status:getStatus()
-  };
+  const video=await recorderPage.evaluate(()=>window.__stop());
+  return Buffer.from(video);
 }
 
 function getStatus(){
