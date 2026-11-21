@@ -1,5 +1,5 @@
 
-const path=require("path"),fs=require("fs");
+const path=require("path"),fs=require("fs"),os=require("os");
 process.env.PUPPETEER_CACHE_DIR=process.env.PUPPETEER_CACHE_DIR||path.join(__dirname,".cache","puppeteer");
 const puppeteer=require("puppeteer");
 
@@ -9,6 +9,17 @@ let browser=null,page=null,recorderPage=null;
 let active=false,busy=false,frames=0,dropped=0,error=null,startedAt=0,loopPromise=null;
 
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const percentile=(values,p)=>{
+  const sorted=[...values].sort((a,b)=>a-b);
+  return Number(sorted[Math.min(sorted.length-1,Math.ceil(sorted.length*p)-1)].toFixed(2));
+};
+const stats=values=>({
+  min:Number(Math.min(...values).toFixed(2)),
+  avg:Number((values.reduce((a,b)=>a+b,0)/values.length).toFixed(2)),
+  median:percentile(values,.5),
+  p95:percentile(values,.95),
+  max:Number(Math.max(...values).toFixed(2))
+});
 
 async function initialize(){
   if(browser)return;
@@ -54,6 +65,54 @@ async function initialize(){
     recorder.stop();
   });
   </script></body></html>`);
+}
+
+async function runBenchmark(){
+  if(active)throw Error("Stop recording before running benchmark");
+  console.log("[BENCHMARK] Starting 2 warmups + 10 measured capture cycles...");
+  await initialize();
+  const results={screenshot:[],draw:[],cycle:[],ping:[],imageKB:[]};
+  const cpuBefore=process.cpuUsage(),metricsBefore=await page.metrics(),started=Date.now();
+  for(let i=0;i<12;i++){
+    const pingStart=Date.now();
+    await page.evaluate(()=>document.readyState);
+    const ping=Date.now()-pingStart;
+    const shotStart=Date.now();
+    const screenshot=await page.screenshot({type:"jpeg",quality:55,encoding:"base64"});
+    const screenshotMs=Date.now()-shotStart;
+    const drawStart=Date.now();
+    await recorderPage.evaluate(data=>window.__draw(data),screenshot);
+    const drawMs=Date.now()-drawStart;
+    const cycleMs=Date.now()-shotStart;
+    if(i>=2){
+      results.ping.push(ping);
+      results.screenshot.push(screenshotMs);
+      results.draw.push(drawMs);
+      results.cycle.push(cycleMs);
+      results.imageKB.push(Buffer.byteLength(screenshot,"base64")/1024);
+    }
+    console.log(`[BENCHMARK] ${i+1}/12 ${i<2?"WARMUP":"TEST"} | screenshot ${screenshotMs}ms | draw ${drawMs}ms | total ${cycleMs}ms`);
+  }
+  const cpu=process.cpuUsage(cpuBefore),metricsAfter=await page.metrics(),elapsed=(Date.now()-started)/1000;
+  const report={
+    resolution:`${WIDTH}x${HEIGHT}`,
+    measuredCycles:10,
+    elapsedSeconds:Number(elapsed.toFixed(2)),
+    screenshot:stats(results.screenshot),
+    canvasDraw:stats(results.draw),
+    fullCycle:stats(results.cycle),
+    pagePing:stats(results.ping),
+    screenshotSizeKB:stats(results.imageKB),
+    estimatedMaxFPS:Number((1000/(results.cycle.reduce((a,b)=>a+b,0)/results.cycle.length)).toFixed(2)),
+    nodeCPU:{userMs:Number((cpu.user/1000).toFixed(2)),systemMs:Number((cpu.system/1000).toFixed(2))},
+    chrome:{taskDurationDeltaSeconds:Number(((metricsAfter.TaskDuration||0)-(metricsBefore.TaskDuration||0)).toFixed(3)),jsHeapMB:Number(((metricsAfter.JSHeapUsedSize||0)/1048576).toFixed(2))},
+    nodeMemoryMB:{rss:Number((process.memoryUsage().rss/1048576).toFixed(2)),heapUsed:Number((process.memoryUsage().heapUsed/1048576).toFixed(2))},
+    systemLoadAverage:os.loadavg().map(n=>Number(n.toFixed(2)))
+  };
+  console.log("\n========== CAPTURE BENCHMARK RESULTS ==========");
+  console.log(JSON.stringify(report,null,2));
+  console.log("================================================\n");
+  return report;
 }
 
 async function captureLoop(){
@@ -107,4 +166,8 @@ async function close(){
   browser=null;page=null;recorderPage=null;busy=false;loopPromise=null;
 }
 
-module.exports={initialize,startRecording,stopRecording,getStatus,close};
+module.exports={initialize,runBenchmark,startRecording,stopRecording,getStatus,close};
+
+if(require.main===module){
+  runBenchmark().catch(e=>{console.error("[BENCHMARK ERROR]",e)}).finally(()=>close());
+}
