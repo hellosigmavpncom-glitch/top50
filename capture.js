@@ -4,9 +4,11 @@ process.env.PUPPETEER_CACHE_DIR=process.env.PUPPETEER_CACHE_DIR||path.join(__dir
 const puppeteer=require("puppeteer");
 
 const DASHBOARD_URL=process.env.DASHBOARD_URL||"https://zhong-vs-fede.onrender.com/";
-const WIDTH=1280,HEIGHT=720,FPS=5,INTERVAL=1000/FPS;
+const WIDTH=640,HEIGHT=360,FPS=1,INTERVAL=1000;
 let browser=null,page=null,recorderPage=null;
-let active=false,busy=false,frames=0,dropped=0,error=null,startedAt=0,timer=null;
+let active=false,busy=false,frames=0,dropped=0,error=null,startedAt=0,loopPromise=null;
+
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
 async function initialize(){
   if(browser)return;
@@ -20,24 +22,29 @@ async function initialize(){
   recorderPage=await browser.newPage();
   await recorderPage.setViewport({width:WIDTH,height:HEIGHT});
   await recorderPage.setContent(`<html><body style="margin:0"><canvas id="c" width="${WIDTH}" height="${HEIGHT}"></canvas><script>
-  const canvas=document.getElementById("c"),ctx=canvas.getContext("2d"),stream=canvas.captureStream(0);
+  const canvas=document.getElementById("c"),ctx=canvas.getContext("2d"),stream=canvas.captureStream(1);
   const mime="video/webm;codecs=vp8";
   if(!MediaRecorder.isTypeSupported(mime))throw Error("VP8 MediaRecorder unavailable");
-  const recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:2000000}),chunks=[];
+  const recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:500000}),chunks=[];
   recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
-  window.__start=()=>{chunks.length=0;recorder.start(1000)};
-  window.__draw=data=>{
-    const img=new Image();
-    return new Promise((resolve,reject)=>{
-      img.onload=()=>{ctx.drawImage(img,0,0,canvas.width,canvas.height);stream.getVideoTracks()[0].requestFrame();resolve()};
-      img.onerror=()=>reject(Error("Screenshot image could not be decoded"));
-      img.src="data:image/jpeg;base64,"+data;
-    });
+  recorder.onerror=e=>{window.__recordingError=e.error?.message||"MediaRecorder error"};
+  window.__start=()=>{
+    if(recorder.state!=="inactive")throw Error("MediaRecorder is already active");
+    chunks.length=0;window.__recordingError=null;recorder.start(1000);
   };
+  window.__draw=data=>new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>{ctx.drawImage(img,0,0,canvas.width,canvas.height);resolve()};
+    img.onerror=()=>reject(Error("Screenshot image could not be decoded"));
+    img.src="data:image/jpeg;base64,"+data;
+  });
   window.__stop=()=>new Promise((resolve,reject)=>{
+    if(recorder.state==="inactive"){reject(Error("MediaRecorder is not recording"));return}
     recorder.addEventListener("stop",async()=>{
       try{
+        if(window.__recordingError)throw Error(window.__recordingError);
         const blob=new Blob(chunks,{type:"video/webm"});
+        if(!blob.size)throw Error("MediaRecorder produced an empty video");
         const bytes=new Uint8Array(await blob.arrayBuffer());
         let binary="";
         for(let i=0;i<bytes.length;i+=32768)binary+=String.fromCharCode(...bytes.subarray(i,i+32768));
@@ -49,18 +56,21 @@ async function initialize(){
   </script></body></html>`);
 }
 
-async function captureFrame(){
-  if(!active||busy){if(active)dropped++;return}
-  busy=true;
-  try{
-    const screenshot=await page.screenshot({type:"jpeg",quality:60,encoding:"base64"});
-    await recorderPage.evaluate(data=>window.__draw(data),screenshot);
-    frames++;
-    if(frames<=5||frames%25===0)console.log("[FRAME]",frames);
-  }catch(e){
-    error=e.message;
-    console.error("[FRAME]",e.message);
-  }finally{busy=false}
+async function captureLoop(){
+  while(active){
+    busy=true;
+    try{
+      const screenshot=await page.screenshot({type:"jpeg",quality:55,encoding:"base64"});
+      await recorderPage.evaluate(data=>window.__draw(data),screenshot);
+      frames++;
+      if(frames<=5||frames%10===0)console.log("[FRAME]",frames);
+    }catch(e){
+      error=e.message;
+      console.error("[FRAME]",e.message);
+      break;
+    }finally{busy=false}
+    if(active)await sleep(INTERVAL);
+  }
 }
 
 async function startRecording(){
@@ -69,30 +79,32 @@ async function startRecording(){
   frames=0;dropped=0;error=null;
   await recorderPage.evaluate(()=>window.__start());
   active=true;startedAt=Date.now();
-  await captureFrame();
-  timer=setInterval(()=>captureFrame(),INTERVAL);
+  loopPromise=captureLoop();
   return getStatus();
 }
 
 async function stopRecording(){
   if(!active)throw Error("Recording is not running");
   active=false;
-  if(timer){clearInterval(timer);timer=null}
-  while(busy)await new Promise(resolve=>setTimeout(resolve,20));
+  if(loopPromise)await loopPromise;
+  while(busy)await sleep(20);
   const base64=await recorderPage.evaluate(()=>window.__stop());
   if(typeof base64!=="string"||!base64.length)throw Error("Recording returned empty or invalid Base64 data");
-  return Buffer.from(base64,"base64");
+  const video=Buffer.from(base64,"base64");
+  if(!video.length)throw Error("Decoded recording is empty");
+  loopPromise=null;
+  return video;
 }
 
 function getStatus(){
-  return {running:active,frames,dropped,elapsed:startedAt?Math.round((Date.now()-startedAt)/1000):0,fps:startedAt&&frames?Number((frames/((Date.now()-startedAt)/1000)).toFixed(1)):0,error};
+  return {running:active,frames,dropped,elapsed:startedAt?Math.round((Date.now()-startedAt)/1000):0,fps:startedAt?Number((frames/((Date.now()-startedAt)/1000)).toFixed(2)):0,error};
 }
 
 async function close(){
   active=false;
-  if(timer){clearInterval(timer);timer=null}
+  if(loopPromise)await loopPromise.catch(()=>{});
   if(browser)await browser.close().catch(()=>{});
-  browser=null;page=null;recorderPage=null;busy=false;
+  browser=null;page=null;recorderPage=null;busy=false;loopPromise=null;
 }
 
 module.exports={initialize,startRecording,stopRecording,getStatus,close};
