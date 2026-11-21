@@ -1,7 +1,7 @@
 
 const puppeteer=require("puppeteer");
 const WIDTH=640,HEIGHT=360,FPS=30,BITRATE=900000,MAX_BYTES=16*1024*1024;
-let browser,dashboard,recorder,cdp,listener,running=false,drawing=false,pending=null,resolveFirst=null,started=0,sourceFrames=0,paintedFrames=0,dropped=0,outputBytes=0,chunks=[],error=null,overflow=false,trackSettings=null;
+let browser,dashboard,recorder,cdp,listener,running=false,drawing=false,pending=null,resolveFirst=null,started=0,sourceFrames=0,paintedFrames=0,dropped=0,outputBytes=0,chunks=[],error=null,overflow=false,trackSettings=null,frameTimes=[],ackTimes=[],lastCdpTimestamp=null;
 
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
@@ -10,6 +10,14 @@ async function initialize(){
   browser=await puppeteer.launch({headless:true,executablePath:puppeteer.executablePath(),args:["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage","--disable-gpu","--disable-background-timer-throttling","--disable-renderer-backgrounding","--disable-backgrounding-occluded-windows","--renderer-process-limit=2","--disable-extensions"]});
   dashboard=await browser.newPage();
   await dashboard.setViewport({width:WIDTH,height:HEIGHT,deviceScaleFactor:1});
+  await dashboard.evaluateOnNewDocument(()=>{
+    window.__probe={raf:0,timers:0,mutations:0,start:performance.now()};
+    const raf=window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame=function(cb){return raf(t=>{window.__probe.raf++;cb(t)})};
+    const interval=window.setInterval.bind(window);
+    window.setInterval=function(cb,ms,...args){return interval(()=>{window.__probe.timers++;cb(...args)},ms)};
+    new MutationObserver(list=>window.__probe.mutations+=list.length).observe(document,{subtree:true,childList:true,attributes:true,characterData:true});
+  });
   await dashboard.goto(process.env.DASHBOARD_URL||"https://zhong-vs-fede.onrender.com/",{waitUntil:"domcontentloaded",timeout:60000});
   await sleep(3000);
   recorder=await browser.newPage();
@@ -62,6 +70,28 @@ async function initialize(){
   },{w:WIDTH,h:HEIGHT,fps:FPS,bitrate:BITRATE});
 }
 
+async function diagnostics(){
+  try{
+    return await dashboard.evaluate(()=>{
+      const p=window.__probe||{};
+      const resources=performance.getEntriesByType("resource");
+      return {
+        visibility:document.visibilityState,
+        hidden:document.hidden,
+        hasFocus:document.hasFocus(),
+        uptime:Math.round(performance.now()),
+        rafTicks:p.raf||0,
+        timerTicks:p.timers||0,
+        domMutations:p.mutations||0,
+        resourceCount:resources.length,
+        recentResources:resources.slice(-8).map(r=>({name:r.name.split("?")[0].slice(-120),type:r.initiatorType,duration:Math.round(r.duration)})),
+        title:document.title,
+        url:location.href
+      };
+    });
+  }catch(e){return {diagnosticError:e.message};}
+}
+
 async function pump(){
   if(drawing)return;
   drawing=true;
@@ -85,7 +115,7 @@ function getStatus(){
 async function startRecording(){
   if(running)throw Error("Recording is already running");
   await initialize();
-  chunks=[];outputBytes=0;sourceFrames=paintedFrames=dropped=0;error=null;overflow=false;pending=null;drawing=false;trackSettings=null;
+  chunks=[];outputBytes=0;sourceFrames=paintedFrames=dropped=0;error=null;overflow=false;pending=null;drawing=false;trackSettings=null;frameTimes=[];ackTimes=[];lastCdpTimestamp=null;
   const settings=await recorder.evaluate(()=>window.__capture.start());
   trackSettings=settings.track;
   started=Date.now();running=true;
@@ -93,7 +123,13 @@ async function startRecording(){
   cdp=await dashboard.createCDPSession();
   await cdp.send("Page.enable");
   listener=params=>{
+    const now=Date.now();
     sourceFrames++;
+    frameTimes.push(now);
+    if(params.metadata?.timestamp!=null){
+      if(lastCdpTimestamp!==null)ackTimes.push(params.metadata.timestamp-lastCdpTimestamp);
+      lastCdpTimestamp=params.metadata.timestamp;
+    }
     cdp.send("Page.screencastFrameAck",{sessionId:params.sessionId}).catch(()=>{});
     if(pending!==null)dropped++;
     pending=params.data;pump();
@@ -127,13 +163,32 @@ async function stopRecording(){
   return buffer;
 }
 
-async function runBenchmark(seconds=5){
-  console.log(`[BENCHMARK] Recording for ${seconds} seconds...`);
+async function runBenchmark(seconds=15){
+  console.log(`[DIAGNOSTIC] Starting ${seconds}s dashboard test`);
+  await initialize();
+  const before=await diagnostics();
+  console.log("[PAGE BEFORE]",JSON.stringify(before));
   await startRecording();
-  await sleep(seconds*1000);
+  const snapshots=[];
+  for(let i=0;i<seconds;i++){
+    await sleep(1000);
+    snapshots.push(await diagnostics());
+  }
+  const after=await diagnostics();
   const buffer=await stopRecording();
-  const result={...getStatus(),recordingBytes:buffer.length,recordingSeconds:+((Date.now()-started)/1000).toFixed(2)};
-  console.log("[BENCHMARK RESULT]",JSON.stringify(result));
+  const intervals=arr=>arr.length>1?arr.slice(1).map((t,i)=>t-arr[i]):[];
+  const gaps=intervals(frameTimes);
+  const avg=a=>a.length?+(a.reduce((s,v)=>s+v,0)/a.length).toFixed(2):0;
+  const sorted=[...gaps].sort((a,b)=>a-b);
+  const result={
+    before,after,
+    perSecond:snapshots.map((s,i)=>({second:i+1,raf:s.raf,timers:s.timerTicks,mutations:s.domMutations,resources:s.resourceCount,visible:s.visibility})),
+    capture:{...getStatus(),recordingBytes:buffer.length},
+    frameIntervals:{count:gaps.length,avg:avg(gaps),min:gaps.length?Math.min(...gaps):0,max:gaps.length?Math.max(...gaps):0,p95:sorted.length?sorted[Math.floor(sorted.length*.95)]:0},
+    cdpIntervals:{count:ackTimes.length,avg:avg(ackTimes),min:ackTimes.length?Math.min(...ackTimes):0,max:ackTimes.length?Math.max(...ackTimes):0},
+    recordingSeconds:+((Date.now()-started)/1000).toFixed(2)
+  };
+  console.log("[DIAGNOSTIC RESULT]",JSON.stringify(result));
   return result;
 }
 
@@ -143,4 +198,4 @@ async function close(){
   if(browser){await browser.close();browser=null;dashboard=recorder=cdp=null;}
 }
 
-module.exports={initialize,startRecording,stopRecording,getStatus,close,runBenchmark};
+module.exports={initialize,startRecording,stopRecording,getStatus,diagnostics,close,runBenchmark};
