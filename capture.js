@@ -1,16 +1,18 @@
 
-const fs=require("fs"),puppeteer=require("puppeteer");
+const path=require("path"),fs=require("fs");
+process.env.PUPPETEER_CACHE_DIR=process.env.PUPPETEER_CACHE_DIR||path.join(__dirname,".cache","puppeteer");
+const puppeteer=require("puppeteer");
 
 const DASHBOARD_URL=process.env.DASHBOARD_URL||"https://zhong-vs-fede.onrender.com/";
-const CHROME="/opt/render/.cache/puppeteer/chrome/linux-148.0.7778.97/chrome-linux64/chrome";
 const WIDTH=1280,HEIGHT=720,FPS=20;
 let browser=null,page=null,recorderPage=null,cdp=null;
 let active=false,busy=false,frames=0,dropped=0,error=null,startedAt=0;
 
 async function initialize(){
   if(browser)return;
+  const CHROME=puppeteer.executablePath();
   console.log("[CHROME] Path:",CHROME,"Exists:",fs.existsSync(CHROME));
-  if(!fs.existsSync(CHROME))throw Error("Chrome executable missing at "+CHROME);
+  if(!fs.existsSync(CHROME))throw Error("Chrome executable missing: "+CHROME);
   browser=await puppeteer.launch({
     executablePath:CHROME,
     headless:true,
