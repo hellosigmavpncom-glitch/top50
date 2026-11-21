@@ -22,7 +22,7 @@ async function instrumentPage(page){
 
 async function initialize(){
   if(browser)return;
-  browser=await puppeteer.launch({headless:true,executablePath:puppeteer.executablePath(),args:["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage","--disable-background-timer-throttling","--disable-renderer-backgrounding","--disable-backgrounding-occluded-windows","--renderer-process-limit=2","--disable-extensions"]});
+browser=await puppeteer.launch({headless:true,executablePath:await puppeteer.executablePath(),args:["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage","--disable-background-timer-throttling","--disable-renderer-backgrounding","--disable-backgrounding-occluded-windows","--renderer-process-limit=2","--disable-extensions"]});
   dashboard=await browser.newPage();
   await dashboard.setViewport({width:WIDTH,height:HEIGHT,deviceScaleFactor:1});
   await instrumentPage(dashboard);
