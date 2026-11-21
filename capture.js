@@ -5,7 +5,8 @@ const puppeteer=require("puppeteer");
 
 const DASHBOARD_URL=process.env.DASHBOARD_URL||"https://zhong-vs-fede.onrender.com/";
 const WIDTH=1280,HEIGHT=720,FPS=20;
-let browser=null,page=null,cdp=null,active=false,busy=false,frames=0,dropped=0,error=null,startedAt=0,screencastEvents=0;
+let browser=null,page=null,recorderPage=null,cdp=null;
+let active=false,busy=false,frames=0,dropped=0,error=null,startedAt=0,screencastEvents=0;
 
 async function initialize(){
   if(browser)return;
@@ -16,56 +17,47 @@ async function initialize(){
   page=await browser.newPage();
   await page.setViewport({width:WIDTH,height:HEIGHT,deviceScaleFactor:1});
   await page.goto(DASHBOARD_URL,{waitUntil:"domcontentloaded",timeout:60000});
-  await page.evaluate(async({width,height,fps})=>{
-    const canvas=document.createElement("canvas");
-    canvas.width=width;canvas.height=height;
-    canvas.style.cssText="position:fixed;left:-10000px;top:0";
-    document.body.appendChild(canvas);
-    const stream=canvas.captureStream(fps);
-    const mime="video/webm;codecs=vp8";
-    if(!MediaRecorder.isTypeSupported(mime))throw Error("VP8 MediaRecorder unavailable");
-    const recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:4000000});
-    const chunks=[];
-    recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
-    window.__capture={canvas,ctx:canvas.getContext("2d"),recorder,chunks,stream};
-    window.__start=()=>{chunks.length=0;recorder.start(1000)};
-    window.__stop=()=>new Promise(resolve=>{
-      recorder.addEventListener("stop",async()=>{
-        const blob=new Blob(chunks,{type:"video/webm"});
-        resolve(await blob.arrayBuffer());
-      },{once:true});
-      recorder.stop();
+  recorderPage=await browser.newPage();
+  await recorderPage.setViewport({width:WIDTH,height:HEIGHT});
+  await recorderPage.setContent(`<html><body style="margin:0"><canvas id="c" width="${WIDTH}" height="${HEIGHT}"></canvas><script>
+  const canvas=document.getElementById("c"),ctx=canvas.getContext("2d"),stream=canvas.captureStream(0);
+  const mime="video/webm;codecs=vp8";
+  if(!MediaRecorder.isTypeSupported(mime))throw Error("VP8 MediaRecorder unavailable");
+  const recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:4000000}),chunks=[];
+  recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+  window.__start=()=>{chunks.length=0;recorder.start(1000)};
+  window.__draw=async data=>{
+    const img=new Image();
+    await new Promise((resolve,reject)=>{
+      img.onload=resolve;img.onerror=reject;
+      img.src="data:image/jpeg;base64,"+data;
     });
-    window.__draw=async data=>{
-      const img=new Image();
-      await new Promise((resolve,reject)=>{
-        img.onload=resolve;img.onerror=reject;
-        img.src="data:image/jpeg;base64,"+data;
-      });
-      const c=window.__capture;
-      c.ctx.drawImage(img,0,0,width,height);
-    };
-  },{width:WIDTH,height:HEIGHT,fps:FPS});
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    stream.getVideoTracks()[0].requestFrame();
+  };
+  window.__stop=()=>new Promise(resolve=>{
+    recorder.addEventListener("stop",async()=>{
+      const blob=new Blob(chunks,{type:"video/webm"});
+      resolve(await blob.arrayBuffer());
+    },{once:true});
+    recorder.stop();
+  });
+  </script></body></html>`);
   cdp=await page.target().createCDPSession();
-  cdp.on("Page.screencastFrame",async event=>{
+  cdp.on("Page.screencastFrame",event=>{
     screencastEvents++;
+    cdp.send("Page.screencastFrameAck",{sessionId:event.sessionId}).catch(e=>console.error("[ACK]",e.message));
     if(screencastEvents<=5||screencastEvents%50===0)console.log("[SCREENCAST] Event:",screencastEvents);
-    if(!active||busy){
-      dropped++;
-      await cdp.send("Page.screencastFrameAck",{sessionId:event.sessionId}).catch(()=>{});
-      return;
-    }
+    if(!active||busy){dropped++;return}
     busy=true;
-    try{
-      await page.evaluate(data=>window.__draw(data),event.data);
+    recorderPage.evaluate(data=>window.__draw(data),event.data).then(()=>{
       frames++;
-    }catch(e){
+    }).catch(e=>{
       error=e.message;
       console.error("[FRAME]",e.message);
-    }finally{
+    }).finally(()=>{
       busy=false;
-      await cdp.send("Page.screencastFrameAck",{sessionId:event.sessionId}).catch(()=>{});
-    }
+    });
   });
 }
 
@@ -73,7 +65,7 @@ async function startRecording(){
   if(active)throw Error("Recording already running");
   await initialize();
   frames=0;dropped=0;error=null;screencastEvents=0;
-  await page.evaluate(()=>window.__start());
+  await recorderPage.evaluate(()=>window.__start());
   active=true;startedAt=Date.now();
   try{
     await cdp.send("Page.startScreencast",{format:"jpeg",quality:65,maxWidth:WIDTH,maxHeight:HEIGHT,everyNthFrame:1});
@@ -89,7 +81,7 @@ async function stopRecording(){
   active=false;
   await cdp.send("Page.stopScreencast").catch(()=>{});
   while(busy)await new Promise(resolve=>setTimeout(resolve,20));
-  const video=await page.evaluate(()=>window.__stop());
+  const video=await recorderPage.evaluate(()=>window.__stop());
   return Buffer.from(video);
 }
 
@@ -100,7 +92,7 @@ function getStatus(){
 async function close(){
   active=false;
   if(browser)await browser.close().catch(()=>{});
-  browser=null;page=null;cdp=null;
+  browser=null;page=null;recorderPage=null;cdp=null;
 }
 
 module.exports={initialize,startRecording,stopRecording,getStatus,close};
