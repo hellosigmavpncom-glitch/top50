@@ -4,9 +4,9 @@ process.env.PUPPETEER_CACHE_DIR=process.env.PUPPETEER_CACHE_DIR||path.join(__dir
 const puppeteer=require("puppeteer");
 
 const DASHBOARD_URL=process.env.DASHBOARD_URL||"https://zhong-vs-fede.onrender.com/";
-const WIDTH=1280,HEIGHT=720,FPS=20;
-let browser=null,page=null,recorderPage=null,cdp=null;
-let active=false,busy=false,frames=0,dropped=0,error=null,startedAt=0,screencastEvents=0;
+const WIDTH=1280,HEIGHT=720,FPS=5,INTERVAL=1000/FPS;
+let browser=null,page=null,recorderPage=null;
+let active=false,busy=false,frames=0,dropped=0,error=null,startedAt=0,timer=null;
 
 async function initialize(){
   if(browser)return;
@@ -23,19 +23,18 @@ async function initialize(){
   const canvas=document.getElementById("c"),ctx=canvas.getContext("2d"),stream=canvas.captureStream(0);
   const mime="video/webm;codecs=vp8";
   if(!MediaRecorder.isTypeSupported(mime))throw Error("VP8 MediaRecorder unavailable");
-  const recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:4000000}),chunks=[];
+  const recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:2000000}),chunks=[];
   recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
   window.__start=()=>{chunks.length=0;recorder.start(1000)};
-  window.__draw=async data=>{
+  window.__draw=data=>{
     const img=new Image();
-    await new Promise((resolve,reject)=>{
-      img.onload=resolve;img.onerror=reject;
+    return new Promise((resolve,reject)=>{
+      img.onload=()=>{ctx.drawImage(img,0,0,canvas.width,canvas.height);stream.getVideoTracks()[0].requestFrame();resolve()};
+      img.onerror=()=>reject(Error("Screenshot image could not be decoded"));
       img.src="data:image/jpeg;base64,"+data;
     });
-    ctx.drawImage(img,0,0,canvas.width,canvas.height);
-    stream.getVideoTracks()[0].requestFrame();
   };
-  window.__stop=()=>new Promise(resolve=>{
+  window.__stop=()=>new Promise((resolve,reject)=>{
     recorder.addEventListener("stop",async()=>{
       try{
         const blob=new Blob(chunks,{type:"video/webm"});
@@ -48,39 +47,37 @@ async function initialize(){
     recorder.stop();
   });
   </script></body></html>`);
-  cdp=await page.target().createCDPSession();
-  cdp.on("Page.screencastFrame",event=>{
-    screencastEvents++;
-    cdp.send("Page.screencastFrameAck",{sessionId:event.sessionId}).catch(e=>console.error("[ACK]",e.message));
-    if(screencastEvents<=5||screencastEvents%50===0)console.log("[SCREENCAST] Event:",screencastEvents);
-    if(!active||busy){dropped++;return}
-    busy=true;
-    recorderPage.evaluate(data=>window.__draw(data),event.data).then(()=>{frames++}).catch(e=>{
-      error=e.message;
-      console.error("[FRAME]",e.message);
-    }).finally(()=>{busy=false});
-  });
+}
+
+async function captureFrame(){
+  if(!active||busy){if(active)dropped++;return}
+  busy=true;
+  try{
+    const screenshot=await page.screenshot({type:"jpeg",quality:60,encoding:"base64"});
+    await recorderPage.evaluate(data=>window.__draw(data),screenshot);
+    frames++;
+    if(frames<=5||frames%25===0)console.log("[FRAME]",frames);
+  }catch(e){
+    error=e.message;
+    console.error("[FRAME]",e.message);
+  }finally{busy=false}
 }
 
 async function startRecording(){
   if(active)throw Error("Recording already running");
   await initialize();
-  frames=0;dropped=0;error=null;screencastEvents=0;
+  frames=0;dropped=0;error=null;
   await recorderPage.evaluate(()=>window.__start());
   active=true;startedAt=Date.now();
-  try{
-    await cdp.send("Page.startScreencast",{format:"jpeg",quality:65,maxWidth:WIDTH,maxHeight:HEIGHT,everyNthFrame:1});
-  }catch(e){
-    active=false;
-    throw e;
-  }
+  await captureFrame();
+  timer=setInterval(()=>captureFrame(),INTERVAL);
   return getStatus();
 }
 
 async function stopRecording(){
   if(!active)throw Error("Recording is not running");
   active=false;
-  await cdp.send("Page.stopScreencast").catch(()=>{});
+  if(timer){clearInterval(timer);timer=null}
   while(busy)await new Promise(resolve=>setTimeout(resolve,20));
   const base64=await recorderPage.evaluate(()=>window.__stop());
   if(typeof base64!=="string"||!base64.length)throw Error("Recording returned empty or invalid Base64 data");
@@ -93,8 +90,9 @@ function getStatus(){
 
 async function close(){
   active=false;
+  if(timer){clearInterval(timer);timer=null}
   if(browser)await browser.close().catch(()=>{});
-  browser=null;page=null;recorderPage=null;cdp=null;
+  browser=null;page=null;recorderPage=null;busy=false;
 }
 
 module.exports={initialize,startRecording,stopRecording,getStatus,close};
