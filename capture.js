@@ -31,14 +31,14 @@ const page=()=>`<!DOCTYPE html>
 <script>
 const startBtn=document.getElementById("start"),stopBtn=document.getElementById("stop"),bar=document.getElementById("bar"),result=document.getElementById("result");
 const FPS=15,DURATION=60;
-let stream=null,track=null,worker=null,active=false,started=0,uiTimer=null,settings={};
-function report(error,fps,frames){
-fetch("/api/capture/status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({running:active,connected:!!stream,fps:fps||0,width:settings.width||0,height:settings.height||0,frames:frames||0,droppedFrames:0,error:error||null})}).catch(()=>{});
+let stream=null,track=null,reader=null,active=false,started=0,uiTimer=null,sampleTimer=null,endTimer=null,frames=0,lastFrames=0,lastSample=0,samples=[],settings={},finished=false;
+function report(error,fps,count){
+fetch("/api/capture/status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({running:active,connected:!!stream,fps:fps||0,width:settings.width||0,height:settings.height||0,frames:count||0,droppedFrames:0,error:error||null})}).catch(()=>{});
 }
 function cleanup(){
-clearInterval(uiTimer);
+clearInterval(uiTimer);clearInterval(sampleTimer);clearTimeout(endTimer);
 if(stream)stream.getTracks().forEach(t=>t.stop());
-if(worker){worker.terminate();worker=null}
+if(reader){reader.cancel().catch(()=>{});reader=null}
 stream=null;track=null;active=false;
 startBtn.disabled=false;stopBtn.disabled=true;
 }
@@ -47,61 +47,83 @@ result.innerHTML="<b>Test failed</b><br>"+String(message);
 result.style.display="block";
 cleanup();report(String(message),0,0);
 }
-const workerCode=[
-"let reader=null,active=false,finished=false,frames=0,started=0,lastSample=0,lastFrames=0,samples=[],sampleTimer=null,endTimer=null;",
-"function finish(reason){if(finished)return;finished=true;active=false;clearInterval(sampleTimer);clearTimeout(endTimer);const elapsed=(performance.now()-started)/1000;const avg=frames/Math.max(.001,elapsed);const min=samples.length?Math.min(...samples):0;const max=samples.length?Math.max(...samples):0;const consistency=samples.length?samples.filter(v=>Math.abs(v-15)<=1.5).length/samples.length*100:0;self.postMessage({type:'finish',reason:reason,elapsed:elapsed,frames:frames,average:avg,min:min,max:max,consistency:consistency});if(reader)reader.cancel().catch(()=>{});}",
-"self.onmessage=async function(e){if(e.data.stop){finish('Stopped manually');return;}const track=e.data.track;try{if(typeof MediaStreamTrackProcessor==='undefined')throw new Error('MediaStreamTrackProcessor is not available in this worker.');const processor=new MediaStreamTrackProcessor({track:track});reader=processor.readable.getReader();active=true;started=performance.now();lastSample=started;self.postMessage({type:'ready'});sampleTimer=setInterval(function(){if(!active)return;const now=performance.now();const seconds=(now-lastSample)/1000;const fps=(frames-lastFrames)/Math.max(.001,seconds);samples.push(fps);self.postMessage({type:'sample',fps:fps,frames:frames,elapsed:(now-started)/1000});lastSample=now;lastFrames=frames;},5000);endTimer=setTimeout(function(){finish('Completed');},60000);while(active){const item=await reader.read();if(item.done)break;frames++;item.value.close();}if(!finished)finish('Capture track ended');}catch(error){if(!finished)finish('Error: '+(error.message||String(error)));}};"
-].join("");
+function update(){
+if(!active)return;
+const elapsed=(performance.now()-started)/1000;
+const avg=frames/Math.max(.001,elapsed);
+document.getElementById("elapsed").textContent=elapsed.toFixed(1)+"s";
+document.getElementById("frames").textContent=frames.toLocaleString();
+document.getElementById("average").textContent=avg.toFixed(2);
+bar.style.width=Math.min(100,elapsed/DURATION*100)+"%";
+}
+function finish(reason){
+if(finished)return;
+finished=true;
+const elapsed=(performance.now()-started)/1000;
+const avg=frames/Math.max(.001,elapsed);
+const min=samples.length?Math.min(...samples):0;
+const max=samples.length?Math.max(...samples):0;
+const consistency=samples.length?samples.filter(v=>Math.abs(v-FPS)<=1.5).length/samples.length*100:0;
+const completed=reason==="Completed";
+document.getElementById("fps").textContent=avg.toFixed(2);
+document.getElementById("average").textContent=avg.toFixed(2);
+document.getElementById("frames").textContent=frames.toLocaleString();
+document.getElementById("elapsed").textContent=elapsed.toFixed(1)+"s";
+document.getElementById("minimum").textContent=min.toFixed(2);
+document.getElementById("maximum").textContent=max.toFixed(2);
+document.getElementById("consistency").textContent=consistency.toFixed(1)+"%";
+bar.style.width=Math.min(100,elapsed/DURATION*100)+"%";
+result.innerHTML=(completed?"<b>60-second capture-track benchmark completed</b>":"<b>Test ended: "+reason+"</b>")+"<br>Average capture-track FPS: "+avg.toFixed(2)+"<br>Target FPS: "+FPS+"<br>Minimum 5-second FPS: "+min.toFixed(2)+"<br>Maximum 5-second FPS: "+max.toFixed(2)+"<br>FPS consistency: "+consistency.toFixed(1)+"%<br>Total frames received: "+frames.toLocaleString()+"<br>Elapsed: "+elapsed.toFixed(1)+" seconds<br><br>Frames counted directly from MediaStreamTrackProcessor, not video-preview playback.";
+result.style.display="block";
+const finalFrames=frames;
+cleanup();report(completed?null:reason,avg,finalFrames);
+}
+async function readFrames(){
+try{
+while(active&&reader){
+const item=await reader.read();
+if(item.done)break;
+frames++;
+item.value.close();
+}
+if(active)finish("Capture track ended");
+}catch(error){
+if(active)finish("Read error: "+(error.message||String(error)));
+}
+}
 startBtn.onclick=async()=>{
 try{
-result.style.display="none";startBtn.disabled=true;stopBtn.disabled=false;
+result.style.display="none";startBtn.disabled=true;stopBtn.disabled=true;
+frames=0;lastFrames=0;samples=[];finished=false;reader=null;
 for(const id of ["fps","average","frames"])document.getElementById(id).textContent="0";
 for(const id of ["minimum","maximum","consistency"])document.getElementById(id).textContent="-";
 document.getElementById("elapsed").textContent="0s";bar.style.width="0%";
+if(!("MediaStreamTrackProcessor"in window))throw new Error("MediaStreamTrackProcessor is not available on this Edge browser's main thread.");
 stream=await navigator.mediaDevices.getDisplayMedia({video:{width:{ideal:1280},height:{ideal:720},frameRate:{ideal:FPS,max:FPS}},audio:false});
-track=stream.getVideoTracks()[0];settings=track.getSettings();
+track=stream.getVideoTracks()[0];
+settings=track.getSettings();
 document.getElementById("resolution").textContent=(settings.width||0)+" × "+(settings.height||0);
-const blob=new Blob([workerCode],{type:"text/javascript"}),workerUrl=URL.createObjectURL(blob);
-worker=new Worker(workerUrl);URL.revokeObjectURL(workerUrl);
-active=true;started=performance.now();
-worker.onmessage=e=>{
-const data=e.data;
-if(data.type==="ready")report(null,0,0);
-if(data.type==="sample"){
-document.getElementById("fps").textContent=data.fps.toFixed(2);
-document.getElementById("frames").textContent=data.frames.toLocaleString();
-document.getElementById("average").textContent=(data.frames/Math.max(.001,data.elapsed)).toFixed(2);
-document.getElementById("elapsed").textContent=data.elapsed.toFixed(1)+"s";
-bar.style.width=Math.min(100,data.elapsed/DURATION*100)+"%";
-report(null,data.frames/Math.max(.001,data.elapsed),data.frames);
-}
-if(data.type==="finish"){
-const completed=data.reason==="Completed";
-document.getElementById("fps").textContent=data.average.toFixed(2);
-document.getElementById("average").textContent=data.average.toFixed(2);
-document.getElementById("frames").textContent=data.frames.toLocaleString();
-document.getElementById("elapsed").textContent=data.elapsed.toFixed(1)+"s";
-document.getElementById("minimum").textContent=data.min.toFixed(2);
-document.getElementById("maximum").textContent=data.max.toFixed(2);
-document.getElementById("consistency").textContent=data.consistency.toFixed(1)+"%";
-bar.style.width=Math.min(100,data.elapsed/DURATION*100)+"%";
-result.innerHTML=(completed?"<b>60-second capture-track benchmark completed</b>":"<b>Test ended early: "+data.reason+"</b>")+"<br>Average capture-track FPS: "+data.average.toFixed(2)+"<br>Target FPS: "+FPS+"<br>Minimum 5-second FPS: "+data.min.toFixed(2)+"<br>Maximum 5-second FPS: "+data.max.toFixed(2)+"<br>FPS consistency: "+data.consistency.toFixed(1)+"%<br>Total frames received: "+data.frames.toLocaleString()+"<br>Elapsed: "+data.elapsed.toFixed(1)+" seconds<br><br>Frames counted directly from MediaStreamTrackProcessor, not video-preview playback.";
-result.style.display="block";
-const finalFps=data.average,finalFrames=data.frames;
-cleanup();report(completed?null:data.reason,finalFps,finalFrames);
-}
-};
-worker.onerror=e=>showError(e.message||"Capture worker failed");
-track.addEventListener("ended",()=>{if(worker)worker.postMessage({stop:true})},{once:true});
-worker.postMessage({track:track});
-uiTimer=setInterval(()=>{
+const processor=new MediaStreamTrackProcessor({track});
+reader=processor.readable.getReader();
+active=true;started=performance.now();lastSample=started;
+startBtn.disabled=true;stopBtn.disabled=false;
+track.addEventListener("ended",()=>{if(active)finish("Screen sharing ended")},{once:true});
+sampleTimer=setInterval(()=>{
 if(!active)return;
-document.getElementById("elapsed").textContent=((performance.now()-started)/1000).toFixed(1)+"s";
-},250);
+const now=performance.now(),seconds=(now-lastSample)/1000;
+const fps=(frames-lastFrames)/Math.max(.001,seconds);
+samples.push(fps);
+lastSample=now;lastFrames=frames;
+document.getElementById("fps").textContent=fps.toFixed(2);
+update();report(null,frames/Math.max(.001,(now-started)/1000),frames);
+},5000);
+uiTimer=setInterval(update,250);
+endTimer=setTimeout(()=>finish("Completed"),DURATION*1000);
 report(null,0,0);
+readFrames();
 }catch(error){showError(error.message||String(error))}
 };
-stopBtn.onclick=()=>{if(worker)worker.postMessage({stop:true})};
+stopBtn.onclick=()=>finish("Stopped manually");
 </script>
 </body>
 </html>`;
