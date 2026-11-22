@@ -49,31 +49,24 @@ cleanup();report(String(message),0,0);
 }
 const workerCode=[
 "let reader=null,active=false,finished=false,frames=0,started=0,lastSample=0,lastFrames=0,samples=[],sampleTimer=null,endTimer=null;",
-"function finish(reason){if(finished)return;finished=true;active=false;clearInterval(sampleTimer);clearTimeout(endTimer);const elapsed=(performance.now()-started)/1000;const avg=frames/Math.max(.001,elapsed);const min=samples.length?Math.min(...samples):0;const max=samples.length?Math.max(...samples):0;const consistency=samples.length?samples.filter(v=>Math.abs(v-15)<=1.5).length/samples.length*100:0;self.postMessage({type:'finish',reason:reason,elapsed:elapsed,frames:frames,average:avg,min:min,max:max,consistency:consistency,samples:samples});if(reader)reader.cancel().catch(()=>{});}",
-"self.onmessage=async function(e){if(e.data.stop){finish('Stopped manually');return;}const track=e.data.track;try{if(typeof MediaStreamTrackProcessor==='undefined')throw new Error('MediaStreamTrackProcessor is not available in the capture worker.');const processor=new MediaStreamTrackProcessor({track:track});reader=processor.readable.getReader();active=true;started=performance.now();lastSample=started;self.postMessage({type:'ready'});sampleTimer=setInterval(function(){if(!active)return;const now=performance.now();const seconds=(now-lastSample)/1000;const fps=(frames-lastFrames)/Math.max(.001,seconds);samples.push(fps);self.postMessage({type:'sample',fps:fps,frames:frames,elapsed:(now-started)/1000});lastSample=now;lastFrames=frames;},5000);endTimer=setTimeout(function(){finish('Completed');},60000);while(active){const item=await reader.read();if(item.done)break;frames++;item.value.close();}if(!finished)finish('Capture track ended');}catch(error){if(!finished)finish('Error: '+(error.message||String(error)));}};"
+"function finish(reason){if(finished)return;finished=true;active=false;clearInterval(sampleTimer);clearTimeout(endTimer);const elapsed=(performance.now()-started)/1000;const avg=frames/Math.max(.001,elapsed);const min=samples.length?Math.min(...samples):0;const max=samples.length?Math.max(...samples):0;const consistency=samples.length?samples.filter(v=>Math.abs(v-15)<=1.5).length/samples.length*100:0;self.postMessage({type:'finish',reason:reason,elapsed:elapsed,frames:frames,average:avg,min:min,max:max,consistency:consistency});if(reader)reader.cancel().catch(()=>{});}",
+"self.onmessage=async function(e){if(e.data.stop){finish('Stopped manually');return;}const track=e.data.track;try{if(typeof MediaStreamTrackProcessor==='undefined')throw new Error('MediaStreamTrackProcessor is not available in this worker.');const processor=new MediaStreamTrackProcessor({track:track});reader=processor.readable.getReader();active=true;started=performance.now();lastSample=started;self.postMessage({type:'ready'});sampleTimer=setInterval(function(){if(!active)return;const now=performance.now();const seconds=(now-lastSample)/1000;const fps=(frames-lastFrames)/Math.max(.001,seconds);samples.push(fps);self.postMessage({type:'sample',fps:fps,frames:frames,elapsed:(now-started)/1000});lastSample=now;lastFrames=frames;},5000);endTimer=setTimeout(function(){finish('Completed');},60000);while(active){const item=await reader.read();if(item.done)break;frames++;item.value.close();}if(!finished)finish('Capture track ended');}catch(error){if(!finished)finish('Error: '+(error.message||String(error)));}};"
 ].join("");
 startBtn.onclick=async()=>{
 try{
 result.style.display="none";startBtn.disabled=true;stopBtn.disabled=false;
-document.getElementById("fps").textContent="0";
-document.getElementById("average").textContent="0";
-document.getElementById("frames").textContent="0";
-document.getElementById("minimum").textContent="-";
-document.getElementById("maximum").textContent="-";
-document.getElementById("consistency").textContent="-";
-bar.style.width="0%";
+for(const id of ["fps","average","frames"])document.getElementById(id).textContent="0";
+for(const id of ["minimum","maximum","consistency"])document.getElementById(id).textContent="-";
+document.getElementById("elapsed").textContent="0s";bar.style.width="0%";
 stream=await navigator.mediaDevices.getDisplayMedia({video:{width:{ideal:1280},height:{ideal:720},frameRate:{ideal:FPS,max:FPS}},audio:false});
-track=stream.getVideoTracks()[0];
-settings=track.getSettings();
+track=stream.getVideoTracks()[0];settings=track.getSettings();
 document.getElementById("resolution").textContent=(settings.width||0)+" × "+(settings.height||0);
-const blob=new Blob([workerCode],{type:"text/javascript"});
-const workerUrl=URL.createObjectURL(blob);
-worker=new Worker(workerUrl);
-URL.revokeObjectURL(workerUrl);
+const blob=new Blob([workerCode],{type:"text/javascript"}),workerUrl=URL.createObjectURL(blob);
+worker=new Worker(workerUrl);URL.revokeObjectURL(workerUrl);
 active=true;started=performance.now();
 worker.onmessage=e=>{
 const data=e.data;
-if(data.type==="ready"){result.style.display="none";report(null,0,0)}
+if(data.type==="ready")report(null,0,0);
 if(data.type==="sample"){
 document.getElementById("fps").textContent=data.fps.toFixed(2);
 document.getElementById("frames").textContent=data.frames.toLocaleString();
@@ -92,7 +85,7 @@ document.getElementById("minimum").textContent=data.min.toFixed(2);
 document.getElementById("maximum").textContent=data.max.toFixed(2);
 document.getElementById("consistency").textContent=data.consistency.toFixed(1)+"%";
 bar.style.width=Math.min(100,data.elapsed/DURATION*100)+"%";
-result.innerHTML=(completed?"<b>60-second capture-track benchmark completed</b>":"<b>Test ended early: "+data.reason+"</b>")+"<br>Average capture-track FPS: "+data.average.toFixed(2)+"<br>Target FPS: "+FPS+"<br>Minimum 5-second FPS: "+data.min.toFixed(2)+"<br>Maximum 5-second FPS: "+data.max.toFixed(2)+"<br>FPS consistency: "+data.consistency.toFixed(1)+"%<br>Total frames received: "+data.frames.toLocaleString()+"<br>Elapsed: "+data.elapsed.toFixed(1)+" seconds<br><br>These are frames received directly from MediaStreamTrackProcessor, not video-preview frames.";
+result.innerHTML=(completed?"<b>60-second capture-track benchmark completed</b>":"<b>Test ended early: "+data.reason+"</b>")+"<br>Average capture-track FPS: "+data.average.toFixed(2)+"<br>Target FPS: "+FPS+"<br>Minimum 5-second FPS: "+data.min.toFixed(2)+"<br>Maximum 5-second FPS: "+data.max.toFixed(2)+"<br>FPS consistency: "+data.consistency.toFixed(1)+"%<br>Total frames received: "+data.frames.toLocaleString()+"<br>Elapsed: "+data.elapsed.toFixed(1)+" seconds<br><br>Frames counted directly from MediaStreamTrackProcessor, not video-preview playback.";
 result.style.display="block";
 const finalFps=data.average,finalFrames=data.frames;
 cleanup();report(completed?null:data.reason,finalFps,finalFrames);
@@ -100,11 +93,10 @@ cleanup();report(completed?null:data.reason,finalFps,finalFrames);
 };
 worker.onerror=e=>showError(e.message||"Capture worker failed");
 track.addEventListener("ended",()=>{if(worker)worker.postMessage({stop:true})},{once:true});
-worker.postMessage({track:track},[track]);
+worker.postMessage({track:track});
 uiTimer=setInterval(()=>{
 if(!active)return;
-const elapsed=(performance.now()-started)/1000;
-document.getElementById("elapsed").textContent=elapsed.toFixed(1)+"s";
+document.getElementById("elapsed").textContent=((performance.now()-started)/1000).toFixed(1)+"s";
 },250);
 report(null,0,0);
 }catch(error){showError(error.message||String(error))}
