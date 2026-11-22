@@ -27,7 +27,7 @@ async function start(){
  starting=true;
  status.error=null;
  try{
-  browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage","--enable-gpu","--autoplay-policy=no-user-gesture-required"]});
+  browser=await chromium.launch({headless:false,args:["--no-sandbox","--disable-dev-shm-usage","--enable-gpu","--autoplay-policy=no-user-gesture-required"]});
   browserCdp=await browser.newBrowserCDPSession();
 
   try{
