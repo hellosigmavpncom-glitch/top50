@@ -4,7 +4,7 @@ const fs=require("node:fs/promises");
 const path=require("node:path");
 const os=require("node:os");
 
-const WIDTH=1600,HEIGHT=900,FPS=30,MAX_BYTES=16*1024*1024;
+const WIDTH=1600,HEIGHT=900,FPS=30,MAX_BYTES=16*1024*1024,MAX_CONTAINER_MB=300;
 const URL=process.env.DASHBOARD_URL||"https://zhong-vs-fede.onrender.com/";
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const now=()=>new Date().toLocaleTimeString();
@@ -18,35 +18,8 @@ process.on("uncaughtExceptionMonitor",e=>log("UNCAUGHT EXCEPTION",{message:e.mes
 process.on("unhandledRejection",e=>log("UNHANDLED REJECTION",{message:e?.message||String(e),stack:e?.stack,memory:memory()}));
 process.on("exit",code=>console.log(`[CAPTURE ${now()}] PROCESS EXIT | code=${code}`));
 
-async function chromeMemory(){
-  const result={node:memory(),chrome:{pid:null,processes:0,rssMB:0},container:{currentMB:null,limitMB:null,usagePercent:null}};
-  try{
-    const pid=browser?.process()?.pid;
-    if(pid){
-      result.chrome.pid=pid;
-      const entries=await fs.readdir("/proc");
-      const processes=[];
-      for(const entry of entries){
-        if(!/^\d+$/.test(entry))continue;
-        try{
-          const status=await fs.readFile(`/proc/${entry}/status`,"utf8");
-          const p=status.match(/^PPid:\s+(\d+)/m),v=status.match(/^VmRSS:\s+(\d+)/m);
-          if(p)processes.push({pid:Number(entry),ppid:Number(p[1]),rss:v?Number(v[1]):0});
-        }catch(e){}
-      }
-      const children=new Set([pid]);
-      let changed=true;
-      while(changed){
-        changed=false;
-        for(const p of processes){
-          if(children.has(p.ppid)&&!children.has(p.pid)){children.add(p.pid);changed=true;}
-        }
-      }
-      const chrome=processes.filter(p=>children.has(p.pid));
-      result.chrome.processes=chrome.length;
-      result.chrome.rssMB=+(chrome.reduce((n,p)=>n+p.rss,0)/1024).toFixed(1);
-    }
-  }catch(e){result.chrome.error=e.message;}
+async function containerMemory(){
+  const result={node:memory(),container:{currentMB:null,limitMB:null,usagePercent:null}};
   try{
     const current=Number((await fs.readFile("/sys/fs/cgroup/memory.current","utf8")).trim());
     const limitText=(await fs.readFile("/sys/fs/cgroup/memory.max","utf8")).trim();
@@ -54,22 +27,41 @@ async function chromeMemory(){
     result.container.currentMB=+(current/1048576).toFixed(1);
     result.container.limitMB=limit?+(limit/1048576).toFixed(1):null;
     result.container.usagePercent=limit?+(current/limit*100).toFixed(1):null;
-  }catch(e){result.container.error=e.message;}
+  }catch(e){
+    try{
+      const current=Number((await fs.readFile("/sys/fs/cgroup/memory/memory.usage_in_bytes","utf8")).trim());
+      const limit=Number((await fs.readFile("/sys/fs/cgroup/memory/memory.limit_in_bytes","utf8")).trim());
+      result.container.currentMB=+(current/1048576).toFixed(1);
+      result.container.limitMB=limit?+(limit/1048576).toFixed(1):null;
+      result.container.usagePercent=limit?+(current/limit*100).toFixed(1):null;
+    }catch(x){result.container.error=x.message;}
+  }
   return result;
 }
 
-async function initialize(onStage){
+async function memoryGuard(){
+  const result=await containerMemory();
+  const current=result.container.currentMB;
+  log("MEMORY SAFETY CHECK",result);
+  if(current===null)throw Error("Cannot read container memory; Chrome launch blocked for safety");
+  if(current>=MAX_CONTAINER_MB)throw Error(`Chrome launch blocked: container memory is ${current} MB; safety limit is ${MAX_CONTAINER_MB} MB`);
+  return result;
+}
+
+async function initialize(){
   if(browser&&browser.connected)return;
   if(initializing)return initializing;
+  if(memoryTesting)throw Error("Memory test is running");
   initializing=(async()=>{
     try{
-      log("INIT 1/6: BEFORE PUPPETEER.LAUNCH",{version:puppeteer.version||"unknown",memory:memory()});
+      const m=await memoryGuard();
+      log("INIT 1/6: BEFORE PUPPETEER.LAUNCH",{version:puppeteer.version||"unknown",memory:memory(),container:m.container});
       const executablePath=await puppeteer.executablePath();
       log("CHROME EXECUTABLE PATH",executablePath);
-      browser=await timeout(puppeteer.launch({headless:true,executablePath,args:["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage","--disable-background-timer-throttling","--disable-renderer-backgrounding","--disable-backgrounding-occluded-windows","--renderer-process-limit=2","--disable-extensions","--window-size=1600,900","--force-device-scale-factor=1"]}),60000,"Chrome launch");
+      await memoryGuard();
+      browser=await timeout(puppeteer.launch({headless:true,executablePath,args:["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage","--disable-background-timer-throttling","--disable-renderer-backgrounding","--disable-backgrounding-occluded-windows","--renderer-process-limit=1","--disable-extensions","--disable-background-networking","--disable-sync","--disable-translate","--no-first-run","--disable-default-apps","--window-size=640,360","--force-device-scale-factor=1"]}),60000,"Chrome launch");
       log("INIT 2/6: CHROME LAUNCHED",{connected:browser.connected,memory:memory()});
       browser.on("disconnected",()=>{log("BROWSER DISCONNECTED",{memory:memory()});browser=null;dashboard=null;});
-      if(onStage)await onStage("chrome-launched");
       dashboard=await timeout(browser.newPage(),30000,"Page creation");
       log("INIT 3/6: PAGE CREATED");
       dashboard.on("error",e=>log("PAGE ERROR",e.message));
@@ -85,7 +77,6 @@ async function initialize(onStage){
       const available=typeof dashboard.record==="function";
       log("INIT 6/6: PAGE.RECORD CHECK",{available,memory:memory()});
       if(!available)throw Error("Puppeteer page.record() is unavailable");
-      if(onStage)await onStage("dashboard-loaded");
       log("INITIALIZATION COMPLETE");
     }catch(e){
       error=e.message;
@@ -123,17 +114,16 @@ async function runMemoryTest(seconds=30){
   memoryTesting=true;
   const samples=[];
   const sample=async stage=>{
-    const result={stage,time:now(),...(await chromeMemory())};
+    const result={stage,time:now(),...(await containerMemory())};
     samples.push(result);
     log(`MEMORY TEST: ${stage}`,result);
   };
   try{
-    await sample("before-chrome");
-    await initialize(sample);
-    log("MEMORY TEST: WAITING",{seconds});
+    await sample("before-wait");
+    log("MEMORY TEST: WAITING",{seconds,chromeLaunched:false});
     await sleep(seconds*1000);
     await sample("after-wait");
-    const result={ok:true,seconds,samples};
+    const result={ok:true,seconds,chromeLaunched:false,samples};
     log("MEMORY TEST COMPLETE",result);
     return result;
   }catch(e){
@@ -141,12 +131,6 @@ async function runMemoryTest(seconds=30){
     log("MEMORY TEST FAILED",{message:e.message,stack:e.stack,memory:memory()});
     throw e;
   }finally{
-    if(browser){
-      log("MEMORY TEST: CLOSING CHROME");
-      await browser.close().catch(e=>log("MEMORY TEST CLOSE ERROR",e.message));
-      browser=null;
-      dashboard=null;
-    }
     memoryTesting=false;
     log("MEMORY TEST FINISHED",{memory:memory()});
   }
@@ -163,14 +147,14 @@ async function startRecording(){
   recordPath=path.join(os.tmpdir(),`dashboard-${process.pid}-${Date.now()}.mp4`);
   try{
     log("RECORD: BEFORE DASHBOARD.RECORD",{width:WIDTH,height:HEIGHT,frameRate:FPS,memory:memory()});
-    recorder=await timeout(dashboard.record({path:recordPath,maxWidth:WIDTH,maxHeight:HEIGHT,frameRate:FPS}),30000,"Native recording startup");
+    recorder=await timeout(dashboard.record({path:recordPath,maxWidth:WIDTH,maxHeight:HEIGHT,frameRate:5}),30000,"Native recording startup");
     if(!recorder)throw Error("Chrome returned no recorder");
     recordingActive=true;
     started=Date.now();
     outputBytes=0;
     error=null;
     lastStats=null;
-    log("RECORDING STARTED",{width:WIDTH,height:HEIGHT,fps:FPS,memory:memory()});
+    log("RECORDING STARTED",{width:WIDTH,height:HEIGHT,fps:5,memory:memory()});
     return getStatus();
   }catch(e){
     recorder=null;
@@ -221,7 +205,8 @@ function captureSummary(buffer){
 }
 
 async function runBenchmark(seconds=15){
-  log("BENCHMARK ENTERED",{seconds,width:WIDTH,height:HEIGHT,fps:FPS,memory:memory()});
+  log("BENCHMARK ENTERED",{seconds,width:WIDTH,height:HEIGHT,fps:5,memory:memory()});
+  if(memoryTesting)throw Error("Memory test is running");
   if(recordingActive)throw Error("Stop recording before benchmarking");
   try{
     await initialize();
