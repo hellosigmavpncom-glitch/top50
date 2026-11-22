@@ -1,128 +1,73 @@
 
 const WIDTH=1280,HEIGHT=720,FPS=15;
-const WHIP_URL=process.env.WHIP_URL||"";
-const now=()=>new Date().toLocaleTimeString();
-const log=(s,d)=>console.log(`[CAPTURE ${now()}] ${s}`,d===undefined?"":JSON.stringify(d));
-
-let status={running:false,connected:false,width:WIDTH,height:HEIGHT,fps:FPS,started:null,error:null};
-let attached=false;
-
-const html=()=>`<!DOCTYPE html>
+let stream=null;
+let status={running:false,connected:false,width:0,height:0,fps:0,frames:0,droppedFrames:0,started:null,error:null};
+const page=()=>`<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard Live Capture</title>
+<title>Dashboard Capture Test</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#101116;color:#eee;font:15px Arial;padding:24px}main{max-width:850px;margin:auto}h1{font-size:25px}p{color:#aaa}video{width:100%;background:#050505;border-radius:12px;margin-top:15px}button{padding:12px 20px;border:0;border-radius:8px;font-weight:bold;cursor:pointer;margin:12px 8px 0 0}#start{background:#45c878;color:#07150c}#stop{background:#ed5555;color:white}#status{padding:14px;background:#20232b;border-radius:9px;margin-top:16px}small{color:#999}button:disabled{opacity:.4;cursor:default}
+*{box-sizing:border-box}body{margin:0;padding:22px;background:#101114;color:#eee;font:15px Arial,sans-serif}h2{margin:0 0 8px}p{color:#999;margin:0 0 20px}.video{width:100%;max-width:1100px;background:#000;border:1px solid #333;border-radius:10px;aspect-ratio:16/9;object-fit:contain}button{padding:12px 20px;margin:15px 8px 15px 0;border:0;border-radius:7px;background:#7187ff;color:white;font-weight:bold;cursor:pointer}button:disabled{opacity:.4;cursor:default}#stop{background:#444}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;max-width:1100px}.stat{background:#1b1d22;border:1px solid #303239;border-radius:8px;padding:14px}.stat small{display:block;color:#999;margin-bottom:8px}.stat strong{font-size:23px}#status{margin:12px 0;color:#aaa}#error{color:#ff7777;white-space:pre-wrap}
 </style>
 </head>
 <body>
-<main>
-<h1>Dashboard Live Capture</h1>
-<p>Capture your dashboard tab and publish it to the configured WHIP streaming server.</p>
-<video id="preview" autoplay muted playsinline></video>
-<div><button id="start">START CAPTURE</button><button id="stop" disabled>STOP CAPTURE</button></div>
+<h2>Dashboard Capture Performance Test</h2>
+<p>Capture your dashboard tab and measure Edge's browser capture performance. No streaming server required.</p>
+<video class="video" id="video" autoplay muted playsinline></video>
+<br>
+<button id="start">START CAPTURE</button><button id="stop" disabled>STOP CAPTURE</button>
 <div id="status">Status: Waiting</div>
-<p><small>Choose your dashboard tab in Edge's screen-sharing picker.</small></p>
-</main>
+<div class="stats">
+<div class="stat"><small>CAPTURE FPS</small><strong id="fps">0</strong></div>
+<div class="stat"><small>RESOLUTION</small><strong id="resolution">-</strong></div>
+<div class="stat"><small>TOTAL FRAMES</small><strong id="frames">0</strong></div>
+<div class="stat"><small>DROPPED FRAMES</small><strong id="dropped">0</strong></div>
+<div class="stat"><small>VIDEO BITRATE</small><strong id="bitrate">N/A</strong></div>
+<div class="stat"><small>RUN TIME</small><strong id="runtime">0s</strong></div>
+</div>
+<p id="error"></p>
 <script>
-const WHIP_URL=${JSON.stringify(WHIP_URL).replace(/</g,"\\u003c")};
-const preview=document.getElementById("preview");
-const output=document.getElementById("status");
-const startButton=document.getElementById("start");
-const stopButton=document.getElementById("stop");
-let stream=null,pc=null,sessionUrl=null,started=false;
-
-function show(s){output.textContent="Status: "+s;}
-async function report(running,connected,error=null){
- try{await fetch("/api/capture/status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({running,connected,error})});}catch(e){}
+const video=document.getElementById("video"),start=document.getElementById("start"),stop=document.getElementById("stop");
+let stream=null,track=null,active=false,frames=0,lastFrames=0,lastTime=0,fps=0,started=0,timer=null,frameCallback=null;
+const show=(id,value)=>document.getElementById(id).textContent=value;
+const report=async data=>{try{await fetch("/api/capture/status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});}catch(e){}};
+function frameLoop(){if(!active||!video.requestVideoFrameCallback)return;frameCallback=video.requestVideoFrameCallback(()=>{frames++;frameLoop();});}
+function stopCapture(){
+active=false;clearInterval(timer);if(frameCallback!==null&&video.cancelVideoFrameCallback)video.cancelVideoFrameCallback(frameCallback);
+if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;track=null;video.srcObject=null;
+start.disabled=false;stop.disabled=true;show("status","Status: Stopped");report({running:false,connected:false,fps,width:0,height:0,frames,droppedFrames:0,error:null});
 }
-function waitIce(){
- return new Promise(resolve=>{
-  if(pc.iceGatheringState==="complete")return resolve();
-  const timer=setTimeout(resolve,15000);
-  pc.addEventListener("icegatheringstatechange",()=>{
-   if(pc.iceGatheringState==="complete"){clearTimeout(timer);resolve();}
-  });
- });
-}
-async function stop(){
- started=false;
- if(sessionUrl)await fetch(sessionUrl,{method:"DELETE"}).catch(()=>{});
- if(pc){pc.close();pc=null;}
- if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
- preview.srcObject=null;sessionUrl=null;
- startButton.disabled=false;stopButton.disabled=true;
- show("Stopped");await report(false,false);
-}
-async function begin(){
- if(started)return;
- if(!WHIP_URL)throw Error("WHIP_URL is not configured on the server");
- if(!navigator.mediaDevices?.getDisplayMedia)throw Error("This browser does not support screen capture");
- started=true;startButton.disabled=true;
- try{
-  show("Waiting for screen selection...");
-  stream=await navigator.mediaDevices.getDisplayMedia({video:{width:{ideal:${WIDTH}},height:{ideal:${HEIGHT}},frameRate:{ideal:${FPS},max:${FPS}}},audio:false});
-  preview.srcObject=stream;await preview.play();
-  stream.getVideoTracks()[0].addEventListener("ended",()=>stop());
-  show("Connecting to streaming server...");
-  pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
-  stream.getTracks().forEach(track=>pc.addTrack(track,stream));
-  pc.onconnectionstatechange=()=>{
-   show("WebRTC: "+pc.connectionState);
-   if(pc.connectionState==="connected")report(true,true);
-   if(["failed","disconnected","closed"].includes(pc.connectionState))report(false,false,"Connection "+pc.connectionState);
-  };
-  const offer=await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  await waitIce();
-  const response=await fetch(WHIP_URL,{method:"POST",headers:{"Content-Type":"application/sdp"},body:pc.localDescription.sdp});
-  if(!response.ok)throw Error("WHIP HTTP "+response.status+": "+(await response.text()).slice(0,250));
-  const answer=await response.text();
-  sessionUrl=response.headers.get("Location");
-  if(sessionUrl&&!/^https?:\\/\\//i.test(sessionUrl))sessionUrl=new URL(sessionUrl,WHIP_URL).href;
-  await pc.setRemoteDescription({type:"answer",sdp:answer});
-  stopButton.disabled=false;
-  show("Publishing — waiting for WebRTC connection...");
-  log("WHIP SESSION CREATED");
- }catch(e){
-  log("CAPTURE FAILED",e.message);
-  await report(false,false,e.message);
-  await stop();
-  show("ERROR: "+e.message);
- }
-}
-startButton.addEventListener("click",begin);
-stopButton.addEventListener("click",stop);
-window.addEventListener("beforeunload",()=>{if(pc)pc.close();});
+start.onclick=async()=>{
+if(active)return;
+try{
+document.getElementById("error").textContent="";
+stream=await navigator.mediaDevices.getDisplayMedia({video:{width:{ideal:1280},height:{ideal:720},frameRate:{ideal:15,max:15}},audio:false});
+track=stream.getVideoTracks()[0];const settings=track.getSettings();
+video.srcObject=stream;await video.play();active=true;started=Date.now();frames=0;lastFrames=0;lastTime=performance.now();fps=0;
+start.disabled=true;stop.disabled=false;show("status","Status: Capturing locally");
+show("resolution",(settings.width||0)+" × "+(settings.height||0));
+track.onended=stopCapture;frameLoop();
+timer=setInterval(()=>{
+const now=performance.now(),elapsed=(now-lastTime)/1000;fps=elapsed>0?(frames-lastFrames)/elapsed:0;lastFrames=frames;lastTime=now;
+const quality=video.getVideoPlaybackQuality?video.getVideoPlaybackQuality():{droppedVideoFrames:0};
+const dropped=quality.droppedVideoFrames||0;
+show("fps",fps.toFixed(1));show("frames",frames.toLocaleString());show("dropped",dropped.toLocaleString());show("runtime",Math.floor((Date.now()-started)/1000)+"s");
+report({running:true,connected:true,fps:Number(fps.toFixed(1)),width:settings.width||0,height:settings.height||0,frames,droppedFrames:dropped,error:null});
+},1000);
+}catch(e){document.getElementById("error").textContent=e.name+": "+e.message;show("status","Status: Capture failed");if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;start.disabled=false;stop.disabled=true;report({running:false,connected:false,error:e.message});}
+};
+stop.onclick=stopCapture;
+window.addEventListener("beforeunload",()=>{if(stream)stream.getTracks().forEach(t=>t.stop());});
 </script>
 </body>
 </html>`;
-
 function attach(app,express){
- if(attached)throw Error("Capture routes already attached");
- attached=true;
- app.get("/capture",(q,r)=>r.set("Cache-Control","no-store").type("html").send(html()));
- app.get("/api/capture/status",(q,r)=>r.set("Cache-Control","no-store").json(getStatus()));
- app.post("/api/capture/status",express.json({limit:"2kb"}),(q,r)=>{
-  const b=q.body||{};
-  status={...status,running:!!b.running,connected:!!b.connected,error:typeof b.error==="string"?b.error:null};
-  if(status.running&&!status.started)status.started=Date.now();
-  if(!status.running)status.started=null;
-  log("STATUS UPDATE",status);
-  r.json({ok:true,status:getStatus()});
- });
- log("CAPTURE ROUTES ATTACHED",{width:WIDTH,height:HEIGHT,fps:FPS,whipConfigured:!!WHIP_URL});
+app.get("/capture",(q,r)=>r.set("Cache-Control","no-store").type("html").send(page()));
+app.get("/api/capture/status",(q,r)=>(r.set("Cache-Control","no-store"),r.json(status)));
+app.post("/api/capture/status",express.json({limit:"2kb"}),(q,r)=>{status={...status,...q.body};r.json({ok:true});});
 }
-
-function getStatus(){
- return {...status,elapsed:status.started?Date.now()-status.started:0,method:"Edge getDisplayMedia → WebRTC WHIP"};
-}
-
-function close(){
- status={...status,running:false,connected:false,started:null};
- log("CAPTURE MODULE CLOSED");
-}
-
+async function close(){status.running=false;status.connected=false;}
+function getStatus(){return status;}
 module.exports={attach,getStatus,close};
