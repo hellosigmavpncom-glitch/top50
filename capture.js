@@ -1,7 +1,7 @@
 
 const {chromium}=require("playwright");
 const URL="https://zhong-vs-fede.onrender.com/";
-const WIDTH=1600,HEIGHT=900,FPS=15,BENCHMARK_MS=30000;
+const WIDTH=1600,HEIGHT=900,FPS=15,WARMUP_MS=25000,BENCHMARK_MS=30000;
 let browser=null,context=null,page=null,cdp=null,starting=false,closed=false,monitor=null,recording=null;
 let startedAt=0,benchmarkDone=false,recordingBuffer=null;
 let status={running:false,connected:false,url:URL,browser:null,title:null,width:WIDTH,height:HEIGHT,fps:FPS,codec:"AV1",error:null,started:null,metrics:null,benchmark:null};
@@ -38,7 +38,14 @@ async function start(){
   });
 
   await page.goto(URL,{waitUntil:"domcontentloaded",timeout:60000});
-  await page.waitForTimeout(5000);
+  status={...status,running:false,connected:true,browser:browser.version(),metrics:{phase:"Dashboard warm-up",elapsedSeconds:0,targetSeconds:25},error:null};
+  console.log("[CAPTURE] Dashboard loading; waiting 25 seconds");
+  const warmupStarted=Date.now();
+  while(Date.now()-warmupStarted<WARMUP_MS){
+   if(closed||!page||page.isClosed())return;
+   status.metrics={phase:"Dashboard warm-up",elapsedSeconds:Number(((Date.now()-warmupStarted)/1000).toFixed(1)),targetSeconds:25};
+   await delay(1000);
+  }
 
   const info=await page.evaluate(()=>({
    title:document.title,url:location.href,width:innerWidth,height:innerHeight
@@ -48,12 +55,11 @@ async function start(){
   const result=await cdp.send("Page.startScreenRecording",{
    maxWidth:WIDTH,maxHeight:HEIGHT,frameRate:FPS,audio:false
   });
-
   if(!result.stream)throw Error("Native recorder did not return a stream handle");
 
   recording=result.stream;
   startedAt=Date.now();
-  status={...status,running:true,connected:true,browser:browser.version(),title:info.title,width:info.width,height:info.height,started:new Date().toISOString(),error:null,metrics:{phase:"Recording",elapsedSeconds:0},benchmark:null};
+  status={...status,running:true,connected:true,browser:browser.version(),title:info.title,width:info.width,height:info.height,started:new Date().toISOString(),error:null,metrics:{phase:"Recording",elapsedSeconds:0,targetSeconds:30},benchmark:null};
   console.log("[CAPTURE] Native recording started:",JSON.stringify(status));
   monitor=setInterval(updateMetrics,1000);
 
@@ -75,15 +81,13 @@ async function start(){
 
   status.running=false;
   status.benchmark={
+   warmupSeconds:25,
    durationSeconds:Number(elapsed.toFixed(1)),
-   requestedWidth:WIDTH,
-   requestedHeight:HEIGHT,
-   requestedFps:FPS,
+   requestedWidth:WIDTH,requestedHeight:HEIGHT,requestedFps:FPS,
    fileBytes:output.bytes,
    fileSizeMB:Number((output.bytes/1048576).toFixed(2)),
    bitrateKbps:Number((output.bytes*8/elapsed/1000).toFixed(1)),
-   mp4Container:hasMp4,
-   av1CodecMarker:hasAv1,
+   mp4Container:hasMp4,av1CodecMarker:hasAv1,
    recordingValid:hasMp4&&hasAv1,
    frameCount:null,
    framesNote:"Native recording does not expose frame counts through this CDP command.",
@@ -132,7 +136,6 @@ async function close(){
  monitor=null;
  if(cdp&&recording){
   try{await cdp.send("Page.stopScreenRecording");}catch(e){}
-  try{await cdp.send("IO.close",{handle:recording});}catch(e){}
   recording=null;
  }
  if(cdp){try{await cdp.detach();}catch(e){}}
