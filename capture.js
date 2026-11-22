@@ -2,9 +2,9 @@
 const {chromium}=require("playwright");
 const URL="https://zhong-vs-fede.onrender.com/";
 const WIDTH=1600,HEIGHT=900,FPS=15,WARMUP_MS=25000,BENCHMARK_MS=30000;
-let browser=null,context=null,page=null,cdp=null,starting=false,closed=false,monitor=null,recording=null;
-let startedAt=0,benchmarkDone=false,recordingBuffer=null;
-let status={running:false,connected:false,url:URL,browser:null,title:null,width:WIDTH,height:HEIGHT,fps:FPS,codec:"AV1",error:null,started:null,metrics:null,benchmark:null};
+let browser=null,context=null,page=null,cdp=null,browserCdp=null,starting=false,closed=false,monitor=null,recording=null;
+let startedAt=0,benchmarkDone=false,recordingBuffer=null,processBefore=[];
+let status={running:false,connected:false,url:URL,browser:null,title:null,width:WIDTH,height:HEIGHT,fps:FPS,codec:"AV1",error:null,started:null,metrics:null,benchmark:null,gpuDiagnostics:null};
 
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 
@@ -27,14 +27,35 @@ async function start(){
  starting=true;
  status.error=null;
  try{
-  browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage","--disable-gpu","--autoplay-policy=no-user-gesture-required"]});
+  browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage","--enable-gpu","--autoplay-policy=no-user-gesture-required"]});
+  browserCdp=await browser.newBrowserCDPSession();
+
+  try{
+   const info=await browserCdp.send("SystemInfo.getInfo");
+   const g=info.gpu||{};
+   status.gpuDiagnostics={
+    display:process.env.DISPLAY||null,
+    commandLine:info.commandLine||null,
+    modelName:info.modelName||null,
+    devices:g.devices||[],
+    featureStatus:g.featureStatus||{},
+    auxAttributes:g.auxAttributes||{},
+    videoEncoding:g.videoEncoding||[]
+   };
+   console.log("[GPU]",JSON.stringify(status.gpuDiagnostics));
+  }catch(e){
+   status.gpuDiagnostics={error:e.message,display:process.env.DISPLAY||null};
+   console.error("[GPU DIAGNOSTICS]",e.message);
+  }
+
   context=await browser.newContext({viewport:{width:WIDTH,height:HEIGHT},deviceScaleFactor:1});
   page=await context.newPage();
   page.setDefaultNavigationTimeout(60000);
   page.on("crash",()=>{status.connected=false;status.running=false;status.error="Browser page crashed";});
   browser.on("disconnected",()=>{
    status.connected=false;status.running=false;status.error="Chromium disconnected";
-   browser=null;context=null;page=null;cdp=null;clearInterval(monitor);monitor=null;
+   browser=null;context=null;page=null;cdp=null;browserCdp=null;
+   clearInterval(monitor);monitor=null;
   });
 
   await page.goto(URL,{waitUntil:"domcontentloaded",timeout:60000});
@@ -50,6 +71,22 @@ async function start(){
   const info=await page.evaluate(()=>({
    title:document.title,url:location.href,width:innerWidth,height:innerHeight
   }));
+
+  await page.evaluate(()=>{
+   const p={frames:0,start:performance.now(),running:true};
+   window.__renderProbe=p;
+   const tick=()=>{
+    if(!p.running)return;
+    p.frames++;
+    requestAnimationFrame(tick);
+   };
+   requestAnimationFrame(tick);
+  });
+
+  try{
+   const p=await browserCdp.send("SystemInfo.getProcessInfo");
+   processBefore=p.processInfo||[];
+  }catch(e){processBefore=[];}
 
   cdp=await context.newCDPSession(page);
   const result=await cdp.send("Page.startScreenRecording",{
@@ -74,6 +111,26 @@ async function start(){
   recordingBuffer=output.buffer;
 
   const elapsed=(Date.now()-startedAt)/1000;
+  let renderProbe=null,chromeCpu=null;
+
+  try{
+   renderProbe=await page.evaluate(()=>{
+    const p=window.__renderProbe;
+    if(!p)return null;
+    p.running=false;
+    const duration=(performance.now()-p.start)/1000;
+    return{frames:p.frames,durationSeconds:Number(duration.toFixed(2)),fps:Number((p.frames/duration).toFixed(2))};
+   });
+  }catch(e){renderProbe={error:e.message};}
+
+  try{
+   const p=await browserCdp.send("SystemInfo.getProcessInfo");
+   const after=p.processInfo||[];
+   const before=new Map(processBefore.map(x=>[x.id,x.cpuTime]));
+   const cpuSeconds=after.reduce((sum,x)=>sum+Math.max(0,x.cpuTime-(before.get(x.id)??x.cpuTime)),0);
+   chromeCpu={cpuSeconds:Number(cpuSeconds.toFixed(2)),percentOfOneCore:Number((cpuSeconds/elapsed*100).toFixed(1)),processes:after.map(x=>({type:x.type,id:x.id,cpuSeconds:Number(Math.max(0,x.cpuTime-(before.get(x.id)??x.cpuTime)).toFixed(2))}))};
+  }catch(e){chromeCpu={error:e.message};}
+
   const header=recordingBuffer.subarray(0,32).toString("latin1");
   const hasFtyp=header.includes("ftyp");
   const hasAv1=recordingBuffer.includes(Buffer.from("av01"));
@@ -84,18 +141,19 @@ async function start(){
    warmupSeconds:25,
    durationSeconds:Number(elapsed.toFixed(1)),
    requestedWidth:WIDTH,requestedHeight:HEIGHT,requestedFps:FPS,
+   renderProbe,
+   chromeCpu,
    fileBytes:output.bytes,
    fileSizeMB:Number((output.bytes/1048576).toFixed(2)),
    bitrateKbps:Number((output.bytes*8/elapsed/1000).toFixed(1)),
    mp4Container:hasMp4,av1CodecMarker:hasAv1,
    recordingValid:hasMp4&&hasAv1,
    frameCount:null,
-   framesNote:"Native recording does not expose frame counts through this CDP command.",
    downloadEndpoint:"/api/capture/recording.mp4"
   };
   status.metrics={phase:"Finished",...status.benchmark};
   benchmarkDone=true;
-  console.log("[CAPTURE] Native 30-second benchmark:",JSON.stringify(status.benchmark));
+  console.log("[CAPTURE] Native benchmark:",JSON.stringify(status.benchmark));
  }catch(e){
   status.running=false;
   status.error=e.message||String(e);
@@ -139,8 +197,9 @@ async function close(){
   recording=null;
  }
  if(cdp){try{await cdp.detach();}catch(e){}}
+ if(browserCdp){try{await browserCdp.detach();}catch(e){}}
  if(browser){try{await browser.close();}catch(e){}}
- browser=null;context=null;page=null;cdp=null;
+ browser=null;context=null;page=null;cdp=null;browserCdp=null;
  status.running=false;status.connected=false;
 }
 
