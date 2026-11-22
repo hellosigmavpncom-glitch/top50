@@ -1,163 +1,58 @@
 
-const page=()=>`<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Edge Entire Screen Capture Benchmark</title>
-<style>
-*{box-sizing:border-box}body{margin:0;padding:24px;background:#090b12;color:#e8eaf2;font-family:Arial,sans-serif}.wrap{max-width:1100px;margin:auto}h1{font-size:25px;margin:0 0 8px}.muted{color:#9298aa;font-size:13px}button{background:#7187ff;color:white;border:0;border-radius:8px;padding:12px 20px;font-weight:bold;cursor:pointer;margin:16px 8px 16px 0}button:disabled{opacity:.4;cursor:not-allowed}#stop{background:#33394b}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:16px}.card{background:#151925;border:1px solid #252c3c;border-radius:10px;padding:15px}.label{font-size:11px;color:#9298aa;text-transform:uppercase;letter-spacing:.6px}.value{font-size:23px;font-weight:bold;margin-top:8px}.progress{height:8px;background:#252c3c;border-radius:10px;overflow:hidden;margin-top:16px}.bar{height:100%;width:0;background:#7187ff}#result{background:#151925;border:1px solid #252c3c;border-radius:10px;padding:18px;margin-top:16px;line-height:1.8;display:none;overflow-x:auto}table{width:100%;border-collapse:collapse;margin-top:14px;font-size:12px;min-width:1100px}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #252c3c;white-space:nowrap}th{color:#9298aa;font-size:10px;text-transform:uppercase}.details{color:#aeb5c7;font-size:12px;line-height:1.7;margin-top:12px;overflow-wrap:anywhere}
-</style>
-</head>
-<body>
-<div class="wrap">
-<h1>Edge Entire Screen Capture Benchmark</h1>
-<div class="muted">Select ENTIRE SCREEN in Edge's picker · 1920×1080 · 15 FPS · H.264 WebCodecs · 30s capture only + 30s capture and encoding</div>
-<button id="start">START ENTIRE SCREEN TEST</button>
-<button id="stop" disabled>STOP TEST</button>
-<div class="progress"><div class="bar" id="bar"></div></div>
-<div class="grid">
-<div class="card"><div class="label">Current Phase</div><div class="value" id="phase">-</div></div>
-<div class="card"><div class="label">Capture Surface</div><div class="value" id="surface">-</div></div>
-<div class="card"><div class="label">Encoder State</div><div class="value" id="state">Inactive</div></div>
-<div class="card"><div class="label">Actual Resolution</div><div class="value" id="resolution">-</div></div>
-<div class="card"><div class="label">Actual Track FPS</div><div class="value" id="trackfps">-</div></div>
-<div class="card"><div class="label">Elapsed</div><div class="value" id="elapsed">0s</div></div>
-<div class="card"><div class="label">Captured FPS</div><div class="value" id="capturefps">0</div></div>
-<div class="card"><div class="label">Encoded FPS</div><div class="value" id="encodedfps">0</div></div>
-<div class="card"><div class="label">Encoded Frames</div><div class="value" id="frames">0</div></div>
-<div class="card"><div class="label">Encoded Output</div><div class="value" id="output">0 MB</div></div>
-<div class="card"><div class="label">Output Bitrate</div><div class="value" id="bitrate">0 kbps</div></div>
-<div class="card"><div class="label">Avg Encode Latency</div><div class="value" id="latency">0 ms</div></div>
-<div class="card"><div class="label">Max Encoder Queue</div><div class="value" id="queue">0</div></div>
-<div class="card"><div class="label">Encoding Errors</div><div class="value" id="errors">0</div></div>
-</div>
-<div id="result">
-<b>Capture bottleneck comparison</b>
-<table>
-<thead><tr><th>Phase</th><th>Duration</th><th>Captured</th><th>Capture FPS</th><th>Source FPS</th><th>Avg Frame Gap</th><th>Max Frame Gap</th><th>Encoded</th><th>Output</th><th>Bitrate</th><th>Avg Latency</th><th>Avg Encode Call</th><th>Max Queue</th></tr></thead>
-<tbody id="rows"></tbody>
-</table>
-<div class="details" id="details"></div>
-</div>
-</div>
-<script>
-const $=id=>document.getElementById(id);
-const startBtn=$("start"),stopBtn=$("stop"),bar=$("bar"),result=$("result"),rows=$("rows");
-const RES={width:1920,height:1080},PHASE_DURATION=30,DURATION=60,FPS=15,BITRATE=2500000,CODEC="avc1.42002a";
-let stream=null,track=null,reader=null,encoder=null,active=false,started=0,uiTimer=null,stopTimer=null,stopReason="Completed",finished=false,errors=[],maxQueue=0,phases=[],captureSettings={},captureConstraints={};
-const escapeHTML=v=>String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const elapsed=()=>started?Math.max(0,(performance.now()-started)/1000):0;
-function newPhase(name){return{name,frames:0,encoded:0,bytes:0,previousTimestamp:null,previousArrival:null,timestampGaps:[],arrivalGaps:[],latencies:[],encodeCalls:[],pending:new Map(),maxQueue:0}}
-function report(error,extra={}){const s=track?.getSettings()||{};fetch("/api/capture/status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({running:active,connected:!!stream,width:s.width||0,height:s.height||0,error:error||null,...extra})}).catch(()=>{})}
-function requestStop(reason){if(!active)return;active=false;stopReason=reason;stopBtn.disabled=true;$("state").textContent="Finishing";if(reader)reader.cancel().catch(()=>{})}
-function update(){
-if(!started)return;
-const seconds=elapsed(),phaseIndex=seconds>=PHASE_DURATION?1:0,p=phases[phaseIndex];
-$("elapsed").textContent=seconds.toFixed(1)+"s";
-$("capturefps").textContent=(p.frames/Math.max(.001,Math.min(PHASE_DURATION,seconds-phaseIndex*PHASE_DURATION))).toFixed(1);
-$("encodedfps").textContent=(p.encoded/Math.max(.001,Math.min(PHASE_DURATION,seconds-PHASE_DURATION))).toFixed(1);
-$("frames").textContent=phases.reduce((n,p)=>n+p.encoded,0);
-$("output").textContent=(phases.reduce((n,p)=>n+p.bytes,0)/1048576).toFixed(2)+" MB";
-$("bitrate").textContent=(phases.reduce((n,p)=>n+p.bytes,0)*8/Math.max(.001,seconds)/1000).toFixed(0)+" kbps";
-const latencies=phases.flatMap(p=>p.latencies);
-$("latency").textContent=(latencies.length?latencies.reduce((a,b)=>a+b,0)/latencies.length:0).toFixed(1)+" ms";
-$("queue").textContent=maxQueue;$("errors").textContent=errors.length;
-$("phase").textContent=phaseIndex?"Capture + Encode":"Capture Only";
-$("state").textContent=phaseIndex?"Encoding":"Capturing";
-bar.style.width=Math.min(100,seconds/DURATION*100)+"%";
-}
-function encoderOutput(chunk){
-const p=phases[1];p.encoded++;p.bytes+=chunk.byteLength;
-const submitted=p.pending.get(chunk.timestamp);
-if(submitted!==undefined){p.latencies.push(performance.now()-submitted);p.pending.delete(chunk.timestamp)}
-}
-function encoderError(error){errors.push(error.message||String(error));$("errors").textContent=errors.length}
-async function captureLoop(){
-while(active){
-const item=await reader.read();if(item.done||!active)break;
-const frame=item.value;
+const {chromium}=require("playwright");
+const URL="https://zhong-vs-fede.onrender.com/";
+let browser=null,context=null,page=null,starting=false,closed=false;
+let status={running:false,connected:false,url:URL,browser:null,title:null,width:1600,height:900,h264:null,error:null,started:null};
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+async function start(){
+if(starting||browser||closed)return;
+starting=true;status.error=null;
 try{
-const seconds=elapsed(),index=seconds>=PHASE_DURATION?1:0,p=phases[index],now=performance.now();
-p.frames++;
-if(p.previousTimestamp!==null&&frame.timestamp>p.previousTimestamp)p.timestampGaps.push((frame.timestamp-p.previousTimestamp)/1000);
-if(p.previousArrival!==null)p.arrivalGaps.push(now-p.previousArrival);
-p.previousTimestamp=frame.timestamp;p.previousArrival=now;
-if(index===1){
-const before=performance.now();p.pending.set(frame.timestamp,now);
-encoder.encode(frame,{keyFrame:p.encoded===0||p.encoded%30===0});
-p.encodeCalls.push(performance.now()-before);
-maxQueue=Math.max(maxQueue,encoder.encodeQueueSize);p.maxQueue=Math.max(p.maxQueue,encoder.encodeQueueSize);
-}
-}catch(error){errors.push(error.message||String(error))}
-finally{frame.close()}
-}
-}
-function average(a){return a.length?a.reduce((x,y)=>x+y,0)/a.length:0}
-function maximum(a){return a.length?Math.max(...a):0}
-function finish(){
-if(finished)return;finished=true;clearInterval(uiTimer);clearTimeout(stopTimer);
-const seconds=elapsed(),settings=track?.getSettings()||{},resolution=(settings.width||0)+"×"+(settings.height||0);
-const durations=[Math.min(PHASE_DURATION,seconds),Math.max(0,seconds-PHASE_DURATION)];
-for(let i=0;i<2;i++){
-const p=phases[i],duration=Math.max(.001,durations[i]),fps=p.frames/duration,sourceFPS=p.timestampGaps.length?1000/average(p.timestampGaps):0,bitrate=p.bytes*8/duration/1000,tr=document.createElement("tr");
-tr.innerHTML="<td>"+p.name+"</td><td>"+duration.toFixed(1)+"s</td><td>"+p.frames+"</td><td>"+fps.toFixed(2)+"</td><td>"+sourceFPS.toFixed(2)+"</td><td>"+average(p.arrivalGaps).toFixed(0)+" ms</td><td>"+maximum(p.arrivalGaps).toFixed(0)+" ms</td><td>"+p.encoded+"</td><td>"+(p.bytes/1048576).toFixed(2)+" MB</td><td>"+bitrate.toFixed(0)+" kbps</td><td>"+average(p.latencies).toFixed(1)+" ms</td><td>"+average(p.encodeCalls).toFixed(2)+" ms</td><td>"+p.maxQueue+"</td>";
-rows.appendChild(tr);
-}
-const surface=settings.displaySurface||"Not reported by Edge",status=errors.length?"ERROR":phases[1].encoded?"ENCODED":"NO OUTPUT";
-$("state").textContent=status;$("phase").textContent="Finished";
-$("resolution").textContent=resolution;$("surface").textContent=surface;$("trackfps").textContent=settings.frameRate??"Not reported";
-if(stopReason==="Completed")bar.style.width="100%";
-result.style.display="block";
-$("details").innerHTML="Detected capture surface: <b>"+escapeHTML(surface)+"</b><br>Actual track settings: <code>"+escapeHTML(JSON.stringify(settings))+"</code><br>Capture constraints: <code>"+escapeHTML(JSON.stringify(captureConstraints))+"</code><br>Requested: 1920×1080 at 15 FPS · H.264: "+CODEC;
-report(errors.join("; ")||null,{codec:"H.264 WebCodecs entire-screen capture diagnostic",captureSurface:surface,captureSettings:settings,captureConstraints,errors:errors.length,captureOnlyFPS:phases[0].frames/Math.max(.001,durations[0]),captureEncodeFPS:phases[1].frames/Math.max(.001,durations[1]),encoded:phases[1].encoded});
-try{if(encoder&&encoder.state==="configured")encoder.close()}catch(e){}
-if(stream)stream.getTracks().forEach(t=>t.stop());
-stream=null;track=null;reader=null;encoder=null;active=false;
-startBtn.disabled=false;stopBtn.disabled=true;
-}
-startBtn.onclick=async()=>{
+browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage","--disable-gpu","--autoplay-policy=no-user-gesture-required"]});
+context=await browser.newContext({viewport:{width:1600,height:900},deviceScaleFactor:1});
+page=await context.newPage();
+page.setDefaultNavigationTimeout(60000);
+page.on("crash",()=>{status.connected=false;status.running=false;status.error="Browser page crashed";});
+browser.on("disconnected",()=>{status.connected=false;status.running=false;status.error="Chromium disconnected";browser=null;context=null;page=null;});
+await page.goto(URL,{waitUntil:"domcontentloaded",timeout:60000});
+await page.waitForTimeout(5000);
+const info=await page.evaluate(async()=>{
+let h264=false,reason=null;
 try{
-finished=false;stopReason="Completed";errors=[];maxQueue=0;captureSettings={};captureConstraints={};phases=[newPhase("Capture only"),newPhase("Capture + H.264")];
-rows.innerHTML="";result.style.display="none";bar.style.width="0%";
-for(const id of ["phase","resolution","surface","trackfps"])$(id).textContent="-";
-for(const id of ["capturefps","encodedfps","frames","output","bitrate","latency","queue","errors"])$(id).textContent="0";
-$("elapsed").textContent="0s";$("state").textContent="Starting";startBtn.disabled=true;stopBtn.disabled=true;
-if(!navigator.mediaDevices?.getDisplayMedia)throw new Error("Screen capture is unavailable.");
-if(typeof VideoEncoder==="undefined"||typeof VideoFrame==="undefined")throw new Error("WebCodecs is unavailable.");
-if(typeof MediaStreamTrackProcessor==="undefined")throw new Error("MediaStreamTrackProcessor is unavailable.");
-stream=await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:"monitor",width:{ideal:RES.width},height:{ideal:RES.height},frameRate:{ideal:FPS,max:FPS}},audio:false,monitorTypeSurfaces:"include"});
-track=stream.getVideoTracks()[0];
-const settings=track.getSettings(),width=settings.width||RES.width,height=settings.height||RES.height;
-captureSettings=settings;captureConstraints=track.getConstraints();
-$("resolution").textContent=width+"×"+height;$("surface").textContent=settings.displaySurface||"Not reported";
-$("trackfps").textContent=settings.frameRate??"Not reported";
-if(settings.displaySurface&&settings.displaySurface!=="monitor")throw new Error("Wrong capture surface selected: "+settings.displaySurface+". Please select Entire Screen.");
-const config={codec:CODEC,width,height,bitrate:BITRATE,framerate:FPS,latencyMode:"realtime",hardwareAcceleration:"no-preference"},support=await VideoEncoder.isConfigSupported(config);
-if(!support.supported)throw new Error("H.264 WebCodecs configuration is not supported.");
-encoder=new VideoEncoder({output:encoderOutput,error:encoderError});encoder.configure(support.config);
-const processor=new MediaStreamTrackProcessor({track});reader=processor.readable.getReader();
-active=true;started=performance.now();$("phase").textContent="Capture Only";$("state").textContent="Capturing";stopBtn.disabled=false;
-track.addEventListener("ended",()=>requestStop("Screen sharing ended"),{once:true});
-uiTimer=setInterval(update,250);stopTimer=setTimeout(()=>requestStop("Completed"),DURATION*1000);
-await captureLoop();clearTimeout(stopTimer);$("state").textContent="Flushing encoder";
-if(encoder.state==="configured")await encoder.flush();
-finish();
-}catch(error){
-errors.push(error.message||String(error));stopReason=error.message||String(error);active=false;
-try{if(reader)await reader.cancel()}catch(e){}
-try{if(encoder&&encoder.state==="configured")await encoder.flush()}catch(e){errors.push(e.message||String(e))}
-finish();
+if(typeof VideoEncoder==="undefined")reason="VideoEncoder unavailable";
+else h264=(await VideoEncoder.isConfigSupported({codec:"avc1.42002a",width:1600,height:900,bitrate:2500000,framerate:15,latencyMode:"realtime"})).supported;
+}catch(e){reason=e.message;}
+return{title:document.title,url:location.href,width:innerWidth,height:innerHeight,videoEncoder:typeof VideoEncoder!=="undefined",h264,reason};
+});
+status={...status,running:true,connected:true,browser:browser.version(),title:info.title,width:info.width,height:info.height,h264:info.h264,encoderInfo:info,started:new Date().toISOString(),error:null};
+console.log("[CAPTURE] Chromium ready:",JSON.stringify(status));
+}catch(e){
+status.running=false;status.connected=false;status.error=e.message||String(e);
+console.error("[CAPTURE]",status.error);
+if(browser){try{await browser.close()}catch(x){}}
+browser=null;context=null;page=null;
+}finally{starting=false;}
 }
-};
-stopBtn.onclick=()=>requestStop("Stopped manually");
-</script>
-</body>
-</html>`;
 function attach(app,express){
-let status={running:false,connected:false,width:0,height:0,error:null};
-app.get("/capture",(req,res)=>res.type("html").send(page()));
-app.get("/api/capture/status",(req,res)=>res.json(status));
-app.post("/api/capture/status",express.json(),(req,res)=>{status={...status,...(req.body||{})};res.json({ok:true})});
+app.get("/api/capture/status",(req,res)=>res.set("Cache-Control","no-store").json(status));
+app.get("/api/capture/screenshot.jpg",async(req,res)=>{
+try{
+if(!page||page.isClosed())return res.status(503).json({error:"Capture browser is not ready",status});
+const shot=await page.screenshot({type:"jpeg",quality:70});
+res.set({"Content-Type":"image/jpeg","Cache-Control":"no-store"}).send(shot);
+}catch(e){res.status(500).json({error:e.message});}
+});
+app.post("/api/capture/restart",async(req,res)=>{
+if(browser){try{await browser.close()}catch(e){}}
+browser=null;context=null;page=null;status.running=false;status.connected=false;
+start().then(()=>console.log("[CAPTURE] Restart finished"));
+res.json({ok:true,restarting:true});
+});
+start();
 }
-module.exports={attach};
+async function close(){
+closed=true;
+if(browser){try{await browser.close()}catch(e){}}
+browser=null;context=null;page=null;status.running=false;status.connected=false;
+}
+module.exports={attach,close};
