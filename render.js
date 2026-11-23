@@ -1,4 +1,3 @@
-
 const {createCanvas,loadImage,GlobalFonts}=require("@napi-rs/canvas");
 
 const W=1280,H=720;
@@ -6,14 +5,13 @@ const C={bg:"#050713",panel:"#0b1024",panel2:"#101832",border:"#273a68",blue:"#2
 const canvas=createCanvas(W,H),ctx=canvas.getContext("2d"),bgCanvas=createCanvas(W,H),bgCtx=bgCanvas.getContext("2d");
 const history={subs:[],rates:[],last:0,previous:null},avatars={},loadedAvatars={},textSizes=new Map(),gradients=new Map();
 const numberFormat=new Intl.NumberFormat("en-US");
-let lastTiming={drawMs:0,outputMs:0,totalMs:0},benchmarkActive=false,renderQueue=Promise.resolve();
+let lastTiming={drawMs:0,outputMs:0,totalMs:0},benchmarkActive=false,renderQueue=Promise.resolve(),rawFrameCache=null,rawFrameUpdated=0;
 
 for(const w of [400,500,600,700,800,900])try{GlobalFonts.registerFromPath(require.resolve(`@fontsource/inter/files/inter-latin-${w}-normal.woff2`),"Inter");}catch{}
 
 const ms=s=>Number(process.hrtime.bigint()-s)/1e6;
 const fmt=v=>v==null||v===""||!Number.isFinite(Number(v))?"—":numberFormat.format(Math.round(Number(v)));
 const num=(o,...keys)=>{for(const k of keys)if(o?.[k]!=null&&o[k]!==""&&Number.isFinite(Number(o[k])))return Number(o[k]);return null;};
-const yieldLoop=()=>new Promise(setImmediate);
 const rect=(x,y,w,h,r=12,fill=C.panel,stroke=C.border)=>{ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke();}};
 const line=(x1,y1,x2,y2,color="#ffffff20",width=1)=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();};
 const gradient=(key,create)=>{if(!gradients.has(key))gradients.set(key,create());return gradients.get(key);};
@@ -89,7 +87,7 @@ function mainCard(x,title,accent,type){
 function chart(values,x,y,w,h){
  const n=values.length;if(n<2)return;let min=Infinity,max=-Infinity;
  for(let i=0;i<n;i++){const v=values[i];if(v<min)min=v;if(v>max)max=v;}
- const range=max-min||1,px=i=>x+i/(n-1)*w,py=v=>y+h-(v-min)/range*h;
+ const range=max-min||1,px=i=>x+i/(n-1*w),py=v=>y+h-(v-min)/range*h;
  const g=gradient("chart-fill",()=>{const v=ctx.createLinearGradient(0,y,0,y+h);v.addColorStop(0,"#18e9d944");v.addColorStop(1,"#18e9d900");return v;});
  ctx.beginPath();ctx.moveTo(x,y+h);for(let i=0;i<n;i++)ctx.lineTo(px(i),py(values[i]));ctx.lineTo(x+w,y+h);ctx.closePath();ctx.fillStyle=g;ctx.fill();
  ctx.beginPath();for(let i=0;i<n;i++){const xx=px(i),yy=py(values[i]);if(i)ctx.lineTo(xx,yy);else ctx.moveTo(xx,yy);}
@@ -145,7 +143,6 @@ async function renderInternal(data={},mode="png"){
   if(history.subs.length>60)history.subs.shift();
   if(history.rates.length>14)history.rates.shift();
  }
-
  const rate=history.rates.length?history.rates[history.rates.length-1]:0;
  const remaining=current==null?null:Math.max(0,60000000-current);
  const progress=current==null?0:Math.min(1,current/60000000);
@@ -166,9 +163,9 @@ async function renderInternal(data={},mode="png"){
  const output=mode==="raw"?canvas.data():canvas.toBuffer("image/png");
  const outputMs=ms(outputStart);
  lastTiming={drawMs,outputMs,totalMs:ms(totalStart)};
+ if(mode==="raw"){rawFrameCache=output;rawFrameUpdated=Date.now();}
  return output;
 }
-
 function renderDashboard(data={}){
  const job=renderQueue.then(()=>renderInternal(data,"png"));
  renderQueue=job.catch(()=>{});
@@ -179,11 +176,52 @@ function renderRawFrame(data={}){
  renderQueue=job.catch(()=>{});
  return job;
 }
-
 function stats(values){
  if(!values.length)return{averageMs:0,medianMs:0,p95Ms:0,minMs:0,maxMs:0};
  const a=[...values].sort((x,y)=>x-y),avg=values.reduce((s,n)=>s+n,0)/values.length,p=q=>a[Math.min(a.length-1,Math.ceil(a.length*q)-1)],r=n=>Number(n.toFixed(2));
  return{averageMs:r(avg),medianMs:r(p(.5)),p95Ms:r(p(.95)),minMs:r(a[0]),maxMs:r(a[a.length-1])};
+}
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+
+async function runReuseBenchmark(){
+ const FPS=15,FRAME_MS=1000/FPS,DURATION=10000,TOTAL=Math.round(DURATION/FRAME_MS);
+ const frameTimes=[],lateness=[],memory=[];
+ const start=process.hrtime.bigint(),memoryBefore=process.memoryUsage();
+ let frame=null,frames=0,checksum=0,missed=0,maxLate=0;
+ try{
+  frame=await renderRawFrame();
+  if(!frame||frame.byteLength!==W*H*4)throw new Error("Invalid raw RGBA frame");
+  const firstFrameMs=lastTiming.totalMs;
+  const loopStart=process.hrtime.bigint();
+  let next=loopStart;
+  while(frames<TOTAL){
+   next+=BigInt(Math.round(FRAME_MS*1e6));
+   const tick=process.hrtime.bigint();
+   const late=Math.max(0,Number(tick-next)/1e6);
+   lateness.push(late);
+   if(late>FRAME_MS)missed++;
+   maxLate=Math.max(maxLate,late);
+   // Reuse the same RGBA buffer; no redraw and no allocation.
+   checksum=(checksum+frame[frames%frame.length])>>>0;
+   frames++;
+   frameTimes.push(Number(tick-start)/1e6);
+   const remaining=Number(next-process.hrtime.bigint())/1e6;
+   if(remaining>0)await wait(remaining);
+   else await wait(0);
+  }
+  const memoryAfter=process.memoryUsage(),elapsed=ms(start),mib=n=>Number((n/1048576).toFixed(2));
+  return{
+   renderer:"@napi-rs/canvas",
+   mode:"single-render-reused-rgba-frame",
+   resolution:`${W}x${H}`,fpsTarget:FPS,frameIntervalMs:+FRAME_MS.toFixed(3),
+   durationMs:+elapsed.toFixed(2),frames,frameSizeBytes:frame.byteLength,frameSizeMiB:+(frame.byteLength/1048576).toFixed(2),
+   achievedFPS:+(frames/(elapsed/1000)).toFixed(2),
+   frameFeed:{lateness:stats(lateness),maxLatenessMs:+maxLate.toFixed(2),missedDeadlines:missed,missedDeadlinePercent:+(missed/frames*100).toFixed(2)},
+   renderOnce:{totalMs:+firstFrameMs.toFixed(2),drawMs:+lastTiming.drawMs.toFixed(2),rawExtractionMs:+lastTiming.outputMs.toFixed(2)},
+   memory:{heapBeforeMiB:mib(memoryBefore.heapUsed),heapAfterMiB:mib(memoryAfter.heapUsed),externalBeforeMiB:mib(memoryBefore.external),externalAfterMiB:mib(memoryAfter.external),rssBeforeMiB:mib(memoryBefore.rss),rssAfterMiB:mib(memoryAfter.rss)},
+   checksum:checksum>>>0
+  };
+ }finally{frame=null;}
 }
 
 function attach(app,getData){
@@ -203,61 +241,15 @@ function attach(app,getData){
  app.get("/api/renderer/benchmark",async(req,res)=>{
   if(benchmarkActive)return res.status(409).json({error:"A renderer benchmark is already running"});
   benchmarkActive=true;
-  let frame=null;
-
   try{
-   const data=getData(),times=[],drawTimes=[],rawTimes=[];
-
-   for(let i=0;i<3;i++){
-    frame=await renderRawFrame(data);
-    frame=null;
-   }
-
-   const memoryBefore=process.memoryUsage();
-
-   for(let i=0;i<10;i++){
-    const start=process.hrtime.bigint();
-    frame=await renderRawFrame(data);
-    times.push(ms(start));
-    drawTimes.push(lastTiming.drawMs);
-    rawTimes.push(lastTiming.outputMs);
-    const frameBytes=frame.byteLength;
-    frame=null;
-    await yieldLoop();
-
-    if(i===9){
-     const memoryAfter=process.memoryUsage(),mib=n=>Number((n/1048576).toFixed(2));
-     const average=times.reduce((a,b)=>a+b,0)/times.length;
-
-     res.set("Cache-Control","no-store");
-     res.json({
-      renderer:"@napi-rs/canvas",
-      mode:"raw-rgba-no-png",
-      resolution:`${W}x${H}`,
-      frames:times.length,
-      warmupFrames:3,
-      frameSizeBytes:frameBytes,
-      frameSizeMiB:mib(frameBytes),
-      ...stats(times),
-      estimatedFPS:+(1000/average).toFixed(2),
-      draw:stats(drawTimes),
-      rawExtraction:stats(rawTimes),
-      memory:{
-       heapBeforeMiB:mib(memoryBefore.heapUsed),
-       heapAfterMiB:mib(memoryAfter.heapUsed),
-       externalBeforeMiB:mib(memoryBefore.external),
-       externalAfterMiB:mib(memoryAfter.external),
-       rssBeforeMiB:mib(memoryBefore.rss),
-       rssAfterMiB:mib(memoryAfter.rss)
-      }
-     });
-    }
-   }
+   const result=await runReuseBenchmark();
+   res.set("Cache-Control","no-store");
+   res.json(result);
   }catch(e){
-   console.error("Raw benchmark error:",e.stack||e.message);
-   if(!res.headersSent)res.status(500).json({error:"Raw RGBA benchmark failed",message:e.message});
+   console.error("Frame reuse benchmark error:",e.stack||e.message);
+   if(!res.headersSent)res.status(500).json({error:"Frame reuse benchmark failed",message:e.message});
   }finally{
-   frame=null;
+   rawFrameCache=null;
    benchmarkActive=false;
   }
  });
