@@ -1,5 +1,4 @@
-
-const express=require("express"),app=express(),renderer=require("./render");
+const express=require("express"),app=express(),renderer=require("./render"),encoder=require("./encode");
 const CHANNELS={lucan:{id:"UCuz_0MPcY5O0vsIfFPKFpGg",user:"LucanPevidor"},mine:{id:"UCnKrmx7XhDqbiMD3aSBwz_g",user:"vystatsyt"}};
 const headers={"User-Agent":"Mozilla/5.0","Accept":"application/json","Accept-Language":"en-US,en;q=0.9","Cache-Control":"no-cache","Pragma":"no-cache"};
 const num=v=>v===null||v===undefined||v===""||!Number.isFinite(Number(v))?null:Number(v);
@@ -15,6 +14,7 @@ app.get("/api/diagnostics",(q,r)=>(r.set("Cache-Control","no-store"),r.json(Obje
 app.get("/api/avatar/:key",async(q,r)=>{try{const u=data[q.params.key]?.channel?.avatar;if(!u)return r.sendStatus(404);const url=new URL(u);if(url.protocol!=="https:")return r.sendStatus(400);const x=await fetch(url,{signal:AbortSignal.timeout(12000)});if(!x.ok)throw Error(`HTTP ${x.status}`);r.set({"Content-Type":x.headers.get("content-type")||"image/jpeg","Cache-Control":"public,max-age=21600"});r.send(Buffer.from(await x.arrayBuffer()));}catch(e){console.error(`[AVATAR] ${q.params.key}: ${e.message}`);if(!r.headersSent)r.sendStatus(502);}});
 const rendererData=()=>Object.fromEntries(Object.entries(data).map(([k,d])=>[k,{...d,sctools:{...d.sctools,linearCount:d.sctools.linearSubscribers,estCount:d.sctools.estSubscribers,apiCount:d.sctools.apiSubscribers,viewCount:d.sctools.estViews,videoCount:d.sctools.apiVideos,averages:{hourly:d.sctools.hourly,daily:d.sctools.daily}},freewebtools:{...d.freewebtools,estimation:{estimated_count:d.freewebtools.estimatedSubscribers},subscriberCount:d.freewebtools.apiSubscribers,viewCount:d.freewebtools.viewCount,videoCount:d.freewebtools.videoCount,thumbnail:d.channel.avatar}}]));
 renderer.attach(app,()=>rendererData());
+encoder.attach(app,()=>rendererData());
 const update=async k=>{const {id,user}=CHANNELS[k],d=data[k],urls=[`https://ests.sctools.org/api/get/${id}`,`https://www.freewebtools.com/api/youtube/channel?user=${encodeURIComponent(user)}&_t=${Date.now()}`];
 const [st,fw]=await Promise.all(urls.map((u,i)=>get(u).then(j=>{if(i===1&&j.refreshFailed)throw Error(j.refreshFailure||"FreeWebTools refresh failed");log(k,i?"FreeWebTools":"SCTools");return j;}).catch(e=>(log(k,i?"FreeWebTools":"SCTools",e),null))));
 if(st?.stats){const x=st.stats;d.sctools={estSubscribers:num(x.estCount),linearSubscribers:num(x.linearCount),apiSubscribers:num(x.apiCount),estViews:num(x.viewCount),apiViews:null,estVideos:null,apiVideos:num(x.videoCount),hourly:num(st.averages?.hourly),daily:num(st.averages?.daily),nextUpdate:st.nextUpdate??null};d.channel={...d.channel,name:st.info?.name||d.channel.name||"",avatar:st.info?.avatar||d.channel.avatar||"",country:st.info?.country||d.channel.country||""};}
