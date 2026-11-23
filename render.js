@@ -1,218 +1,246 @@
 
 const { createCanvas, loadImage, GlobalFonts } = require("@napi-rs/canvas");
-const path = require("path");
 
-const W=1280,H=720;
+const W=1280,H=720,S=.805;
 const C={bg:"#050713",panel:"#0b1024",panel2:"#101832",border:"#273a68",blue:"#27a9ff",purple:"#8b36ff",teal:"#25e5c0",white:"#f5f7ff",muted:"#aab8df",red:"#ff4267"};
 const canvas=createCanvas(W,H),ctx=canvas.getContext("2d");
-const history={subs:[],rate:[],last:0,previous:0},avatars={};
+const history={subs:[],rates:[],last:0,previous:null},avatars={};
+const X=n=>n*S, F=n=>n*.86, R=n=>n*S;
 
-for(const weight of [400,500,600,700,800,900]){
-  try {
-    const file=require.resolve(`@fontsource/inter/files/inter-latin-${weight}-normal.woff2`);
-    GlobalFonts.registerFromPath(file,"Inter");
-  } catch(e) { console.error("Inter font load failed:",weight,e.message); }
+for(const w of [400,500,600,700,800,900]){
+  try{GlobalFonts.registerFromPath(require.resolve(`@fontsource/inter/files/inter-latin-${w}-normal.woff2`),"Inter");}catch{}
 }
 
-const fmt=v=>v==null||!Number.isFinite(Number(v))?"—":Math.round(Number(v)).toLocaleString("en-US");
-const get=(o,...keys)=>{
-  for(const k of keys) if(o?.[k]!=null&&Number.isFinite(Number(o[k]))) return Number(o[k]);
+const fmt=v=>v==null||v===""||!Number.isFinite(Number(v))?"—":Math.round(Number(v)).toLocaleString("en-US");
+const num=(o,...keys)=>{
+  for(const k of keys)if(o?.[k]!=null&&Number.isFinite(Number(o[k])))return Number(o[k]);
   return null;
 };
 const rect=(x,y,w,h,r=12,fill=C.panel,stroke=C.border)=>{
-  ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fillStyle=fill;ctx.fill();
+  ctx.beginPath();ctx.roundRect(X(x),y,X(w),R(r));ctx.fillStyle=fill;ctx.fill();
   if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke();}
 };
-const txt=(s,x,y,size=16,color=C.white,weight=700,max=Infinity,align="left")=>{
-  let str=String(s??"—");
-  ctx.font=`${weight} ${size}px Inter,Arial,sans-serif`;
-  while(ctx.measureText(str).width>max&&size>9){
-    size--;ctx.font=`${weight} ${size}px Inter,Arial,sans-serif`;
-  }
-  ctx.fillStyle=color;ctx.textAlign=align;ctx.textBaseline="middle";ctx.fillText(str,x,y);
+const txt=(v,x,y,size=16,color=C.white,weight=700,max=Infinity,align="left")=>{
+  const str=String(v??"—");let f=F(size);
+  ctx.font=`${weight} ${f}px Inter,Arial,sans-serif`;
+  while(ctx.measureText(str).width>X(max)&&f>8){f--;ctx.font=`${weight} ${f}px Inter,Arial,sans-serif`;}
+  ctx.fillStyle=color;ctx.textAlign=align;ctx.textBaseline="middle";ctx.fillText(str,X(x),y);
 };
-const line=(x1,y1,x2,y2,color=C.border,width=1)=>{
-  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();
+const line=(x1,y1,x2,y2,color="#ffffff20",width=1)=>{
+  ctx.beginPath();ctx.moveTo(X(x1),y1);ctx.lineTo(X(x2),y2);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();
 };
-const label=(s,x,y)=>txt(String(s).toUpperCase(),x,y,10,C.muted,800);
-const card=(x,y,w,h,title,accent=C.blue)=>{
-  rect(x,y,w,h,13);txt(title,x+17,y+22,11,accent,900,w-34);
+const label=(s,x,y,color=C.muted)=>txt(String(s).toUpperCase(),x,y,11,color,900,Infinity);
+const glow=(x,y,w,h,color)=>{
+  ctx.save();ctx.shadowColor=color;ctx.shadowBlur=18;
+  rect(x,y,w,h,19,"#00000000",color);ctx.restore();
 };
 
-function getStats(d){
-  const s=d?.sctools||{},f=d?.freewebtools||{},e=f.estimation||{};
+function getStats(d={}){
+  const s=d.sctools||{},f=d.freewebtools||{},e=f.estimation||{};
   return {
-    name:d?.channel?.name||s.name||"Channel",
-    avatar:d?.channel?.avatar||s.avatar||f.thumbnail||"",
-    linear:get(s,"linearSubscribers","linearCount","estSubscribers","estCount"),
-    est:get(s,"estSubscribers","estCount"),
-    api:get(s,"apiSubscribers","apiCount"),
-    views:get(s,"estViews","viewCount"),
-    apiViews:get(s,"apiViews"),
-    videos:get(s,"estVideos"),
-    apiVideos:get(s,"apiVideos","videoCount"),
-    hourly:get(s,"hourly")??get(s.averages,"hourly")??get(f,"hourly"),
-    daily:get(s,"daily")??get(s.averages,"daily")??get(f,"daily"),
-    freeEst:get(f,"estimatedSubscribers")??get(e,"estimated_count"),
-    freeApi:get(f,"apiSubscribers","subscriberCount"),
-    freeEstViews:get(f,"estimatedViews"),
-    freeApiViews:get(f,"viewCount"),
-    freeEstVideos:get(f,"estimatedVideos"),
-    freeApiVideos:get(f,"videoCount")
+    name:d.channel?.name||s.name||"Channel",
+    avatar:d.channel?.avatar||s.avatar||f.thumbnail||"",
+    linear:num(s,"linearSubscribers","linearCount","estSubscribers","estCount"),
+    est:num(s,"estSubscribers","estCount"),
+    api:num(s,"apiSubscribers","apiCount"),
+    views:num(s,"estViews","viewCount"),
+    apiViews:num(s,"apiViews"),
+    videos:num(s,"estVideos"),
+    apiVideos:num(s,"apiVideos","videoCount"),
+    hourly:num(s,"hourly")??num(s.averages,"hourly")??num(f,"hourly"),
+    daily:num(s,"daily")??num(s.averages,"daily")??num(f,"daily"),
+    freeEst:num(f,"estimatedSubscribers")??num(e,"estimated_count"),
+    freeApi:num(f,"apiSubscribers","subscriberCount"),
+    freeEstViews:num(f,"estimatedViews"),
+    freeApiViews:num(f,"viewCount"),
+    freeEstVideos:num(f,"estimatedVideos"),
+    freeApiVideos:num(f,"videoCount")
   };
 }
-async function avatar(url,x,y,size){
+
+async function avatar(url,x,y,size,border=C.blue){
   if(!url)return;
   try{
     if(!avatars[url])avatars[url]=loadImage(url);
     const img=await avatars[url];
-    ctx.save();ctx.beginPath();ctx.arc(x+size/2,y+size/2,size/2,0,Math.PI*2);
-    ctx.clip();ctx.drawImage(img,x,y,size,size);ctx.restore();
+    ctx.save();
+    ctx.shadowColor=border;ctx.shadowBlur=12;
+    ctx.beginPath();ctx.arc(X(x+size/2),y+size/2,X(size/2),0,Math.PI*2);ctx.fillStyle=C.panel;ctx.fill();
+    ctx.shadowBlur=0;ctx.beginPath();ctx.arc(X(x+size/2),y+size/2,X(size/2-2),0,Math.PI*2);ctx.clip();
+    ctx.drawImage(img,X(x),y,X(size),size);ctx.restore();
+    ctx.beginPath();ctx.arc(X(x+size/2),y+size/2,X(size/2-1),0,Math.PI*2);
+    ctx.strokeStyle=border;ctx.lineWidth=2;ctx.stroke();
   }catch{}
 }
+
 function background(){
-  ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
-  const g=ctx.createLinearGradient(0,0,W,H);
-  g.addColorStop(0,"#0c1530");g.addColorStop(.5,C.bg);g.addColorStop(1,"#100b25");
+  const g=ctx.createRadialGradient(W/2,0,10,W/2,H,850);
+  g.addColorStop(0,"#19265a");g.addColorStop(.5,"#080b1b");g.addColorStop(1,"#040610");
   ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
 }
+
 function header(){
-  rect(8,8,1264,46,10,C.panel2);
-  txt("LUCAN PEVIDOR  |  ROAD TO 60M",25,31,16,C.white,900,900);
-  ctx.beginPath();ctx.arc(1222,31,5,0,Math.PI*2);ctx.fillStyle=C.red;ctx.fill();
-  txt("LIVE",1237,31,11,C.red,900,50);
+  txt("LUCAN PEVIDOR",24,31,23,C.white,900,220);
+  txt("| ROAD TO 60M",242,31,23,C.purple,900,240);
+  txt("● LIVE",1575,31,17,C.red,900,70,"right");
 }
-async function profile(d,x,y){
-  rect(x,y,420,139);
-  await avatar(d.avatar,x+14,y+10,116);
-  txt(d.name,x+143,y+36,22,C.white,900,260);
-  txt("@LucanPevidor",x+143,y+62,12,C.muted,700,250);
-  txt("ROAD TO 60 MILLION",x+143,y+91,11,C.blue,900,250);
-  line(x+143,y+111,x+400,y+111);
-  txt("LIVE CHANNEL TRACKING",x+143,y+124,9,C.muted,700,250);
+
+async function profile(d){
+  rect(12,65,420,157,19,"#0b1024","#743dff");
+  glow(12,65,420,157,"#743dff");
+  await avatar(d.avatar,25,85,120);
+  txt(d.name,158,101,22,C.white,900,255);
+  txt("@LucanPevidor",158,125,11,C.muted,800,250);
+  txt("Jesus loves you! I hope every",158,147,13,"#dce5ff",800,260);
+  txt("video makes you smile!",158,163,13,"#dce5ff",800,260);
+  rect(158,177,95,23,8,"#5423c5",null);
+  txt("ROAD TO 60M",205,189,10,C.white,900,85,"center");
 }
-async function miniStats(d,x,y){
-  rect(x,y,420,238);
-  txt("MY CHANNEL  |  VYSTATS",x+16,y+22,12,C.purple,900,380);
-  await avatar(d.avatar,x+16,y+39,62);
-  txt("My Channel",x+91,y+55,17,C.white,900,290);
-  txt("@vystatsyt",x+91,y+79,11,C.muted,700,290);
-  line(x+15,y+113,x+405,y+113);
+
+async function miniStats(d){
+  rect(12,236,420,239,19,"#0b1024","#245caa");
+  txt("MY CHANNEL",26,284,16,"#d7e5ff",900,150);
+  await avatar(d.avatar,273,250,66);
+  txt("VYStats",348,270,16,C.white,900,90);
+  txt("@vystatsyt",348,291,11,C.muted,800,100);
+  line(27,326,417,326);
   const cols=[
     ["SUBSCRIBERS",d.freeEst,d.freeApi],
-    ["TOTAL VIEWS",d.freeEstViews,d.freeApiViews],
+    ["VIEWS",d.freeEstViews,d.freeApiViews],
     ["VIDEOS",d.freeEstVideos,d.freeApiVideos]
   ];
   cols.forEach((c,i)=>{
-    const xx=x+15+i*132;
-    if(i)line(xx-7,y+128,xx-7,y+220);
-    label(c[0],xx,y+137);
-    txt(fmt(c[1]),xx,y+166,16,C.white,900,115);
-    label("ESTIMATED",xx,y+190);
-    txt(fmt(c[2]),xx,y+211,14,C.purple,800,115);
-    label("API",xx,y+226);
+    const x=27+i*130;
+    if(i)line(x-7,338,x-7,462);
+    txt(c[0],x+55,371,11,"#b8caff",900,115,"center");
+    txt("EST.",x,399,10,C.muted,900);
+    txt(fmt(c[1]),x+115,399,17,C.white,900,100,"right");
+    txt("API",x,429,10,C.muted,900);
+    txt(fmt(c[2]),x+115,429,17,C.white,900,100,"right");
   });
 }
-function chart(values,x,y,w,h,color){
+
+function chart(values,x,y,w,h){
   if(values.length<2)return;
   const min=Math.min(...values),max=Math.max(...values),range=max-min||1;
-  ctx.beginPath();
-  values.forEach((v,i)=>{
-    const px=x+i/(values.length-1)*w,py=y+h-(v-min)/range*h;
-    i?ctx.lineTo(px,py):ctx.moveTo(px,py);
-  });
-  ctx.strokeStyle=color;ctx.lineWidth=3;ctx.lineJoin="round";ctx.stroke();
+  const points=values.map((v,i)=>[x+i/(values.length-1)*w,y+h-(v-min)/range*h]);
+  ctx.beginPath();points.forEach(([px,py],i)=>i?ctx.lineTo(X(px),py):ctx.moveTo(X(px),py));
+  ctx.strokeStyle=C.teal;ctx.lineWidth=3;ctx.lineJoin="round";ctx.lineCap="round";
+  ctx.shadowColor=C.teal;ctx.shadowBlur=7;ctx.stroke();ctx.shadowBlur=0;
 }
-function bars(values,x,y,w,h,color){
-  if(!values.length)return;
-  const data=values.slice(-24),max=Math.max(...data.map(Math.abs),1),bw=w/data.length;
-  data.forEach((v,i)=>{
-    const bh=Math.max(3,Math.abs(v)/max*h);
-    ctx.fillStyle=color;ctx.globalAlpha=.65+.35*(i/data.length);
-    ctx.fillRect(x+i*bw,y+h-bh,bw-4,bh);
+
+function bars(values,x,y,w,h){
+  const a=values.slice(-14);if(!a.length)return;
+  const max=Math.max(...a.map(Math.abs),.01),bw=w/a.length;
+  a.forEach((v,i)=>{
+    const bh=Math.max(8,Math.abs(v)/max*h);
+    const g=ctx.createLinearGradient(0,y+h-bh,0,y+h);
+    g.addColorStop(0,"#a63cff");g.addColorStop(1,"#5420c7");
+    ctx.fillStyle=g;ctx.globalAlpha=.65+.35*i/a.length;
+    ctx.beginPath();ctx.roundRect(X(x+i*bw),y+h-bh,X(Math.max(4,bw-6)),bh,5);ctx.fill();
   });
   ctx.globalAlpha=1;
 }
-let subtitleValues={hourly:null,daily:null},progress=0,remaining=null;
-function mainCard(x,title,value,subtitle,accent,kind){
-  card(x,66,268,387,title,accent);
-  txt(value,x+17,128,55,C.white,900,234);
-  txt(subtitle,x+17,164,11,C.muted,800,234);
-  line(x+17,190,x+251,190);
-  if(kind==="subs"){
-    label("LIVE SUBSCRIBER HISTORY",x+17,211);
-    chart(history.subs.slice(-50),x+18,231,230,92,accent);
-    line(x+17,340,x+251,340);
-    label("LINEAR ESTIMATE",x+17,360);
-    txt(fmt(history.subs.at(-1)),x+17,380,16,C.white,900,105);
-    label("HOURLY GAIN",x+137,360);
-    txt(fmt(subtitleValues.hourly),x+137,380,16,C.teal,900,105);
-    label("DAILY GAIN",x+17,420);
-    txt(fmt(subtitleValues.daily),x+17,438,16,C.teal,900,105);
-  }else if(kind==="rate"){
-    label("RECENT RATE ACTIVITY",x+17,211);
-    bars(history.rate,x+18,235,230,100,accent);
-    line(x+17,350,x+251,350);
-    label("LIVE AVERAGE",x+17,374);
-    txt(value,x+17,410,32,accent,900,230);
-  }else{
-    label("MILESTONE PROGRESS",x+17,211);
-    rect(x+17,241,234,12,6,C.panel2,null);
-    rect(x+17,241,234*progress,12,6,accent,null);
-    txt((progress*100).toFixed(3)+"% complete",x+17,280,14,C.teal,900,230);
-    line(x+17,320,x+251,320);
-    label("NEXT MILESTONE",x+17,350);
-    txt("60,000,000",x+17,380,22,C.white,900,230);
-    label("SUBSCRIBERS REMAINING",x+17,420);
-    txt(fmt(remaining),x+17,440,17,C.teal,900,230);
-  }
+
+function mainCard(x,w,title,accent){
+  rect(x,65,w,410,19,"#0b1024",accent);
+  const g=ctx.createLinearGradient(X(x),65,X(x+w),475);
+  g.addColorStop(0,"#ffffff08");g.addColorStop(1,"#00000000");
+  rect(x+1,66,w-2,408,18,g,null);
+  txt(title,x+w/2,111,17,"#d7e3ff",900,w-30,"center");
 }
+
+function subscriberCard(x,w,current,hourly,daily){
+  mainCard(x,w,"↗  LUCAN · LIVE SUBSCRIBERS",C.blue);
+  txt("(LINEAR ESTIMATE)",x+w/2,133,16,"#d7e3ff",900,w-30,"center");
+  txt(fmt(current),x+w/2,202,76,C.white,900,w-26,"center");
+  chart(history.subs.slice(-18),x+18,265,w-36,65);
+  line(x+15,343,x+w-15,343);
+  const cols=[["LINEAR ESTIMATE",fmt(current)],["HOURLY GAIN",fmt(hourly)],["DAILY GAIN",fmt(daily)]];
+  const widths=[w*.39,w*.29,w*.32];let at=x;
+  cols.forEach((c,i)=>{
+    if(i)line(at,355,at,454);
+    txt(c[0],at+widths[i]/2,386,12,"#b9caff",900,widths[i]-5,"center");
+    txt(c[1],at+widths[i]/2,418,22,C.teal,900,widths[i]-8,"center");
+    at+=widths[i];
+  });
+}
+
+function rateCard(x,w,rate){
+  mainCard(x,w,"ϟ  SUBS GAINED PER SEC","#2869c9");
+  txt(rate<0?"−":"+",x+54,205,76,C.white,900,65,"center");
+  txt(Math.abs(rate).toFixed(2),x+w*.64,205,76,C.white,900,w*.65,"center");
+  bars(history.rates,x+25,290,w-50,80);
+  txt("◉ LIVE AVERAGE",x+w/2,430,14,C.teal,900,w-30,"center");
+}
+
+function goalCard(x,w,remaining,progress){
+  mainCard(x,w,"⚑  SUBSCRIBERS REMAINING","#793dff");
+  txt("TO 60,000,000",x+w/2,133,16,"#d7e3ff",900,w-30,"center");
+  txt(fmt(remaining),x+w/2,207,76,C.white,900,w-24,"center");
+  rect(x+20,275,w-40,15,10,"#111f43",null);
+  rect(x+20,275,(w-40)*progress,15,10,"#8b36ff",null);
+  rect(x+20,275,(w-40)*progress,15,10,"#20dfd0",null);
+  txt("ROAD TO 60M",x+20,307,11,"#b9caff",900,120);
+  txt((progress*100).toFixed(1)+"%",x+w-20,307,11,"#b9caff",900,80,"right");
+  txt("◎ SUBSCRIBERS LEFT",x+w/2,430,14,C.teal,900,w-30,"center");
+}
+
 function sources(a,b){
-  rect(8,465,1264,211);
-  txt("DATA SOURCES",25,489,12,C.white,900);
-  txt("LIVE  ·  BOTH PROVIDERS",1250,489,10,C.teal,900,230,"right");
-  const heads=["METRIC","SCTOOLS EST.","SCTOOLS API","FREEWEBTOOLS EST.","FREEWEBTOOLS API"];
-  const xs=[25,270,480,690,980],widths=[230,200,200,280,260];
-  heads.forEach((h,i)=>txt(h,xs[i],520,10,C.muted,900,widths[i]));
-  line(25,538,1255,538);
+  rect(12,485,1566,210,19,"#0b1024","#4268a8");
+  txt("▤  DATA SOURCES",27,513,16,"#d6e3ff",900,250);
+  txt("● LIVE · BOTH PROVIDERS",1570,513,11,C.teal,900,240,"right");
+  const left=27,labelW=130,gap=9,usable=1540-labelW-gap*4,colW=usable/4;
+  const xs=[left+labelW+gap,left+labelW+gap+colW+gap,left+labelW+gap+(colW+gap)*2,left+labelW+gap+(colW+gap)*3];
+  ["SCTools Est.","SCTools API","FreeWebTools Est.","FreeWebTools API"].forEach((v,i)=>txt(v,xs[i]+colW/2,548,14,"#d6e3ff",900,colW,"center"));
   const rows=[
     ["SUBSCRIBERS",a.est,a.api,b.freeEst,b.freeApi],
     ["TOTAL VIEWS",a.views,a.apiViews,b.freeEstViews,b.freeApiViews],
     ["VIDEOS",a.videos,a.apiVideos,b.freeEstVideos,b.freeApiVideos]
   ];
   rows.forEach((r,i)=>{
-    const yy=565+i*34;
-    txt(r[0],25,yy,11,C.white,900,220);
-    r.slice(1).forEach((v,j)=>txt(fmt(v),xs[j+1],yy,13,j===0?C.blue:j===2?C.purple:C.white,900,widths[j+1]));
-    if(i<2)line(25,yy+17,1255,yy+17,"#1b294a");
+    const y=559+i*43;
+    txt(r[0],left,y+21,12,"#799bff",900,labelW);
+    r.slice(1).forEach((v,j)=>{
+      rect(xs[j],y,colW,41,8,"#080d1b","#26375b");
+      txt(fmt(v),xs[j]+12,y+21,21,j===0?C.teal:j===2?C.teal:"#c4d1ff",900,colW-20);
+    });
   });
 }
+
 async function renderDashboard(data={}){
   const a=getStats(data.lucan||{}),b=getStats(data.mine||{});
-  const now=Date.now(),current=a.linear??a.est;
-  if(current!=null&&now-history.last>3000){
+  const current=a.linear??a.est;
+  const now=Date.now();
+  if(current!=null&&now-history.last>=3000){
     if(history.previous!=null&&history.last){
-      const elapsed=(now-history.last)/1000;
-      if(elapsed>0)history.rate.push((current-history.previous)/elapsed);
+      const seconds=(now-history.last)/1000;
+      if(seconds>0)history.rates.push((current-history.previous)/seconds);
     }
-    history.subs.push(current);history.previous=current;history.last=now;
-    history.subs=history.subs.slice(-100);history.rate=history.rate.slice(-100);
+    history.subs.push(current);
+    history.previous=current;
+    history.last=now;
+    history.subs=history.subs.slice(-60);
+    history.rates=history.rates.slice(-14);
   }
-  const rate=history.rate.at(-1)??0;
-  subtitleValues={hourly:a.hourly,daily:a.daily};
-  remaining=current==null?null:Math.max(0,60000000-current);
-  progress=current==null?0:Math.min(1,current/60000000);
+  const rate=history.rates.at(-1)??0;
+  const remaining=current==null?null:Math.max(0,60000000-current);
+  const progress=current==null?0:Math.min(1,current/60000000);
+
   background();header();
-  await profile(a,8,66);
-  await miniStats(b,8,215);
-  mainCard(440,"LUCAN LIVE SUBSCRIBERS",fmt(current),"LINEAR ESTIMATE",C.blue,"subs");
-  mainCard(712,"SUBSCRIBERS GAINED / SEC",(rate>=0?"+":"")+rate.toFixed(2),"LIVE RATE",C.purple,"rate");
-  mainCard(984,"SUBSCRIBERS TO 60M",fmt(remaining),"REMAINING",C.teal,"goal");
+  await profile(a);await miniStats(b);
+  const start=446*S,gap=14*S,w=(1566-420-28)/3;
+  const cardW=w*S,cardGap=gap;
+  const x1=start,x2=x1+cardW+cardGap,x3=x2+cardW+cardGap;
+  subscriberCard(x1,cardW,current,a.hourly,a.daily);
+  rateCard(x2,cardW,rate);
+  goalCard(x3,cardW,remaining,progress);
   sources(a,b);
-  txt("UPDATED "+new Date().toLocaleTimeString(),25,700,10,C.muted,800,300);
-  txt("CONNECTED  ·  SCTOOLS + FREEWEBTOOLS",1255,700,10,C.teal,900,500,"right");
+  txt("↻ UPDATED "+new Date().toLocaleTimeString(),25,720,13,"#b9caff",900,300);
+  txt("● CONNECTED",1570,720,13,C.teal,900,180,"right");
   return canvas.toBuffer("image/png");
 }
+
 function attach(app,getData){
   app.get("/api/renderer/preview.png",async(req,res)=>{
     try{
