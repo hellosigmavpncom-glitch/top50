@@ -6,7 +6,7 @@ const C={bg:"#050713",panel:"#0b1024",panel2:"#101832",border:"#273a68",blue:"#2
 const canvas=createCanvas(W,H),ctx=canvas.getContext("2d"),bgCanvas=createCanvas(W,H),bgCtx=bgCanvas.getContext("2d");
 const history={subs:[],rates:[],last:0,previous:null},avatars={},loadedAvatars={},textSizes=new Map(),gradients=new Map();
 const numberFormat=new Intl.NumberFormat("en-US");
-let lastTiming={drawMs:0,pngMs:0,totalMs:0},benchmarkActive=false,renderQueue=Promise.resolve();
+let lastTiming={drawMs:0,outputMs:0,totalMs:0},benchmarkActive=false,renderQueue=Promise.resolve();
 
 for(const w of [400,500,600,700,800,900])try{GlobalFonts.registerFromPath(require.resolve(`@fontsource/inter/files/inter-latin-${w}-normal.woff2`),"Inter");}catch{}
 
@@ -132,52 +132,135 @@ function sources(a,b){
  });
 }
 
-async function renderInternal(data={}){
+async function renderInternal(data={},mode="png"){
  const totalStart=process.hrtime.bigint(),a=getStats(data.lucan||{}),b=getStats(data.mine||{}),jobs=[];
  if(a.avatar&&!loadedAvatars[a.avatar]&&!avatars[a.avatar])jobs.push(preloadAvatar(a.avatar));
  if(b.avatar&&!loadedAvatars[b.avatar]&&!avatars[b.avatar])jobs.push(preloadAvatar(b.avatar));
  if(jobs.length)await Promise.all(jobs);
+
  const current=a.linear??a.est,now=Date.now();
  if(current!=null&&now-history.last>=3000){
   if(history.previous!=null&&history.last){const seconds=(now-history.last)/1000;if(seconds>0)history.rates.push((current-history.previous)/seconds);}
   history.subs.push(current);history.previous=current;history.last=now;
-  if(history.subs.length>60)history.subs.shift();if(history.rates.length>14)history.rates.shift();
+  if(history.subs.length>60)history.subs.shift();
+  if(history.rates.length>14)history.rates.shift();
  }
- const rate=history.rates.length?history.rates[history.rates.length-1]:0,remaining=current==null?null:Math.max(0,60000000-current),progress=current==null?0:Math.min(1,current/60000000);
+
+ const rate=history.rates.length?history.rates[history.rates.length-1]:0;
+ const remaining=current==null?null:Math.max(0,60000000-current);
+ const progress=current==null?0:Math.min(1,current/60000000);
  const drawStart=process.hrtime.bigint();
- ctx.drawImage(bgCanvas,0,0);header();profile(a);miniStats(b);subscriberCard(442,current,a.hourly,a.daily);rateCard(723,rate);goalCard(1004,remaining,progress);sources(a,b);
- line(8,686,1272,686,"#ffffff18");txt("UPDATED "+new Date().toLocaleTimeString(),22,702,11,"#b9caff",900,300);icon("live",1179,702,9,C.teal);txt("CONNECTED",1192,702,11,C.teal,900,80);
- const drawMs=ms(drawStart),pngStart=process.hrtime.bigint(),png=canvas.toBuffer("image/png"),pngMs=ms(pngStart);
- lastTiming={drawMs,pngMs,totalMs:ms(totalStart)};
- return png;
+
+ ctx.drawImage(bgCanvas,0,0);
+ header();profile(a);miniStats(b);
+ subscriberCard(442,current,a.hourly,a.daily);
+ rateCard(723,rate);
+ goalCard(1004,remaining,progress);
+ sources(a,b);
+ line(8,686,1272,686,"#ffffff18");
+ txt("UPDATED "+new Date().toLocaleTimeString(),22,702,11,"#b9caff",900,300);
+ icon("live",1179,702,9,C.teal);
+ txt("CONNECTED",1192,702,11,C.teal,900,80);
+
+ const drawMs=ms(drawStart),outputStart=process.hrtime.bigint();
+ const output=mode==="raw"?canvas.data():canvas.toBuffer("image/png");
+ const outputMs=ms(outputStart);
+ lastTiming={drawMs,outputMs,totalMs:ms(totalStart)};
+ return output;
 }
+
 function renderDashboard(data={}){
- const job=renderQueue.then(()=>renderInternal(data));renderQueue=job.catch(()=>{});return job;
+ const job=renderQueue.then(()=>renderInternal(data,"png"));
+ renderQueue=job.catch(()=>{});
+ return job;
 }
+function renderRawFrame(data={}){
+ const job=renderQueue.then(()=>renderInternal(data,"raw"));
+ renderQueue=job.catch(()=>{});
+ return job;
+}
+
 function stats(values){
  if(!values.length)return{averageMs:0,medianMs:0,p95Ms:0,minMs:0,maxMs:0};
  const a=[...values].sort((x,y)=>x-y),avg=values.reduce((s,n)=>s+n,0)/values.length,p=q=>a[Math.min(a.length-1,Math.ceil(a.length*q)-1)],r=n=>Number(n.toFixed(2));
  return{averageMs:r(avg),medianMs:r(p(.5)),p95Ms:r(p(.95)),minMs:r(a[0]),maxMs:r(a[a.length-1])};
 }
+
 function attach(app,getData){
  app.get("/api/renderer/preview.png",async(req,res)=>{
   if(benchmarkActive)return res.status(503).send("Benchmark running; retry shortly");
-  try{const png=await renderDashboard(getData());res.set("Content-Type","image/png");res.set("Cache-Control","no-store, no-cache, must-revalidate");res.send(png);}
-  catch(e){console.error("Renderer error:",e.stack||e.message);res.status(500).send("Renderer failed");}
+  try{
+   const png=await renderDashboard(getData());
+   res.set("Content-Type","image/png");
+   res.set("Cache-Control","no-store, no-cache, must-revalidate");
+   res.send(png);
+  }catch(e){
+   console.error("Renderer error:",e.stack||e.message);
+   res.status(500).send("Renderer failed");
+  }
  });
+
  app.get("/api/renderer/benchmark",async(req,res)=>{
   if(benchmarkActive)return res.status(409).json({error:"A renderer benchmark is already running"});
   benchmarkActive=true;
+  let frame=null;
+
   try{
-   const data=getData(),times=[],drawTimes=[],pngTimes=[];
-   for(let i=0;i<3;i++)await renderDashboard(data);
-   for(let i=0;i<30;i++){
-    const start=process.hrtime.bigint();await renderDashboard(data);times.push(ms(start));drawTimes.push(lastTiming.drawMs);pngTimes.push(lastTiming.pngMs);await yieldLoop();
+   const data=getData(),times=[],drawTimes=[],rawTimes=[];
+
+   for(let i=0;i<3;i++){
+    frame=await renderRawFrame(data);
+    frame=null;
    }
-   res.set("Cache-Control","no-store");
-   res.json({renderer:"@napi-rs/canvas",mode:"png",frames:times.length,warmupFrames:3,...stats(times),estimatedFPS:+(1000/(times.reduce((a,b)=>a+b,0)/times.length)).toFixed(2),draw:stats(drawTimes),pngEncode:stats(pngTimes)});
-  }catch(e){console.error("PNG benchmark error:",e.stack||e.message);res.status(500).json({error:"PNG benchmark failed",message:e.message});}
-  finally{benchmarkActive=false;}
+
+   const memoryBefore=process.memoryUsage();
+
+   for(let i=0;i<10;i++){
+    const start=process.hrtime.bigint();
+    frame=await renderRawFrame(data);
+    times.push(ms(start));
+    drawTimes.push(lastTiming.drawMs);
+    rawTimes.push(lastTiming.outputMs);
+    const frameBytes=frame.byteLength;
+    frame=null;
+    await yieldLoop();
+
+    if(i===9){
+     const memoryAfter=process.memoryUsage(),mib=n=>Number((n/1048576).toFixed(2));
+     const average=times.reduce((a,b)=>a+b,0)/times.length;
+
+     res.set("Cache-Control","no-store");
+     res.json({
+      renderer:"@napi-rs/canvas",
+      mode:"raw-rgba-no-png",
+      resolution:`${W}x${H}`,
+      frames:times.length,
+      warmupFrames:3,
+      frameSizeBytes:frameBytes,
+      frameSizeMiB:mib(frameBytes),
+      ...stats(times),
+      estimatedFPS:+(1000/average).toFixed(2),
+      draw:stats(drawTimes),
+      rawExtraction:stats(rawTimes),
+      memory:{
+       heapBeforeMiB:mib(memoryBefore.heapUsed),
+       heapAfterMiB:mib(memoryAfter.heapUsed),
+       externalBeforeMiB:mib(memoryBefore.external),
+       externalAfterMiB:mib(memoryAfter.external),
+       rssBeforeMiB:mib(memoryBefore.rss),
+       rssAfterMiB:mib(memoryAfter.rss)
+      }
+     });
+    }
+   }
+  }catch(e){
+   console.error("Raw benchmark error:",e.stack||e.message);
+   if(!res.headersSent)res.status(500).json({error:"Raw RGBA benchmark failed",message:e.message});
+  }finally{
+   frame=null;
+   benchmarkActive=false;
+  }
  });
 }
-module.exports={renderDashboard,attach};
+
+module.exports={renderDashboard,renderRawFrame,attach};
