@@ -2,7 +2,7 @@
 {
   "name": "lucan-live-tracker",
   "version": "1.0.0",
-  "description": "Live YouTube subscriber tracker and Canvas renderer",
+  "description": "Live YouTube subscriber tracker and FFmpeg encoding benchmark",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -14,6 +14,8 @@
   "dependencies": {
     "@fontsource/inter": "^5.2.6",
     "@napi-rs/canvas": "^0.1.80",
-    "express": "^5.3.0"
+    "express": "^5.3.0",
+    "ffmpeg-static": "^5.2.0",
+    "pidusage": "^3.0.2"
   }
 }
