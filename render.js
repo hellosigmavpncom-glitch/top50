@@ -73,24 +73,18 @@ function icon(type,x,y,size,color){
 function getStats(d={}){
   const s=d.sctools||{},f=d.freewebtools||{},e=f.estimation||{};
   return{
-    name:d.channel?.name||s.name||"Channel",
-    handle:d.channel?.handle||"",
+    name:d.channel?.name||s.name||"Channel",handle:d.channel?.handle||"",
     avatar:d.channel?.avatar||s.avatar||f.thumbnail||"",
     linear:num(s,"linearSubscribers","linearCount","estSubscribers","estCount"),
-    est:num(s,"estSubscribers","estCount"),
-    api:num(s,"apiSubscribers","apiCount"),
-    views:num(s,"estViews","viewCount"),
-    apiViews:num(s,"apiViews"),
-    videos:num(s,"estVideos"),
-    apiVideos:num(s,"apiVideos","videoCount"),
+    est:num(s,"estSubscribers","estCount"),api:num(s,"apiSubscribers","apiCount"),
+    views:num(s,"estViews","viewCount"),apiViews:num(s,"apiViews"),
+    videos:num(s,"estVideos"),apiVideos:num(s,"apiVideos","videoCount"),
     hourly:num(s,"hourly")??num(s.averages,"hourly")??num(f,"hourly"),
     daily:num(s,"daily")??num(s.averages,"daily")??num(f,"daily"),
     freeEst:num(f,"estimatedSubscribers")??num(e,"estimated_count"),
     freeApi:num(f,"apiSubscribers","subscriberCount"),
-    freeEstViews:num(f,"estimatedViews"),
-    freeApiViews:num(f,"viewCount"),
-    freeEstVideos:num(f,"estimatedVideos"),
-    freeApiVideos:num(f,"videoCount")
+    freeEstViews:num(f,"estimatedViews"),freeApiViews:num(f,"viewCount"),
+    freeEstVideos:num(f,"estimatedVideos"),freeApiVideos:num(f,"videoCount")
   };
 }
 
@@ -100,8 +94,7 @@ function preloadAvatar(url){
   return avatars[url];
 }
 function avatar(url,x,y,size,border=C.blue){
-  const img=loadedAvatars[url];
-  if(!img)return;
+  const img=loadedAvatars[url];if(!img)return;
   ctx.save();ctx.shadowColor=border;ctx.shadowBlur=15;
   ctx.beginPath();ctx.arc(x+size/2,y+size/2,size/2,0,Math.PI*2);
   ctx.fillStyle=C.panel;ctx.fill();ctx.shadowBlur=0;
@@ -111,9 +104,7 @@ function avatar(url,x,y,size,border=C.blue){
   ctx.strokeStyle=border;ctx.lineWidth=2;ctx.stroke();
 }
 
-function background(){
-  ctx.drawImage(bgCanvas,0,0);
-}
+function background(){ctx.drawImage(bgCanvas,0,0);}
 function buildBackground(){
   bgCtx.fillStyle=C.bg;bgCtx.fillRect(0,0,W,H);
   const g=bgCtx.createRadialGradient(W/2,-80,10,W/2,H,850);
@@ -128,7 +119,6 @@ function header(){
   txt("| ROAD TO 60M",198,32,19,C.purple,900,230);
   icon("live",1212,32,12,C.red);txt("LIVE",1225,32,15,C.red,900,50);
 }
-
 function profile(d){
   rect(8,66,420,136,19,"#0b1024","#743dff");
   avatar(d.avatar,20,74,120);
@@ -139,7 +129,6 @@ function profile(d){
   rect(154,176,96,18,7,"#5423c5",null);
   txt("ROAD TO 60M",202,185,9,C.white,900,90,"center");
 }
-
 function miniStats(d){
   rect(8,214,420,240,19,"#0b1024","#245caa");
   txt("MY CHANNEL",22,242,15,"#d7e5ff",900,120);
@@ -156,7 +145,6 @@ function miniStats(d){
     txt("API",x,389,10,C.muted,900);txt(fmt(c[2]),x+116,389,15,C.white,900,100,"right");
   });
 }
-
 function mainCard(x,title,accent,type){
   rect(x,66,267,388,19,"#0b1024",accent);
   const g=gradient(`card-${x}`,()=>{
@@ -166,7 +154,6 @@ function mainCard(x,title,accent,type){
   rect(x+1,67,265,386,18,g,null);
   icon(type,x+24,112,15,accent);txt(title,x+38,112,14,"#d7e3ff",900,210);
 }
-
 function chart(values,x,y,w,h){
   if(values.length<2)return;
   const min=Math.min(...values),max=Math.max(...values),range=max-min||1;
@@ -183,7 +170,6 @@ function chart(values,x,y,w,h){
   ctx.strokeStyle=C.teal;ctx.lineWidth=3;ctx.lineJoin="round";ctx.lineCap="round";
   ctx.shadowColor=C.teal;ctx.shadowBlur=7;ctx.stroke();ctx.shadowBlur=0;
 }
-
 function bars(values,x,y,w,h){
   const a=values.slice(-14);if(!a.length)return;
   const gap=6,bw=Math.min(20,(w-gap*(a.length-1))/a.length);
@@ -200,7 +186,6 @@ function bars(values,x,y,w,h){
   });
   ctx.globalAlpha=1;
 }
-
 function subscriberCard(x,current,hourly,daily){
   mainCard(x,"LUCAN · LIVE SUBSCRIBERS",C.blue,"arrow");
   txt("(LINEAR ESTIMATE)",x+133.5,139,13,"#d7e3ff",900,237,"center");
@@ -216,7 +201,6 @@ function subscriberCard(x,current,hourly,daily){
     at+=widths[i];
   });
 }
-
 function rateCard(x,rate){
   mainCard(x,"SUBS GAINED PER SEC","#2869c9","bolt");
   txt(rate<0?"−":"+ ",x+67,213,64,C.white,900,65,"center");
@@ -224,7 +208,6 @@ function rateCard(x,rate){
   bars(history.rates,x+25,280,217,84);
   txt("LIVE AVERAGE",x+133.5,401,13,C.teal,900,235,"center");
 }
-
 function goalCard(x,remaining,progress){
   mainCard(x,"SUBSCRIBERS REMAINING",C.purple,"flag");
   txt("TO 60,000,000",x+133.5,139,13,"#d7e3ff",900,237,"center");
@@ -235,7 +218,6 @@ function goalCard(x,remaining,progress){
   txt((progress*100).toFixed(1)+"%",x+247,309,10,"#b9caff",900,65,"right");
   txt("SUBSCRIBERS LEFT",x+133.5,401,13,C.teal,900,235,"center");
 }
-
 function sources(a,b){
   rect(8,464,1264,210,19,"#0b1024","#4268a8");
   icon("data",29,485,13,"#d6e3ff");txt("DATA SOURCES",43,485,15,"#d6e3ff",900,250);
@@ -254,7 +236,7 @@ function sources(a,b){
   });
 }
 
-async function renderDashboard(data={},testRaw=false){
+async function renderDashboard(data={},mode="png"){
   const totalStart=process.hrtime.bigint();
   const a=getStats(data.lucan||{}),b=getStats(data.mine||{});
   await Promise.all([preloadAvatar(a.avatar),preloadAvatar(b.avatar)]);
@@ -279,20 +261,37 @@ async function renderDashboard(data={},testRaw=false){
   icon("live",1179,702,9,C.teal);txt("CONNECTED",1192,702,11,C.teal,900,80);
   const drawMs=Number(process.hrtime.bigint()-drawStart)/1e6;
 
-  let rawMs=0,rawBytes=0;
-  if(testRaw){
+  if(mode==="raw"){
     if(typeof canvas.data!=="function")throw new Error("@napi-rs/canvas canvas.data() is unavailable in this installed version");
-    const rawStart=process.hrtime.bigint();
-    const raw=canvas.data();
-    rawMs=Number(process.hrtime.bigint()-rawStart)/1e6;
-    rawBytes=raw.length;
+    const rawStart=process.hrtime.bigint(),raw=canvas.data();
+    const rawMs=Number(process.hrtime.bigint()-rawStart)/1e6;
+    lastTiming={drawMs,encodeMs:0,rawMs,rawBytes:raw.length,totalMs:Number(process.hrtime.bigint()-totalStart)/1e6};
+    return raw;
   }
 
-  const encodeStart=process.hrtime.bigint();
-  const png=canvas.toBuffer("image/png");
+  const encodeStart=process.hrtime.bigint(),png=canvas.toBuffer("image/png");
   const encodeMs=Number(process.hrtime.bigint()-encodeStart)/1e6;
-  lastTiming={drawMs,encodeMs,rawMs,rawBytes,totalMs:Number(process.hrtime.bigint()-totalStart)/1e6};
+  lastTiming={drawMs,encodeMs,rawMs:0,rawBytes:0,totalMs:Number(process.hrtime.bigint()-totalStart)/1e6};
   return png;
+}
+
+function stats(values){
+  const a=[...values].sort((x,y)=>x-y);
+  const avg=values.reduce((s,n)=>s+n,0)/values.length;
+  const p=p=>a[Math.min(a.length-1,Math.ceil(a.length*p)-1)];
+  const r=n=>Number(n.toFixed(2));
+  return{averageMs:r(avg),medianMs:r(p(.5)),p95Ms:r(p(.95)),minMs:r(a[0]),maxMs:r(a.at(-1))};
+}
+
+function pixelProbe(){
+  try{
+    const test=createCanvas(1,1),c=test.getContext("2d");
+    c.fillStyle="#112233";c.fillRect(0,0,1,1);
+    if(typeof test.data!=="function")return{available:false,error:"canvas.data() unavailable"};
+    const p=[...test.data().subarray(0,4)];
+    const format=p.join(",")==="17,34,51,255"?"RGBA":p.join(",")==="51,34,17,255"?"BGRA":"unknown";
+    return{available:true,format,firstPixel:p};
+  }catch(e){return{available:false,error:e.message};}
 }
 
 function attach(app,getData){
@@ -310,38 +309,57 @@ function attach(app,getData){
 
   app.get("/api/renderer/benchmark",async(req,res)=>{
     try{
-      const data=getData(),times=[],drawTimes=[],encodeTimes=[],rawTimes=[];
-      let png,rawBytes=0;
-      for(let i=0;i<3;i++)png=await renderDashboard(data,true);
+      const data=getData(),times=[],drawTimes=[],encodeTimes=[];
+      for(let i=0;i<3;i++)await renderDashboard(data);
       for(let i=0;i<30;i++){
         const start=process.hrtime.bigint();
-        png=await renderDashboard(data,true);
+        await renderDashboard(data);
         times.push(Number(process.hrtime.bigint()-start)/1e6);
         drawTimes.push(lastTiming.drawMs);
         encodeTimes.push(lastTiming.encodeMs);
-        rawTimes.push(lastTiming.rawMs);
-        rawBytes=lastTiming.rawBytes;
       }
-      const stats=a=>{
-        const sorted=[...a].sort((x,y)=>x-y);
-        const avg=a.reduce((sum,n)=>sum+n,0)/a.length;
-        const percentile=p=>sorted[Math.min(sorted.length-1,Math.ceil(sorted.length*p)-1)];
-        const round=n=>Number(n.toFixed(2));
-        return{averageMs:round(avg),medianMs:round(percentile(.5)),p95Ms:round(percentile(.95)),minMs:round(sorted[0]),maxMs:round(sorted.at(-1))};
-      };
-      const total=stats(times),draw=stats(drawTimes),encode=stats(encodeTimes),raw=stats(rawTimes);
+      const total=stats(times);
       res.set("Cache-Control","no-store");
       res.json({
-        renderer:"@napi-rs/canvas",frames:times.length,warmupFrames:3,
+        renderer:"@napi-rs/canvas",mode:"png",frames:times.length,warmupFrames:3,
         ...total,estimatedFPS:Number((1000/total.averageMs).toFixed(2)),
-        draw,raw,encode,
-        rawBytes,rawMiB:Number((rawBytes/1024/1024).toFixed(2)),
-        pngSizeKB:Number((png.length/1024).toFixed(2)),
+        draw:stats(drawTimes),encode:stats(encodeTimes),
+        pngSizeKB:Number((Buffer.byteLength(await renderDashboard(data))/1024).toFixed(2)),
         frameBudgets:{"10fps":100,"15fps":66.67,"30fps":33.33}
       });
     }catch(e){
-      console.error("Benchmark error:",e.stack||e.message);
-      res.status(500).json({error:"Benchmark failed",message:e.message});
+      console.error("PNG benchmark error:",e.stack||e.message);
+      res.status(500).json({error:"PNG benchmark failed",message:e.message});
+    }
+  });
+
+  app.get("/api/renderer/raw-benchmark",async(req,res)=>{
+    try{
+      const data=getData(),times=[],drawTimes=[],rawTimes=[];
+      let rawBytes=0;
+      for(let i=0;i<3;i++)await renderDashboard(data,"raw");
+      for(let i=0;i<30;i++){
+        const start=process.hrtime.bigint();
+        const raw=await renderDashboard(data,"raw");
+        times.push(Number(process.hrtime.bigint()-start)/1e6);
+        drawTimes.push(lastTiming.drawMs);
+        rawTimes.push(lastTiming.rawMs);
+        rawBytes=raw.length;
+      }
+      const total=stats(times);
+      res.set("Cache-Control","no-store");
+      res.json({
+        renderer:"@napi-rs/canvas",mode:"raw-no-png",
+        frames:times.length,warmupFrames:3,
+        ...total,estimatedFPS:Number((1000/total.averageMs).toFixed(2)),
+        draw:stats(drawTimes),raw:stats(rawTimes),
+        rawBytes,rawMiB:Number((rawBytes/1024/1024).toFixed(2)),
+        pixelProbe:pixelProbe(),
+        frameBudgets:{"10fps":100,"15fps":66.67,"30fps":33.33}
+      });
+    }catch(e){
+      console.error("Raw benchmark error:",e.stack||e.message);
+      res.status(500).json({error:"Raw benchmark failed",message:e.message});
     }
   });
 }
