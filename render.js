@@ -12,7 +12,7 @@ for(const w of [400,500,600,700,800,900]){
 
 const fmt=v=>v==null||v===""||!Number.isFinite(Number(v))?"—":Math.round(Number(v)).toLocaleString("en-US");
 const num=(o,...keys)=>{
-  for(const k of keys)if(o?.[k]!=null&&Number.isFinite(Number(o[k])))return Number(o[k]);
+  for(const k of keys)if(o?.[k]!=null&&o[k]!==""&&Number.isFinite(Number(o[k])))return Number(o[k]);
   return null;
 };
 const rect=(x,y,w,h,r=12,fill=C.panel,stroke=C.border)=>{
@@ -30,12 +30,39 @@ const line=(x1,y1,x2,y2,color="#ffffff20",width=1)=>{
 };
 const label=(s,x,y,color=C.muted)=>txt(String(s).toUpperCase(),x,y,10,color,900);
 
+function icon(type,x,y,size,color){
+  ctx.save();ctx.translate(x,y);ctx.strokeStyle=color;ctx.fillStyle=color;
+  ctx.lineWidth=2.2;ctx.lineCap="round";ctx.lineJoin="round";
+  ctx.shadowColor=color;ctx.shadowBlur=7;
+  ctx.beginPath();
+  if(type==="arrow"){
+    ctx.moveTo(-size*.38,size*.3);ctx.lineTo(size*.3,-size*.38);
+    ctx.moveTo(-size*.02,-size*.38);ctx.lineTo(size*.3,-size*.38);ctx.lineTo(size*.3,-size*.06);
+  }else if(type==="bolt"){
+    ctx.moveTo(size*.08,-size*.45);ctx.lineTo(-size*.2,size*.04);
+    ctx.lineTo(size*.04,size*.04);ctx.lineTo(-size*.08,size*.45);
+    ctx.lineTo(size*.28,-size*.12);ctx.lineTo(size*.04,-size*.12);ctx.closePath();ctx.fill();
+  }else if(type==="flag"){
+    ctx.moveTo(-size*.25,size*.43);ctx.lineTo(-size*.25,-size*.45);
+    ctx.moveTo(-size*.22,-size*.4);ctx.lineTo(size*.3,-size*.28);
+    ctx.lineTo(-size*.02,-size*.04);ctx.lineTo(-size*.22,-size*.1);
+  }else if(type==="data"){
+    ctx.rect(-size*.36,-size*.36,size*.72,size*.72);
+    ctx.moveTo(-size*.36,-size*.08);ctx.lineTo(size*.36,-size*.08);
+    ctx.moveTo(-size*.36,size*.18);ctx.lineTo(size*.36,size*.18);
+  }else if(type==="live"){
+    ctx.arc(0,0,size*.25,0,Math.PI*2);ctx.fill();
+  }else if(type==="check"){
+    ctx.moveTo(-size*.35,0);ctx.lineTo(-size*.08,size*.27);ctx.lineTo(size*.38,-size*.3);
+  }
+  ctx.stroke();ctx.restore();
+}
+
 function getStats(d={}){
   const s=d.sctools||{},f=d.freewebtools||{},e=f.estimation||{};
   return{
     name:d.channel?.name||s.name||"Channel",
     handle:d.channel?.handle||"",
-    description:d.channel?.description||"",
     avatar:d.channel?.avatar||s.avatar||f.thumbnail||"",
     linear:num(s,"linearSubscribers","linearCount","estSubscribers","estCount"),
     est:num(s,"estSubscribers","estCount"),
@@ -60,14 +87,11 @@ async function avatar(url,x,y,size,border=C.blue){
   try{
     if(!avatars[url])avatars[url]=loadImage(url);
     const img=await avatars[url];
-    ctx.save();
-    ctx.shadowColor=border;ctx.shadowBlur=15;
+    ctx.save();ctx.shadowColor=border;ctx.shadowBlur=15;
     ctx.beginPath();ctx.arc(x+size/2,y+size/2,size/2,0,Math.PI*2);
-    ctx.fillStyle=C.panel;ctx.fill();
-    ctx.shadowBlur=0;
+    ctx.fillStyle=C.panel;ctx.fill();ctx.shadowBlur=0;
     ctx.beginPath();ctx.arc(x+size/2,y+size/2,size/2-2,0,Math.PI*2);ctx.clip();
-    ctx.drawImage(img,x,y,size,size);
-    ctx.restore();
+    ctx.drawImage(img,x,y,size,size);ctx.restore();
     ctx.beginPath();ctx.arc(x+size/2,y+size/2,size/2-1,0,Math.PI*2);
     ctx.strokeStyle=border;ctx.lineWidth=2;ctx.stroke();
   }catch{}
@@ -82,9 +106,10 @@ function background(){
 
 function header(){
   rect(8,8,1264,48,10,C.panel2,null);
-  txt("LUCAN PEVIDOR",22,32,19,C.white,900,220);
+  txt("LUCAN PEVIDOR",22,32,19,C.white,900,180);
   txt("| ROAD TO 60M",198,32,19,C.purple,900,230);
-  txt("● LIVE",1255,32,15,C.red,900,90,"right");
+  icon("live",1212,32,12,C.red);
+  txt("LIVE",1225,32,15,C.red,900,50);
 }
 
 async function profile(d){
@@ -92,8 +117,8 @@ async function profile(d){
   await avatar(d.avatar,20,74,120);
   txt(d.name,154,102,21,C.white,900,258);
   txt(d.handle||"@LucanPevidor",154,126,11,C.muted,800,255);
-  txt(d.description||"Jesus loves you! I hope every",154,148,12,"#dce5ff",800,258);
-  if(!d.description)txt("video makes you smile!",154,164,12,"#dce5ff",800,258);
+  txt("Jesus loves you! I hope every",154,148,12,"#dce5ff",800,258);
+  txt("video makes you smile!",154,164,12,"#dce5ff",800,258);
   rect(154,176,96,18,7,"#5423c5",null);
   txt("ROAD TO 60M",202,185,9,C.white,900,90,"center");
 }
@@ -121,46 +146,48 @@ async function miniStats(d){
   });
 }
 
-function mainCard(x,title,accent){
+function mainCard(x,title,accent,type){
   rect(x,66,267,388,19,"#0b1024",accent);
   const g=ctx.createLinearGradient(x,66,x+267,454);
   g.addColorStop(0,"#ffffff08");g.addColorStop(1,"#00000000");
   rect(x+1,67,265,386,18,g,null);
-  txt(title,x+133.5,112,15,"#d7e3ff",900,237,"center");
+  icon(type,x+24,112,15,accent);
+  txt(title,x+38,112,14,"#d7e3ff",900,210);
 }
 
 function chart(values,x,y,w,h){
   if(values.length<2)return;
   const min=Math.min(...values),max=Math.max(...values),range=max-min||1;
   const pts=values.map((v,i)=>[x+i/(values.length-1)*w,y+h-(v-min)/range*h]);
+  const first=pts[0],last=pts[pts.length-1];
+  const g=ctx.createLinearGradient(0,y,0,y+h);
+  g.addColorStop(0,"#18e9d944");g.addColorStop(1,"#18e9d900");
+  ctx.beginPath();ctx.moveTo(first[0],y+h);
+  pts.forEach(([px,py])=>ctx.lineTo(px,py));
+  ctx.lineTo(last[0],y+h);ctx.closePath();ctx.fillStyle=g;ctx.fill();
   ctx.beginPath();
   pts.forEach(([px,py],i)=>i?ctx.lineTo(px,py):ctx.moveTo(px,py));
   ctx.strokeStyle=C.teal;ctx.lineWidth=3;ctx.lineJoin="round";ctx.lineCap="round";
   ctx.shadowColor=C.teal;ctx.shadowBlur=7;ctx.stroke();ctx.shadowBlur=0;
-  const first=pts[0],last=pts[pts.length-1];
-  ctx.lineTo(last[0],y+h);ctx.lineTo(first[0],y+h);ctx.closePath();
-  const g=ctx.createLinearGradient(0,y,0,y+h);
-  g.addColorStop(0,"#18e9d944");g.addColorStop(1,"#18e9d900");
-  ctx.fillStyle=g;ctx.fill();
-  ctx.beginPath();pts.forEach(([px,py],i)=>i?ctx.lineTo(px,py):ctx.moveTo(px,py));
-  ctx.strokeStyle=C.teal;ctx.lineWidth=3;ctx.stroke();
 }
 
 function bars(values,x,y,w,h){
   const a=values.slice(-14);if(!a.length)return;
-  const max=Math.max(...a.map(Math.abs),.01),bw=w/a.length;
+  const gap=6,bw=Math.min(20,(w-gap*(a.length-1))/a.length);
+  const total=a.length*bw+(a.length-1)*gap,start=x+(w-total)/2;
+  const max=Math.max(...a.map(Math.abs),.01);
   a.forEach((v,i)=>{
     const bh=Math.max(8,Math.abs(v)/max*h);
     const g=ctx.createLinearGradient(0,y+h-bh,0,y+h);
     g.addColorStop(0,"#a63cff");g.addColorStop(1,"#5420c7");
     ctx.fillStyle=g;ctx.globalAlpha=.65+.35*i/a.length;
-    ctx.beginPath();ctx.roundRect(x+i*bw,y+h-bh,Math.max(4,bw-5),bh,5);ctx.fill();
+    ctx.beginPath();ctx.roundRect(start+i*(bw+gap),y+h-bh,bw,bh,4);ctx.fill();
   });
   ctx.globalAlpha=1;
 }
 
 function subscriberCard(x,current,hourly,daily){
-  mainCard(x,"↗  LUCAN · LIVE SUBSCRIBERS",C.blue);
+  mainCard(x,"LUCAN · LIVE SUBSCRIBERS",C.blue,"arrow");
   txt("(LINEAR ESTIMATE)",x+133.5,139,13,"#d7e3ff",900,237,"center");
   txt(fmt(current),x+133.5,202,55,C.white,900,239,"center");
   chart(history.subs.slice(-18),x+18,250,231,66);
@@ -180,29 +207,30 @@ function subscriberCard(x,current,hourly,daily){
 }
 
 function rateCard(x,rate){
-  mainCard(x,"ϟ  SUBS GAINED PER SEC","#2869c9");
-  const sign=rate<0?"−":"+ ";
-  txt(sign,x+67,213,64,C.white,900,65,"center");
+  mainCard(x,"SUBS GAINED PER SEC","#2869c9","bolt");
+  txt(rate<0?"−":"+ ",x+67,213,64,C.white,900,65,"center");
   txt(Math.abs(rate).toFixed(2),x+168,213,64,C.white,900,175,"center");
   bars(history.rates,x+25,280,217,84);
-  txt("◉ LIVE AVERAGE",x+133.5,401,13,C.teal,900,235,"center");
+  txt("LIVE AVERAGE",x+133.5,401,13,C.teal,900,235,"center");
 }
 
 function goalCard(x,remaining,progress){
-  mainCard(x,"⚑  SUBSCRIBERS REMAINING",C.purple);
+  mainCard(x,"SUBSCRIBERS REMAINING",C.purple,"flag");
   txt("TO 60,000,000",x+133.5,139,13,"#d7e3ff",900,237,"center");
   txt(fmt(remaining),x+133.5,207,55,C.white,900,239,"center");
   rect(x+20,275,227,15,10,"#111f43",null);
   rect(x+20,275,227*progress,15,10,"#8b36ff",null);
   txt("ROAD TO 60M",x+20,309,10,"#b9caff",900,120);
   txt((progress*100).toFixed(1)+"%",x+247,309,10,"#b9caff",900,65,"right");
-  txt("◎ SUBSCRIBERS LEFT",x+133.5,401,13,C.teal,900,235,"center");
+  txt("SUBSCRIBERS LEFT",x+133.5,401,13,C.teal,900,235,"center");
 }
 
 function sources(a,b){
   rect(8,464,1264,210,19,"#0b1024","#4268a8");
-  txt("▤  DATA SOURCES",23,485,15,"#d6e3ff",900,250);
-  txt("● LIVE · BOTH PROVIDERS",1255,485,10,C.teal,900,240,"right");
+  icon("data",29,485,13,"#d6e3ff");
+  txt("DATA SOURCES",43,485,15,"#d6e3ff",900,250);
+  icon("live",1129,485,9,C.teal);
+  txt("LIVE · BOTH PROVIDERS",1141,485,10,C.teal,900,114);
   line(22,503,1258,503);
   const left=22,labelW=130,gap=9,colW=(1236-labelW-gap*4)/4;
   const xs=Array.from({length:4},(_,i)=>left+labelW+gap+i*(colW+gap));
@@ -226,16 +254,16 @@ function sources(a,b){
 
 async function renderDashboard(data={}){
   const a=getStats(data.lucan||{}),b=getStats(data.mine||{});
-  const current=a.linear??a.est;
-  const now=Date.now();
+  const current=a.linear??a.est,now=Date.now();
 
   if(current!=null&&now-history.last>=3000){
     if(history.previous!=null&&history.last){
       const seconds=(now-history.last)/1000;
       if(seconds>0)history.rates.push((current-history.previous)/seconds);
     }
-    if(history.subs.at(-1)!==current)history.subs.push(current);
-    history.previous=current;history.last=now;
+    history.subs.push(current);
+    history.previous=current;
+    history.last=now;
     history.subs=history.subs.slice(-60);
     history.rates=history.rates.slice(-14);
   }
@@ -250,9 +278,11 @@ async function renderDashboard(data={}){
   rateCard(723,rate);
   goalCard(1004,remaining,progress);
   sources(a,b);
+
   line(8,686,1272,686,"#ffffff18");
-  txt("↻ UPDATED "+new Date().toLocaleTimeString(),22,702,11,"#b9caff",900,300);
-  txt("● CONNECTED",1255,702,11,C.teal,900,180,"right");
+  txt("UPDATED "+new Date().toLocaleTimeString(),22,702,11,"#b9caff",900,300);
+  icon("live",1179,702,9,C.teal);
+  txt("CONNECTED",1192,702,11,C.teal,900,80);
   return canvas.toBuffer("image/png");
 }
 
