@@ -1,8 +1,8 @@
 
 {
-  "name": "the-rise-of-celine-live",
+  "name": "lucan-live-tracker",
   "version": "1.0.0",
-  "description": "",
+  "description": "Live YouTube subscriber tracker and Canvas renderer",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -12,7 +12,8 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "express": "^5.3.0",
-    "@napi-rs/canvas": "^0.1.80"
+    "@fontsource/inter": "^5.2.6",
+    "@napi-rs/canvas": "^0.1.80",
+    "express": "^5.3.0"
   }
 }
