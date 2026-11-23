@@ -7,13 +7,14 @@ const canvas=createCanvas(W,H),ctx=canvas.getContext("2d");
 const bgCanvas=createCanvas(W,H),bgCtx=bgCanvas.getContext("2d");
 const history={subs:[],rates:[],last:0,previous:null};
 const avatars={},loadedAvatars={},textSizes=new Map(),gradients=new Map();
+const numberFormat=new Intl.NumberFormat("en-US");
 let lastTiming={drawMs:0,encodeMs:0,rawMs:0,rawBytes:0,totalMs:0};
 
 for(const w of [400,500,600,700,800,900]){
   try{GlobalFonts.registerFromPath(require.resolve(`@fontsource/inter/files/inter-latin-${w}-normal.woff2`),"Inter");}catch{}
 }
 
-const fmt=v=>v==null||v===""||!Number.isFinite(Number(v))?"—":Math.round(Number(v)).toLocaleString("en-US");
+const fmt=v=>v==null||v===""||!Number.isFinite(Number(v))?"—":numberFormat.format(Math.round(Number(v)));
 const num=(o,...keys)=>{
   for(const k of keys)if(o?.[k]!=null&&o[k]!==""&&Number.isFinite(Number(o[k])))return Number(o[k]);
   return null;
@@ -25,10 +26,10 @@ const rect=(x,y,w,h,r=12,fill=C.panel,stroke=C.border)=>{
 const txt=(v,x,y,size=16,color=C.white,weight=700,max=Infinity,align="left")=>{
   const s=String(v??"—"),key=`${weight}|${size}|${max}|${s}`;
   let f=textSizes.get(key);
-  if(f==null){
+  if(f===undefined){
     f=size;ctx.font=`${weight} ${f}px Inter,Arial,sans-serif`;
     while(ctx.measureText(s).width>max&&f>9){f--;ctx.font=`${weight} ${f}px Inter,Arial,sans-serif`;}
-    if(textSizes.size>12000)textSizes.clear();
+    if(textSizes.size>=6000)textSizes.clear();
     textSizes.set(key,f);
   }
   ctx.font=`${weight} ${f}px Inter,Arial,sans-serif`;
@@ -89,7 +90,7 @@ function getStats(d={}){
 }
 
 function preloadAvatar(url){
-  if(!url||avatars[url])return avatars[url];
+  if(!url||avatars[url])return null;
   avatars[url]=loadImage(url).then(img=>(loadedAvatars[url]=img)).catch(()=>null);
   return avatars[url];
 }
@@ -155,42 +156,44 @@ function mainCard(x,title,accent,type){
   icon(type,x+24,112,15,accent);txt(title,x+38,112,14,"#d7e3ff",900,210);
 }
 function chart(values,x,y,w,h){
-  if(values.length<2)return;
-  const min=Math.min(...values),max=Math.max(...values),range=max-min||1;
-  const pts=values.map((v,i)=>[x+i/(values.length-1)*w,y+h-(v-min)/range*h]);
-  const first=pts[0],last=pts[pts.length-1];
+  const n=values.length;if(n<2)return;
+  let min=Infinity,max=-Infinity;
+  for(let i=0;i<n;i++){const v=values[i];if(v<min)min=v;if(v>max)max=v;}
+  const range=max-min||1;
+  const px=i=>x+i/(n-1)*w,py=v=>y+h-(v-min)/range*h;
   const g=gradient("chart-fill",()=>{
     const v=ctx.createLinearGradient(0,y,0,y+h);
     v.addColorStop(0,"#18e9d944");v.addColorStop(1,"#18e9d900");return v;
   });
-  ctx.beginPath();ctx.moveTo(first[0],y+h);
-  pts.forEach(([px,py])=>ctx.lineTo(px,py));
-  ctx.lineTo(last[0],y+h);ctx.closePath();ctx.fillStyle=g;ctx.fill();
-  ctx.beginPath();pts.forEach(([px,py],i)=>i?ctx.lineTo(px,py):ctx.moveTo(px,py));
+  ctx.beginPath();ctx.moveTo(x,y+h);
+  for(let i=0;i<n;i++)ctx.lineTo(px(i),py(values[i]));
+  ctx.lineTo(x+w,y+h);ctx.closePath();ctx.fillStyle=g;ctx.fill();
+  ctx.beginPath();
+  for(let i=0;i<n;i++){const xx=px(i),yy=py(values[i]);if(i)ctx.lineTo(xx,yy);else ctx.moveTo(xx,yy);}
   ctx.strokeStyle=C.teal;ctx.lineWidth=3;ctx.lineJoin="round";ctx.lineCap="round";
   ctx.shadowColor=C.teal;ctx.shadowBlur=7;ctx.stroke();ctx.shadowBlur=0;
 }
 function bars(values,x,y,w,h){
-  const a=values.slice(-14);if(!a.length)return;
-  const gap=6,bw=Math.min(20,(w-gap*(a.length-1))/a.length);
-  const total=a.length*bw+(a.length-1)*gap,start=x+(w-total)/2;
-  const max=Math.max(...a.map(Math.abs),.01);
-  a.forEach((v,i)=>{
-    const bh=Math.max(8,Math.abs(v)/max*h);
+  const n=Math.min(values.length,14);if(!n)return;
+  const gap=6,bw=Math.min(20,(w-gap*(n-1))/n),total=n*bw+(n-1)*gap,start=x+(w-total)/2;
+  let max=.01;
+  for(let i=values.length-n;i<values.length;i++)max=Math.max(max,Math.abs(values[i]));
+  for(let i=0;i<n;i++){
+    const value=values[values.length-n+i],bh=Math.max(8,Math.abs(value)/max*h);
     const g=gradient(`bar-${Math.round(bh)}`,()=>{
       const v=ctx.createLinearGradient(0,y+h-bh,0,y+h);
       v.addColorStop(0,"#a63cff");v.addColorStop(1,"#5420c7");return v;
     });
-    ctx.fillStyle=g;ctx.globalAlpha=.65+.35*i/a.length;
+    ctx.fillStyle=g;ctx.globalAlpha=.65+.35*i/n;
     ctx.beginPath();ctx.roundRect(start+i*(bw+gap),y+h-bh,bw,bh,4);ctx.fill();
-  });
+  }
   ctx.globalAlpha=1;
 }
 function subscriberCard(x,current,hourly,daily){
   mainCard(x,"LUCAN · LIVE SUBSCRIBERS",C.blue,"arrow");
   txt("(LINEAR ESTIMATE)",x+133.5,139,13,"#d7e3ff",900,237,"center");
   txt(fmt(current),x+133.5,202,55,C.white,900,239,"center");
-  chart(history.subs.slice(-18),x+18,250,231,66);
+  chart(history.subs,x+18,250,231,66);
   line(x+15,330,x+252,330);
   const cols=[["LINEAR ESTIMATE",fmt(current)],["HOURLY GAIN",fmt(hourly)],["DAILY GAIN",fmt(daily)]];
   const widths=[105,77,85];let at=x+8;
@@ -224,22 +227,27 @@ function sources(a,b){
   icon("live",1129,485,9,C.teal);txt("LIVE · BOTH PROVIDERS",1141,485,10,C.teal,900,114);
   line(22,503,1258,503);
   const left=22,labelW=130,gap=9,colW=(1236-labelW-gap*4)/4;
-  const xs=Array.from({length:4},(_,i)=>left+labelW+gap+i*(colW+gap));
+  const xs=[left+labelW+gap,left+labelW+gap*2+colW,left+labelW+gap*3+colW*2,left+labelW+gap*4+colW*3];
   ["SCTools Est.","SCTools API","FreeWebTools Est.","FreeWebTools API"].forEach((v,i)=>txt(v,xs[i]+colW/2,522,12,"#d6e3ff",900,colW,"center"));
   const rows=[["SUBSCRIBERS",a.est,a.api,b.freeEst,b.freeApi],["TOTAL VIEWS",a.views,a.apiViews,b.freeEstViews,b.freeApiViews],["VIDEOS",a.videos,a.apiVideos,b.freeEstVideos,b.freeApiVideos]];
   rows.forEach((r,i)=>{
     const y=536+i*43;txt(r[0],left,y+17,11,"#799bff",900,labelW);
-    r.slice(1).forEach((v,j)=>{
+    for(let j=0;j<4;j++){
+      const v=r[j+1];
       rect(xs[j],y,colW,36,7,"#080d1b","#26375b");
       txt(fmt(v),xs[j]+11,y+18,17,j===0||j===2?C.teal:"#c4d1ff",900,colW-20);
-    });
+    }
   });
 }
 
 async function renderDashboard(data={},mode="png"){
   const totalStart=process.hrtime.bigint();
   const a=getStats(data.lucan||{}),b=getStats(data.mine||{});
-  await Promise.all([preloadAvatar(a.avatar),preloadAvatar(b.avatar)]);
+  const jobs=[];
+  if(a.avatar&&!loadedAvatars[a.avatar]&&!avatars[a.avatar])jobs.push(preloadAvatar(a.avatar));
+  if(b.avatar&&!loadedAvatars[b.avatar]&&!avatars[b.avatar])jobs.push(preloadAvatar(b.avatar));
+  if(jobs.length)await Promise.all(jobs);
+
   const current=a.linear??a.est,now=Date.now();
   if(current!=null&&now-history.last>=3000){
     if(history.previous!=null&&history.last){
@@ -247,20 +255,22 @@ async function renderDashboard(data={},mode="png"){
       if(seconds>0)history.rates.push((current-history.previous)/seconds);
     }
     history.subs.push(current);history.previous=current;history.last=now;
-    history.subs=history.subs.slice(-60);history.rates=history.rates.slice(-14);
+    if(history.subs.length>60)history.subs.shift();
+    if(history.rates.length>14)history.rates.shift();
   }
-  const rate=history.rates.at(-1)??0;
+  const rate=history.rates.length?history.rates[history.rates.length-1]:0;
   const remaining=current==null?null:Math.max(0,60000000-current);
   const progress=current==null?0:Math.min(1,current/60000000);
   const drawStart=process.hrtime.bigint();
+
   background();header();profile(a);miniStats(b);
   subscriberCard(442,current,a.hourly,a.daily);
   rateCard(723,rate);goalCard(1004,remaining,progress);sources(a,b);
   line(8,686,1272,686,"#ffffff18");
   txt("UPDATED "+new Date().toLocaleTimeString(),22,702,11,"#b9caff",900,300);
   icon("live",1179,702,9,C.teal);txt("CONNECTED",1192,702,11,C.teal,900,80);
-  const drawMs=Number(process.hrtime.bigint()-drawStart)/1e6;
 
+  const drawMs=Number(process.hrtime.bigint()-drawStart)/1e6;
   if(mode==="raw"){
     if(typeof canvas.data!=="function")throw new Error("@napi-rs/canvas canvas.data() is unavailable in this installed version");
     const rawStart=process.hrtime.bigint(),raw=canvas.data();
@@ -276,11 +286,11 @@ async function renderDashboard(data={},mode="png"){
 }
 
 function stats(values){
-  const a=[...values].sort((x,y)=>x-y);
-  const avg=values.reduce((s,n)=>s+n,0)/values.length;
+  if(!values.length)return{averageMs:0,medianMs:0,p95Ms:0,minMs:0,maxMs:0};
+  const a=[...values].sort((x,y)=>x-y),avg=values.reduce((s,n)=>s+n,0)/values.length;
   const p=p=>a[Math.min(a.length-1,Math.ceil(a.length*p)-1)];
   const r=n=>Number(n.toFixed(2));
-  return{averageMs:r(avg),medianMs:r(p(.5)),p95Ms:r(p(.95)),minMs:r(a[0]),maxMs:r(a.at(-1))};
+  return{averageMs:r(avg),medianMs:r(p(.5)),p95Ms:r(p(.95)),minMs:r(a[0]),maxMs:r(a[a.length-1])};
 }
 
 function pixelProbe(){
@@ -315,8 +325,7 @@ function attach(app,getData){
         const start=process.hrtime.bigint();
         await renderDashboard(data);
         times.push(Number(process.hrtime.bigint()-start)/1e6);
-        drawTimes.push(lastTiming.drawMs);
-        encodeTimes.push(lastTiming.encodeMs);
+        drawTimes.push(lastTiming.drawMs);encodeTimes.push(lastTiming.encodeMs);
       }
       const total=stats(times);
       res.set("Cache-Control","no-store");
@@ -339,11 +348,9 @@ function attach(app,getData){
       let rawBytes=0;
       for(let i=0;i<3;i++)await renderDashboard(data,"raw");
       for(let i=0;i<30;i++){
-        const start=process.hrtime.bigint();
-        const raw=await renderDashboard(data,"raw");
+        const start=process.hrtime.bigint(),raw=await renderDashboard(data,"raw");
         times.push(Number(process.hrtime.bigint()-start)/1e6);
-        drawTimes.push(lastTiming.drawMs);
-        rawTimes.push(lastTiming.rawMs);
+        drawTimes.push(lastTiming.drawMs);rawTimes.push(lastTiming.rawMs);
         rawBytes=raw.length;
       }
       const total=stats(times);
