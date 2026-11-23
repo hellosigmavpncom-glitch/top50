@@ -33,8 +33,7 @@ const label=(s,x,y,color=C.muted)=>txt(String(s).toUpperCase(),x,y,10,color,900)
 function icon(type,x,y,size,color){
   ctx.save();ctx.translate(x,y);ctx.strokeStyle=color;ctx.fillStyle=color;
   ctx.lineWidth=2.2;ctx.lineCap="round";ctx.lineJoin="round";
-  ctx.shadowColor=color;ctx.shadowBlur=7;
-  ctx.beginPath();
+  ctx.shadowColor=color;ctx.shadowBlur=7;ctx.beginPath();
   if(type==="arrow"){
     ctx.moveTo(-size*.38,size*.3);ctx.lineTo(size*.3,-size*.38);
     ctx.moveTo(-size*.02,-size*.38);ctx.lineTo(size*.3,-size*.38);ctx.lineTo(size*.3,-size*.06);
@@ -108,8 +107,7 @@ function header(){
   rect(8,8,1264,48,10,C.panel2,null);
   txt("LUCAN PEVIDOR",22,32,19,C.white,900,180);
   txt("| ROAD TO 60M",198,32,19,C.purple,900,230);
-  icon("live",1212,32,12,C.red);
-  txt("LIVE",1225,32,15,C.red,900,50);
+  icon("live",1212,32,12,C.red);txt("LIVE",1225,32,15,C.red,900,50);
 }
 
 async function profile(d){
@@ -130,19 +128,13 @@ async function miniStats(d){
   txt(d.name||"VYStats",326,246,15,C.white,900,90);
   txt(d.handle||"@vystatsyt",326,268,10,C.muted,800,90);
   line(22,294,414,294);
-  const cols=[
-    ["SUBSCRIBERS",d.freeEst,d.freeApi],
-    ["VIEWS",d.freeEstViews,d.freeApiViews],
-    ["VIDEOS",d.freeEstVideos,d.freeApiVideos]
-  ];
+  const cols=[["SUBSCRIBERS",d.freeEst,d.freeApi],["VIEWS",d.freeEstViews,d.freeApiViews],["VIDEOS",d.freeEstVideos,d.freeApiVideos]];
   cols.forEach((c,i)=>{
     const x=22+i*132;
     if(i)line(x-8,306,x-8,440);
     txt(c[0],x+58,324,10,"#b8caff",900,116,"center");
-    txt("EST.",x,354,10,C.muted,900);
-    txt(fmt(c[1]),x+116,354,15,C.white,900,100,"right");
-    txt("API",x,389,10,C.muted,900);
-    txt(fmt(c[2]),x+116,389,15,C.white,900,100,"right");
+    txt("EST.",x,354,10,C.muted,900);txt(fmt(c[1]),x+116,354,15,C.white,900,100,"right");
+    txt("API",x,389,10,C.muted,900);txt(fmt(c[2]),x+116,389,15,C.white,900,100,"right");
   });
 }
 
@@ -151,8 +143,7 @@ function mainCard(x,title,accent,type){
   const g=ctx.createLinearGradient(x,66,x+267,454);
   g.addColorStop(0,"#ffffff08");g.addColorStop(1,"#00000000");
   rect(x+1,67,265,386,18,g,null);
-  icon(type,x+24,112,15,accent);
-  txt(title,x+38,112,14,"#d7e3ff",900,210);
+  icon(type,x+24,112,15,accent);txt(title,x+38,112,14,"#d7e3ff",900,210);
 }
 
 function chart(values,x,y,w,h){
@@ -165,8 +156,7 @@ function chart(values,x,y,w,h){
   ctx.beginPath();ctx.moveTo(first[0],y+h);
   pts.forEach(([px,py])=>ctx.lineTo(px,py));
   ctx.lineTo(last[0],y+h);ctx.closePath();ctx.fillStyle=g;ctx.fill();
-  ctx.beginPath();
-  pts.forEach(([px,py],i)=>i?ctx.lineTo(px,py):ctx.moveTo(px,py));
+  ctx.beginPath();pts.forEach(([px,py],i)=>i?ctx.lineTo(px,py):ctx.moveTo(px,py));
   ctx.strokeStyle=C.teal;ctx.lineWidth=3;ctx.lineJoin="round";ctx.lineCap="round";
   ctx.shadowColor=C.teal;ctx.shadowBlur=7;ctx.stroke();ctx.shadowBlur=0;
 }
@@ -192,11 +182,7 @@ function subscriberCard(x,current,hourly,daily){
   txt(fmt(current),x+133.5,202,55,C.white,900,239,"center");
   chart(history.subs.slice(-18),x+18,250,231,66);
   line(x+15,330,x+252,330);
-  const cols=[
-    ["LINEAR ESTIMATE",fmt(current)],
-    ["HOURLY GAIN",fmt(hourly)],
-    ["DAILY GAIN",fmt(daily)]
-  ];
+  const cols=[["LINEAR ESTIMATE",fmt(current)],["HOURLY GAIN",fmt(hourly)],["DAILY GAIN",fmt(daily)]];
   const widths=[105,77,85];let at=x+8;
   cols.forEach((c,i)=>{
     if(i)line(at-4,343,at-4,438);
@@ -227,24 +213,15 @@ function goalCard(x,remaining,progress){
 
 function sources(a,b){
   rect(8,464,1264,210,19,"#0b1024","#4268a8");
-  icon("data",29,485,13,"#d6e3ff");
-  txt("DATA SOURCES",43,485,15,"#d6e3ff",900,250);
-  icon("live",1129,485,9,C.teal);
-  txt("LIVE · BOTH PROVIDERS",1141,485,10,C.teal,900,114);
+  icon("data",29,485,13,"#d6e3ff");txt("DATA SOURCES",43,485,15,"#d6e3ff",900,250);
+  icon("live",1129,485,9,C.teal);txt("LIVE · BOTH PROVIDERS",1141,485,10,C.teal,900,114);
   line(22,503,1258,503);
   const left=22,labelW=130,gap=9,colW=(1236-labelW-gap*4)/4;
   const xs=Array.from({length:4},(_,i)=>left+labelW+gap+i*(colW+gap));
-  ["SCTools Est.","SCTools API","FreeWebTools Est.","FreeWebTools API"].forEach((v,i)=>
-    txt(v,xs[i]+colW/2,522,12,"#d6e3ff",900,colW,"center")
-  );
-  const rows=[
-    ["SUBSCRIBERS",a.est,a.api,b.freeEst,b.freeApi],
-    ["TOTAL VIEWS",a.views,a.apiViews,b.freeEstViews,b.freeApiViews],
-    ["VIDEOS",a.videos,a.apiVideos,b.freeEstVideos,b.freeApiVideos]
-  ];
+  ["SCTools Est.","SCTools API","FreeWebTools Est.","FreeWebTools API"].forEach((v,i)=>txt(v,xs[i]+colW/2,522,12,"#d6e3ff",900,colW,"center"));
+  const rows=[["SUBSCRIBERS",a.est,a.api,b.freeEst,b.freeApi],["TOTAL VIEWS",a.views,a.apiViews,b.freeEstViews,b.freeApiViews],["VIDEOS",a.videos,a.apiVideos,b.freeEstVideos,b.freeApiVideos]];
   rows.forEach((r,i)=>{
-    const y=536+i*43;
-    txt(r[0],left,y+17,11,"#799bff",900,labelW);
+    const y=536+i*43;txt(r[0],left,y+17,11,"#799bff",900,labelW);
     r.slice(1).forEach((v,j)=>{
       rect(xs[j],y,colW,36,7,"#080d1b","#26375b");
       txt(fmt(v),xs[j]+11,y+18,17,j===0||j===2?C.teal:"#c4d1ff",900,colW-20);
@@ -261,11 +238,8 @@ async function renderDashboard(data={}){
       const seconds=(now-history.last)/1000;
       if(seconds>0)history.rates.push((current-history.previous)/seconds);
     }
-    history.subs.push(current);
-    history.previous=current;
-    history.last=now;
-    history.subs=history.subs.slice(-60);
-    history.rates=history.rates.slice(-14);
+    history.subs.push(current);history.previous=current;history.last=now;
+    history.subs=history.subs.slice(-60);history.rates=history.rates.slice(-14);
   }
 
   const rate=history.rates.at(-1)??0;
@@ -275,14 +249,10 @@ async function renderDashboard(data={}){
   background();header();
   await profile(a);await miniStats(b);
   subscriberCard(442,current,a.hourly,a.daily);
-  rateCard(723,rate);
-  goalCard(1004,remaining,progress);
-  sources(a,b);
-
+  rateCard(723,rate);goalCard(1004,remaining,progress);sources(a,b);
   line(8,686,1272,686,"#ffffff18");
   txt("UPDATED "+new Date().toLocaleTimeString(),22,702,11,"#b9caff",900,300);
-  icon("live",1179,702,9,C.teal);
-  txt("CONNECTED",1192,702,11,C.teal,900,80);
+  icon("live",1179,702,9,C.teal);txt("CONNECTED",1192,702,11,C.teal,900,80);
   return canvas.toBuffer("image/png");
 }
 
@@ -296,6 +266,36 @@ function attach(app,getData){
     }catch(e){
       console.error("Renderer error:",e.stack||e.message);
       res.status(500).send("Renderer failed");
+    }
+  });
+
+  // Actual renderer benchmark: 3 warm-ups + 30 measured frames
+  app.get("/api/renderer/benchmark",async(req,res)=>{
+    try{
+      const data=getData(),times=[];
+      let png;
+      for(let i=0;i<3;i++)png=await renderDashboard(data);
+      for(let i=0;i<30;i++){
+        const start=process.hrtime.bigint();
+        png=await renderDashboard(data);
+        times.push(Number(process.hrtime.bigint()-start)/1e6);
+      }
+      times.sort((a,b)=>a-b);
+      const avg=times.reduce((sum,n)=>sum+n,0)/times.length;
+      const percentile=p=>times[Math.min(times.length-1,Math.ceil(times.length*p)-1)];
+      const round=n=>Number(n.toFixed(2));
+      res.set("Cache-Control","no-store");
+      res.json({
+        renderer:"@napi-rs/canvas",frames:times.length,warmupFrames:3,
+        averageMs:round(avg),medianMs:round(percentile(.5)),
+        p95Ms:round(percentile(.95)),minMs:round(times[0]),
+        maxMs:round(times[times.length-1]),estimatedFPS:round(1000/avg),
+        pngSizeKB:round(png.length/1024),
+        frameBudgets:{"10fps":100,"15fps":66.67,"30fps":33.33}
+      });
+    }catch(e){
+      console.error("Benchmark error:",e.stack||e.message);
+      res.status(500).json({error:"Benchmark failed",message:e.message});
     }
   });
 }
