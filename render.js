@@ -4,7 +4,10 @@ const {createCanvas,loadImage,GlobalFonts}=require("@napi-rs/canvas");
 const W=1280,H=720;
 const C={bg:"#050713",panel:"#0b1024",panel2:"#101832",border:"#273a68",blue:"#27a9ff",purple:"#8b36ff",teal:"#25e5c0",white:"#f5f7ff",muted:"#aab8df",red:"#ff4267"};
 const canvas=createCanvas(W,H),ctx=canvas.getContext("2d");
-const history={subs:[],rates:[],last:0,previous:null},avatars={};
+const bgCanvas=createCanvas(W,H),bgCtx=bgCanvas.getContext("2d");
+const history={subs:[],rates:[],last:0,previous:null};
+const avatars={},loadedAvatars={},textSizes=new Map(),gradients=new Map();
+let lastTiming={drawMs:0,encodeMs:0,totalMs:0};
 
 for(const w of [400,500,600,700,800,900]){
   try{GlobalFonts.registerFromPath(require.resolve(`@fontsource/inter/files/inter-latin-${w}-normal.woff2`),"Inter");}catch{}
@@ -20,15 +23,25 @@ const rect=(x,y,w,h,r=12,fill=C.panel,stroke=C.border)=>{
   if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke();}
 };
 const txt=(v,x,y,size=16,color=C.white,weight=700,max=Infinity,align="left")=>{
-  const s=String(v??"—");let f=size;
+  const s=String(v??"—"),key=`${weight}|${size}|${max}|${s}`;
+  let f=textSizes.get(key);
+  if(f==null){
+    f=size;ctx.font=`${weight} ${f}px Inter,Arial,sans-serif`;
+    while(ctx.measureText(s).width>max&&f>9){f--;ctx.font=`${weight} ${f}px Inter,Arial,sans-serif`;}
+    if(textSizes.size>12000)textSizes.clear();
+    textSizes.set(key,f);
+  }
   ctx.font=`${weight} ${f}px Inter,Arial,sans-serif`;
-  while(ctx.measureText(s).width>max&&f>9){f--;ctx.font=`${weight} ${f}px Inter,Arial,sans-serif`;}
   ctx.fillStyle=color;ctx.textAlign=align;ctx.textBaseline="middle";ctx.fillText(s,x,y);
 };
 const line=(x1,y1,x2,y2,color="#ffffff20",width=1)=>{
   ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();
 };
 const label=(s,x,y,color=C.muted)=>txt(String(s).toUpperCase(),x,y,10,color,900);
+const gradient=(key,create)=>{
+  if(!gradients.has(key))gradients.set(key,create());
+  return gradients.get(key);
+};
 
 function icon(type,x,y,size,color){
   ctx.save();ctx.translate(x,y);ctx.strokeStyle=color;ctx.fillStyle=color;
@@ -81,27 +94,33 @@ function getStats(d={}){
   };
 }
 
-async function avatar(url,x,y,size,border=C.blue){
-  if(!url)return;
-  try{
-    if(!avatars[url])avatars[url]=loadImage(url);
-    const img=await avatars[url];
-    ctx.save();ctx.shadowColor=border;ctx.shadowBlur=15;
-    ctx.beginPath();ctx.arc(x+size/2,y+size/2,size/2,0,Math.PI*2);
-    ctx.fillStyle=C.panel;ctx.fill();ctx.shadowBlur=0;
-    ctx.beginPath();ctx.arc(x+size/2,y+size/2,size/2-2,0,Math.PI*2);ctx.clip();
-    ctx.drawImage(img,x,y,size,size);ctx.restore();
-    ctx.beginPath();ctx.arc(x+size/2,y+size/2,size/2-1,0,Math.PI*2);
-    ctx.strokeStyle=border;ctx.lineWidth=2;ctx.stroke();
-  }catch{}
+function preloadAvatar(url){
+  if(!url||avatars[url])return avatars[url];
+  avatars[url]=loadImage(url).then(img=>(loadedAvatars[url]=img)).catch(()=>null);
+  return avatars[url];
+}
+function avatar(url,x,y,size,border=C.blue){
+  const img=loadedAvatars[url];
+  if(!img)return;
+  ctx.save();ctx.shadowColor=border;ctx.shadowBlur=15;
+  ctx.beginPath();ctx.arc(x+size/2,y+size/2,size/2,0,Math.PI*2);
+  ctx.fillStyle=C.panel;ctx.fill();ctx.shadowBlur=0;
+  ctx.beginPath();ctx.arc(x+size/2,y+size/2,size/2-2,0,Math.PI*2);ctx.clip();
+  ctx.drawImage(img,x,y,size,size);ctx.restore();
+  ctx.beginPath();ctx.arc(x+size/2,y+size/2,size/2-1,0,Math.PI*2);
+  ctx.strokeStyle=border;ctx.lineWidth=2;ctx.stroke();
 }
 
 function background(){
-  ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
-  const g=ctx.createRadialGradient(W/2,-80,10,W/2,H,850);
-  g.addColorStop(0,"#19265a");g.addColorStop(.5,"#080b1b");g.addColorStop(1,"#040610");
-  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  ctx.drawImage(bgCanvas,0,0);
 }
+function buildBackground(){
+  bgCtx.fillStyle=C.bg;bgCtx.fillRect(0,0,W,H);
+  const g=bgCtx.createRadialGradient(W/2,-80,10,W/2,H,850);
+  g.addColorStop(0,"#19265a");g.addColorStop(.5,"#080b1b");g.addColorStop(1,"#040610");
+  bgCtx.fillStyle=g;bgCtx.fillRect(0,0,W,H);
+}
+buildBackground();
 
 function header(){
   rect(8,8,1264,48,10,C.panel2,null);
@@ -110,9 +129,9 @@ function header(){
   icon("live",1212,32,12,C.red);txt("LIVE",1225,32,15,C.red,900,50);
 }
 
-async function profile(d){
+function profile(d){
   rect(8,66,420,136,19,"#0b1024","#743dff");
-  await avatar(d.avatar,20,74,120);
+  avatar(d.avatar,20,74,120);
   txt(d.name,154,102,21,C.white,900,258);
   txt(d.handle||"@LucanPevidor",154,126,11,C.muted,800,255);
   txt("Jesus loves you! I hope every",154,148,12,"#dce5ff",800,258);
@@ -121,10 +140,10 @@ async function profile(d){
   txt("ROAD TO 60M",202,185,9,C.white,900,90,"center");
 }
 
-async function miniStats(d){
+function miniStats(d){
   rect(8,214,420,240,19,"#0b1024","#245caa");
   txt("MY CHANNEL",22,242,15,"#d7e5ff",900,120);
-  await avatar(d.avatar,248,226,66);
+  avatar(d.avatar,248,226,66);
   txt(d.name||"VYStats",326,246,15,C.white,900,90);
   txt(d.handle||"@vystatsyt",326,268,10,C.muted,800,90);
   line(22,294,414,294);
@@ -140,8 +159,10 @@ async function miniStats(d){
 
 function mainCard(x,title,accent,type){
   rect(x,66,267,388,19,"#0b1024",accent);
-  const g=ctx.createLinearGradient(x,66,x+267,454);
-  g.addColorStop(0,"#ffffff08");g.addColorStop(1,"#00000000");
+  const g=gradient(`card-${x}`,()=> {
+    const v=ctx.createLinearGradient(x,66,x+267,454);
+    v.addColorStop(0,"#ffffff08");v.addColorStop(1,"#00000000");return v;
+  });
   rect(x+1,67,265,386,18,g,null);
   icon(type,x+24,112,15,accent);txt(title,x+38,112,14,"#d7e3ff",900,210);
 }
@@ -151,8 +172,10 @@ function chart(values,x,y,w,h){
   const min=Math.min(...values),max=Math.max(...values),range=max-min||1;
   const pts=values.map((v,i)=>[x+i/(values.length-1)*w,y+h-(v-min)/range*h]);
   const first=pts[0],last=pts[pts.length-1];
-  const g=ctx.createLinearGradient(0,y,0,y+h);
-  g.addColorStop(0,"#18e9d944");g.addColorStop(1,"#18e9d900");
+  const g=gradient("chart-fill",()=>{
+    const v=ctx.createLinearGradient(0,y,0,y+h);
+    v.addColorStop(0,"#18e9d944");v.addColorStop(1,"#18e9d900");return v;
+  });
   ctx.beginPath();ctx.moveTo(first[0],y+h);
   pts.forEach(([px,py])=>ctx.lineTo(px,py));
   ctx.lineTo(last[0],y+h);ctx.closePath();ctx.fillStyle=g;ctx.fill();
@@ -168,8 +191,10 @@ function bars(values,x,y,w,h){
   const max=Math.max(...a.map(Math.abs),.01);
   a.forEach((v,i)=>{
     const bh=Math.max(8,Math.abs(v)/max*h);
-    const g=ctx.createLinearGradient(0,y+h-bh,0,y+h);
-    g.addColorStop(0,"#a63cff");g.addColorStop(1,"#5420c7");
+    const g=gradient(`bar-${Math.round(bh)}`,()=>{
+      const v=ctx.createLinearGradient(0,y+h-bh,0,y+h);
+      v.addColorStop(0,"#a63cff");v.addColorStop(1,"#5420c7");return v;
+    });
     ctx.fillStyle=g;ctx.globalAlpha=.65+.35*i/a.length;
     ctx.beginPath();ctx.roundRect(start+i*(bw+gap),y+h-bh,bw,bh,4);ctx.fill();
   });
@@ -230,9 +255,10 @@ function sources(a,b){
 }
 
 async function renderDashboard(data={}){
+  const totalStart=process.hrtime.bigint();
   const a=getStats(data.lucan||{}),b=getStats(data.mine||{});
+  await Promise.all([preloadAvatar(a.avatar),preloadAvatar(b.avatar)]);
   const current=a.linear??a.est,now=Date.now();
-
   if(current!=null&&now-history.last>=3000){
     if(history.previous!=null&&history.last){
       const seconds=(now-history.last)/1000;
@@ -241,19 +267,22 @@ async function renderDashboard(data={}){
     history.subs.push(current);history.previous=current;history.last=now;
     history.subs=history.subs.slice(-60);history.rates=history.rates.slice(-14);
   }
-
   const rate=history.rates.at(-1)??0;
   const remaining=current==null?null:Math.max(0,60000000-current);
   const progress=current==null?0:Math.min(1,current/60000000);
-
-  background();header();
-  await profile(a);await miniStats(b);
+  const drawStart=process.hrtime.bigint();
+  background();header();profile(a);miniStats(b);
   subscriberCard(442,current,a.hourly,a.daily);
   rateCard(723,rate);goalCard(1004,remaining,progress);sources(a,b);
   line(8,686,1272,686,"#ffffff18");
   txt("UPDATED "+new Date().toLocaleTimeString(),22,702,11,"#b9caff",900,300);
   icon("live",1179,702,9,C.teal);txt("CONNECTED",1192,702,11,C.teal,900,80);
-  return canvas.toBuffer("image/png");
+  const drawMs=Number(process.hrtime.bigint()-drawStart)/1e6;
+  const encodeStart=process.hrtime.bigint();
+  const png=canvas.toBuffer("image/png");
+  const encodeMs=Number(process.hrtime.bigint()-encodeStart)/1e6;
+  lastTiming={drawMs,encodeMs,totalMs:Number(process.hrtime.bigint()-totalStart)/1e6};
+  return png;
 }
 
 function attach(app,getData){
@@ -269,28 +298,31 @@ function attach(app,getData){
     }
   });
 
-  // Actual renderer benchmark: 3 warm-ups + 30 measured frames
   app.get("/api/renderer/benchmark",async(req,res)=>{
     try{
-      const data=getData(),times=[];
+      const data=getData(),times=[],drawTimes=[],encodeTimes=[];
       let png;
       for(let i=0;i<3;i++)png=await renderDashboard(data);
       for(let i=0;i<30;i++){
         const start=process.hrtime.bigint();
         png=await renderDashboard(data);
         times.push(Number(process.hrtime.bigint()-start)/1e6);
+        drawTimes.push(lastTiming.drawMs);
+        encodeTimes.push(lastTiming.encodeMs);
       }
-      times.sort((a,b)=>a-b);
-      const avg=times.reduce((sum,n)=>sum+n,0)/times.length;
-      const percentile=p=>times[Math.min(times.length-1,Math.ceil(times.length*p)-1)];
-      const round=n=>Number(n.toFixed(2));
+      const stats=a=>{
+        const sorted=[...a].sort((x,y)=>x-y);
+        const avg=a.reduce((sum,n)=>sum+n,0)/a.length;
+        const percentile=p=>sorted[Math.min(sorted.length-1,Math.ceil(sorted.length*p)-1)];
+        const round=n=>Number(n.toFixed(2));
+        return{averageMs:round(avg),medianMs:round(percentile(.5)),p95Ms:round(percentile(.95)),minMs:round(sorted[0]),maxMs:round(sorted.at(-1))};
+      };
+      const total=stats(times),draw=stats(drawTimes),encode=stats(encodeTimes);
       res.set("Cache-Control","no-store");
       res.json({
         renderer:"@napi-rs/canvas",frames:times.length,warmupFrames:3,
-        averageMs:round(avg),medianMs:round(percentile(.5)),
-        p95Ms:round(percentile(.95)),minMs:round(times[0]),
-        maxMs:round(times[times.length-1]),estimatedFPS:round(1000/avg),
-        pngSizeKB:round(png.length/1024),
+        ...total,estimatedFPS:Number((1000/total.averageMs).toFixed(2)),
+        draw,encode,pngSizeKB:Number((png.length/1024).toFixed(2)),
         frameBudgets:{"10fps":100,"15fps":66.67,"30fps":33.33}
       });
     }catch(e){
