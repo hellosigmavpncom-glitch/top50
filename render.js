@@ -1,14 +1,17 @@
 
 const {createCanvas,loadImage,GlobalFonts}=require("@napi-rs/canvas");
+const {monitorEventLoopDelay,PerformanceObserver}=require("node:perf_hooks");
 
-const W=1280,H=720;
+const W=1280,H=720,FRAME_BYTES=W*H*4;
 const C={bg:"#050713",panel:"#0b1024",panel2:"#101832",border:"#273a68",blue:"#27a9ff",purple:"#8b36ff",teal:"#25e5c0",white:"#f5f7ff",muted:"#aab8df",red:"#ff4267"};
 const canvas=createCanvas(W,H),ctx=canvas.getContext("2d");
 const bgCanvas=createCanvas(W,H),bgCtx=bgCanvas.getContext("2d");
 const history={subs:[],rates:[],last:0,previous:null};
 const avatars={},loadedAvatars={},textSizes=new Map(),gradients=new Map();
 const numberFormat=new Intl.NumberFormat("en-US");
-let lastTiming={drawMs:0,encodeMs:0,rawMs:0,rawBytes:0,totalMs:0};
+let lastTiming={drawMs:0,rawMs:0,rawBytes:0,totalMs:0};
+let benchmarkActive=false;
+let renderQueue=Promise.resolve();
 
 for(const w of [400,500,600,700,800,900]){
   try{GlobalFonts.registerFromPath(require.resolve(`@fontsource/inter/files/inter-latin-${w}-normal.woff2`),"Inter");}catch{}
@@ -38,11 +41,12 @@ const txt=(v,x,y,size=16,color=C.white,weight=700,max=Infinity,align="left")=>{
 const line=(x1,y1,x2,y2,color="#ffffff20",width=1)=>{
   ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();
 };
-const label=(s,x,y,color=C.muted)=>txt(String(s).toUpperCase(),x,y,10,color,900);
 const gradient=(key,create)=>{
   if(!gradients.has(key))gradients.set(key,create());
   return gradients.get(key);
 };
+const ms=start=>Number(process.hrtime.bigint()-start)/1e6;
+const yieldEventLoop=()=>new Promise(resolve=>setImmediate(resolve));
 
 function icon(type,x,y,size,color){
   ctx.save();ctx.translate(x,y);ctx.strokeStyle=color;ctx.fillStyle=color;
@@ -90,7 +94,7 @@ function getStats(d={}){
 }
 
 function preloadAvatar(url){
-  if(!url||avatars[url])return null;
+  if(!url||avatars[url])return avatars[url];
   avatars[url]=loadImage(url).then(img=>(loadedAvatars[url]=img)).catch(()=>null);
   return avatars[url];
 }
@@ -159,8 +163,7 @@ function chart(values,x,y,w,h){
   const n=values.length;if(n<2)return;
   let min=Infinity,max=-Infinity;
   for(let i=0;i<n;i++){const v=values[i];if(v<min)min=v;if(v>max)max=v;}
-  const range=max-min||1;
-  const px=i=>x+i/(n-1)*w,py=v=>y+h-(v-min)/range*h;
+  const range=max-min||1,px=i=>x+i/(n-1)*w,py=v=>y+h-(v-min)/range*h;
   const g=gradient("chart-fill",()=>{
     const v=ctx.createLinearGradient(0,y,0,y+h);
     v.addColorStop(0,"#18e9d944");v.addColorStop(1,"#18e9d900");return v;
@@ -193,7 +196,7 @@ function subscriberCard(x,current,hourly,daily){
   mainCard(x,"LUCAN · LIVE SUBSCRIBERS",C.blue,"arrow");
   txt("(LINEAR ESTIMATE)",x+133.5,139,13,"#d7e3ff",900,237,"center");
   txt(fmt(current),x+133.5,202,55,C.white,900,239,"center");
-  chart(history.subs,x+18,250,231,66);
+  chart(history.subs.slice(-18),x+18,250,231,66);
   line(x+15,330,x+252,330);
   const cols=[["LINEAR ESTIMATE",fmt(current)],["HOURLY GAIN",fmt(hourly)],["DAILY GAIN",fmt(daily)]];
   const widths=[105,77,85];let at=x+8;
@@ -233,14 +236,13 @@ function sources(a,b){
   rows.forEach((r,i)=>{
     const y=536+i*43;txt(r[0],left,y+17,11,"#799bff",900,labelW);
     for(let j=0;j<4;j++){
-      const v=r[j+1];
       rect(xs[j],y,colW,36,7,"#080d1b","#26375b");
-      txt(fmt(v),xs[j]+11,y+18,17,j===0||j===2?C.teal:"#c4d1ff",900,colW-20);
+      txt(fmt(r[j+1]),xs[j]+11,y+18,17,j===0||j===2?C.teal:"#c4d1ff",900,colW-20);
     }
   });
 }
 
-async function renderDashboard(data={},mode="png"){
+async function renderDashboardInternal(data={},mode="png"){
   const totalStart=process.hrtime.bigint();
   const a=getStats(data.lucan||{}),b=getStats(data.mine||{});
   const jobs=[];
@@ -270,29 +272,35 @@ async function renderDashboard(data={},mode="png"){
   txt("UPDATED "+new Date().toLocaleTimeString(),22,702,11,"#b9caff",900,300);
   icon("live",1179,702,9,C.teal);txt("CONNECTED",1192,702,11,C.teal,900,80);
 
-  const drawMs=Number(process.hrtime.bigint()-drawStart)/1e6;
+  const drawMs=ms(drawStart);
   if(mode==="raw"){
-    if(typeof canvas.data!=="function")throw new Error("@napi-rs/canvas canvas.data() is unavailable in this installed version");
+    if(typeof canvas.data!=="function")throw new Error("@napi-rs/canvas canvas.data() is unavailable");
     const rawStart=process.hrtime.bigint(),raw=canvas.data();
-    const rawMs=Number(process.hrtime.bigint()-rawStart)/1e6;
-    lastTiming={drawMs,encodeMs:0,rawMs,rawBytes:raw.length,totalMs:Number(process.hrtime.bigint()-totalStart)/1e6};
+    const rawMs=ms(rawStart);
+    lastTiming={drawMs,rawMs,rawBytes:raw.length,totalMs:ms(totalStart)};
     return raw;
   }
-
-  const encodeStart=process.hrtime.bigint(),png=canvas.toBuffer("image/png");
-  const encodeMs=Number(process.hrtime.bigint()-encodeStart)/1e6;
-  lastTiming={drawMs,encodeMs,rawMs:0,rawBytes:0,totalMs:Number(process.hrtime.bigint()-totalStart)/1e6};
+  const png=canvas.toBuffer("image/png");
+  lastTiming={drawMs,rawMs:0,rawBytes:0,totalMs:ms(totalStart)};
   return png;
+}
+
+// Serialize access to the shared canvas. This prevents overlapping requests
+// from drawing into the same canvas during a benchmark.
+function renderDashboard(data={},mode="png"){
+  const job=renderQueue.then(()=>renderDashboardInternal(data,mode));
+  renderQueue=job.catch(()=>{});
+  return job;
 }
 
 function stats(values){
   if(!values.length)return{averageMs:0,medianMs:0,p95Ms:0,minMs:0,maxMs:0};
-  const a=[...values].sort((x,y)=>x-y),avg=values.reduce((s,n)=>s+n,0)/values.length;
-  const p=p=>a[Math.min(a.length-1,Math.ceil(a.length*p)-1)];
+  const a=[...values].sort((x,y)=>x-y);
+  const avg=values.reduce((s,n)=>s+n,0)/values.length;
+  const p=q=>a[Math.min(a.length-1,Math.ceil(a.length*q)-1)];
   const r=n=>Number(n.toFixed(2));
   return{averageMs:r(avg),medianMs:r(p(.5)),p95Ms:r(p(.95)),minMs:r(a[0]),maxMs:r(a[a.length-1])};
 }
-
 function pixelProbe(){
   try{
     const test=createCanvas(1,1),c=test.getContext("2d");
@@ -303,9 +311,20 @@ function pixelProbe(){
     return{available:true,format,firstPixel:p};
   }catch(e){return{available:false,error:e.message};}
 }
+function eventLoopResults(hist){
+  const convert=n=>Number((n/1e6).toFixed(2));
+  return{
+    minMs:convert(hist.min),maxMs:convert(hist.max),
+    meanMs:convert(hist.mean),
+    p50Ms:convert(hist.percentile(50)),
+    p95Ms:convert(hist.percentile(95)),
+    p99Ms:convert(hist.percentile(99))
+  };
+}
 
 function attach(app,getData){
   app.get("/api/renderer/preview.png",async(req,res)=>{
+    if(benchmarkActive)return res.status(503).send("Benchmark running; retry shortly");
     try{
       const png=await renderDashboard(getData());
       res.set("Content-Type","image/png");
@@ -318,56 +337,107 @@ function attach(app,getData){
   });
 
   app.get("/api/renderer/benchmark",async(req,res)=>{
+    if(benchmarkActive)return res.status(409).json({error:"A renderer benchmark is already running"});
+    benchmarkActive=true;
     try{
-      const data=getData(),times=[],drawTimes=[],encodeTimes=[];
+      const data=getData(),times=[],drawTimes=[],pngTimes=[];
       for(let i=0;i<3;i++)await renderDashboard(data);
       for(let i=0;i<30;i++){
         const start=process.hrtime.bigint();
         await renderDashboard(data);
-        times.push(Number(process.hrtime.bigint()-start)/1e6);
-        drawTimes.push(lastTiming.drawMs);encodeTimes.push(lastTiming.encodeMs);
+        times.push(ms(start));drawTimes.push(lastTiming.drawMs);
+        pngTimes.push(lastTiming.totalMs-lastTiming.drawMs);
+        await yieldEventLoop();
       }
-      const total=stats(times);
       res.set("Cache-Control","no-store");
       res.json({
         renderer:"@napi-rs/canvas",mode:"png",frames:times.length,warmupFrames:3,
-        ...total,estimatedFPS:Number((1000/total.averageMs).toFixed(2)),
-        draw:stats(drawTimes),encode:stats(encodeTimes),
-        pngSizeKB:Number((Buffer.byteLength(await renderDashboard(data))/1024).toFixed(2)),
-        frameBudgets:{"10fps":100,"15fps":66.67,"30fps":33.33}
+        ...stats(times),estimatedFPS:Number((1000/(times.reduce((a,b)=>a+b,0)/times.length)).toFixed(2)),
+        draw:stats(drawTimes),pngEncode:stats(pngTimes)
       });
     }catch(e){
       console.error("PNG benchmark error:",e.stack||e.message);
       res.status(500).json({error:"PNG benchmark failed",message:e.message});
-    }
+    }finally{benchmarkActive=false;}
   });
 
   app.get("/api/renderer/raw-benchmark",async(req,res)=>{
+    if(benchmarkActive)return res.status(409).json({error:"A renderer benchmark is already running"});
+    benchmarkActive=true;
+    const hist=monitorEventLoopDelay({resolution:10});
+    const gcTimes=[],gcKinds={minor:0,major:0,incremental:0,weakCallback:0,other:0};
+    let gcTotalMs=0;
+    let observer;
     try{
+      observer=new PerformanceObserver(list=>{
+        for(const entry of list.getEntries()){
+          gcTimes.push(entry.duration);gcTotalMs+=entry.duration;
+          if(entry.kind===1)gcKinds.minor++;
+          else if(entry.kind===2)gcKinds.major++;
+          else if(entry.kind===4)gcKinds.incremental++;
+          else if(entry.kind===8)gcKinds.weakCallback++;
+          else gcKinds.other++;
+        }
+      });
+      observer.observe({entryTypes:["gc"]});
+      hist.enable();
+
       const data=getData(),times=[],drawTimes=[],rawTimes=[];
       let rawBytes=0;
       for(let i=0;i<3;i++)await renderDashboard(data,"raw");
-      for(let i=0;i<30;i++){
-        const start=process.hrtime.bigint(),raw=await renderDashboard(data,"raw");
-        times.push(Number(process.hrtime.bigint()-start)/1e6);
-        drawTimes.push(lastTiming.drawMs);rawTimes.push(lastTiming.rawMs);
+
+      const memoryBefore=process.memoryUsage();
+      const testStart=process.hrtime.bigint();
+      for(let i=0;i<300;i++){
+        const start=process.hrtime.bigint();
+        const raw=await renderDashboard(data,"raw");
+        times.push(ms(start));
+        drawTimes.push(lastTiming.drawMs);
+        rawTimes.push(lastTiming.rawMs);
         rawBytes=raw.length;
+        await yieldEventLoop();
       }
-      const total=stats(times);
+      const testMs=ms(testStart);
+      await new Promise(resolve=>setTimeout(resolve,50));
+      hist.disable();
+      observer.disconnect();
+      const memoryAfter=process.memoryUsage();
+      const sorted=[...times].sort((a,b)=>b-a);
+      const slowFrames=times.map((total,i)=>({frame:i+1,totalMs:Number(total.toFixed(2)),drawMs:Number(drawTimes[i].toFixed(2)),rawMs:Number(rawTimes[i].toFixed(2))}))
+        .filter(f=>f.totalMs>=50).sort((a,b)=>b.totalMs-a.totalMs).slice(0,12);
+
       res.set("Cache-Control","no-store");
       res.json({
-        renderer:"@napi-rs/canvas",mode:"raw-no-png",
-        frames:times.length,warmupFrames:3,
-        ...total,estimatedFPS:Number((1000/total.averageMs).toFixed(2)),
-        draw:stats(drawTimes),raw:stats(rawTimes),
-        rawBytes,rawMiB:Number((rawBytes/1024/1024).toFixed(2)),
+        renderer:"@napi-rs/canvas",mode:"raw-no-png-diagnostic",
+        frames:times.length,warmupFrames:3,frameSizeBytes:rawBytes,
+        frameSizeMiB:Number((rawBytes/1048576).toFixed(2)),
+        expectedRGBABytes:FRAME_BYTES,
+        ...stats(times),
+        measuredFPS:Number((times.length/(testMs/1000)).toFixed(2)),
+        draw:stats(drawTimes),rawExtraction:stats(rawTimes),
+        eventLoopDelay:eventLoopResults(hist),
+        garbageCollection:{
+          events:gcTimes.length,totalMs:Number(gcTotalMs.toFixed(2)),
+          ...gcKinds,gcDurations:stats(gcTimes)
+        },
+        memory:{
+          heapUsedBeforeMiB:Number((memoryBefore.heapUsed/1048576).toFixed(2)),
+          heapUsedAfterMiB:Number((memoryAfter.heapUsed/1048576).toFixed(2)),
+          rssBeforeMiB:Number((memoryBefore.rss/1048576).toFixed(2)),
+          rssAfterMiB:Number((memoryAfter.rss/1048576).toFixed(2)),
+          externalBeforeMiB:Number((memoryBefore.external/1048576).toFixed(2)),
+          externalAfterMiB:Number((memoryAfter.external/1048576).toFixed(2))
+        },
+        slowFrames,
         pixelProbe:pixelProbe(),
         frameBudgets:{"10fps":100,"15fps":66.67,"30fps":33.33}
       });
     }catch(e){
+      hist.disable();
+      observer?.disconnect();
       console.error("Raw benchmark error:",e.stack||e.message);
       res.status(500).json({error:"Raw benchmark failed",message:e.message});
-    }
+    }finally{benchmarkActive=false;}
   });
 }
 
