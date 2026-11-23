@@ -161,7 +161,7 @@ async function run(getData){
 }
 
 function attach(app,getData){
- app.post("/api/encode-test",(req,res)=>{
+ app.get("/api/encode-test",(req,res)=>{
   const token=process.env.ENCODE_TEST_TOKEN;
   if(token&&req.get("x-encode-test-token")!==token)
    return res.status(401).json({error:"Unauthorized"});
