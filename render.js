@@ -1,9 +1,10 @@
+
 const {createCanvas,loadImage,GlobalFonts}=require("@napi-rs/canvas");
 
 const W=1280,H=720;
 const C={bg:"#050713",panel:"#0b1024",panel2:"#101832",border:"#273a68",blue:"#27a9ff",purple:"#8b36ff",teal:"#25e5c0",white:"#f5f7ff",muted:"#aab8df",red:"#ff4267"};
 const canvas=createCanvas(W,H),ctx=canvas.getContext("2d"),bgCanvas=createCanvas(W,H),bgCtx=bgCanvas.getContext("2d");
-const history={subs:[],rates:[],last:0,previous:null},avatars={},loadedAvatars={},textSizes=new Map(),gradients=new Map();
+const history={subs:[],rates:[],last:0,previous:null},avatars={},loadedAvatars={},textSizes=new Map(),gradients=new Map(),odometers=new Map();
 const numberFormat=new Intl.NumberFormat("en-US");
 let lastTiming={drawMs:0,outputMs:0,totalMs:0},benchmarkActive=false,renderQueue=Promise.resolve(),rawFrameCache=null,rawFrameUpdated=0;
 
@@ -16,11 +17,41 @@ const rect=(x,y,w,h,r=12,fill=C.panel,stroke=C.border)=>{ctx.beginPath();ctx.rou
 const line=(x1,y1,x2,y2,color="#ffffff20",width=1)=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();};
 const gradient=(key,create)=>{if(!gradients.has(key))gradients.set(key,create());return gradients.get(key);};
 
+function font(size,weight=700){ctx.font=`${weight} ${size}px Inter,Arial,sans-serif`;}
 function txt(v,x,y,size=16,color=C.white,weight=700,max=Infinity,align="left"){
  const s=String(v??"—"),key=`${weight}|${size}|${max}|${s}`;let f=textSizes.get(key);
- if(f===undefined){f=size;ctx.font=`${weight} ${f}px Inter,Arial,sans-serif`;while(ctx.measureText(s).width>max&&f>9){f--;ctx.font=`${weight} ${f}px Inter,Arial,sans-serif`;}if(textSizes.size>=6000)textSizes.clear();textSizes.set(key,f);}
- ctx.font=`${weight} ${f}px Inter,Arial,sans-serif`;ctx.fillStyle=color;ctx.textAlign=align;ctx.textBaseline="middle";ctx.fillText(s,x,y);
+ if(f===undefined){f=size;font(f,weight);while(ctx.measureText(s).width>max&&f>9){f--;font(f,weight);}if(textSizes.size>=6000)textSizes.clear();textSizes.set(key,f);}
+ font(f,weight);ctx.fillStyle=color;ctx.textAlign=align;ctx.textBaseline="middle";ctx.fillText(s,x,y);
 }
+
+// Canvas odometer: changed digits roll upward into their new values.
+function odo(v,x,y,size=16,color=C.white,weight=900,max=Infinity,align="left",key=""){
+ const s=String(v??"—");font(size,weight);
+ if(!/\d/.test(s)){txt(s,x,y,size,color,weight,max,align);return;}
+ const widths=[...s].map(c=>ctx.measureText(c).width),total=widths.reduce((a,b)=>a+b,0);
+ let start=align==="center"?x-total/2:align==="right"?x-total:x;
+ const now=Date.now(),duration=650;
+ let state=odometers.get(key);
+ if(!state||state.to!==s){
+  state={from:state&&state.to.length===s.length?state.to:s,to:s,start:now};
+  odometers.set(key,state);
+ }
+ const progress=Math.min(1,(now-state.start)/duration),ease=1-Math.pow(1-progress,3);
+ ctx.save();ctx.font=`${weight} ${size}px Inter,Arial,sans-serif`;ctx.textBaseline="middle";ctx.textAlign="center";ctx.fillStyle=color;
+ let at=start;
+ for(let i=0;i<s.length;i++){
+  const ch=s[i],old=state.from[i]??ch,w=widths[i],cx=at+w/2;
+  if(/\d/.test(ch)&&old!==ch&&progress<1){
+   ctx.save();ctx.beginPath();ctx.rect(at-1,y-size*.65,w+2,size*1.3);ctx.clip();
+   ctx.fillText(old,cx,y-ease*size);
+   ctx.fillText(ch,cx,y+(1-ease)*size);
+   ctx.restore();
+  }else ctx.fillText(ch,cx,y);
+  at+=w;
+ }
+ ctx.restore();
+}
+
 function icon(type,x,y,size,color){
  ctx.save();ctx.translate(x,y);ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=2.2;ctx.lineCap="round";ctx.lineJoin="round";ctx.shadowColor=color;ctx.shadowBlur=7;ctx.beginPath();
  if(type==="arrow"){ctx.moveTo(-size*.38,size*.3);ctx.lineTo(size*.3,-size*.38);ctx.moveTo(-size*.02,-size*.38);ctx.lineTo(size*.3,-size*.38);ctx.lineTo(size*.3,-size*.06);}
@@ -31,6 +62,7 @@ function icon(type,x,y,size,color){
  else if(type==="check"){ctx.moveTo(-size*.35,0);ctx.lineTo(-size*.08,size*.27);ctx.lineTo(size*.38,-size*.3);}
  ctx.stroke();ctx.restore();
 }
+
 function getStats(d={}){
  const s=d.sctools||{},f=d.freewebtools||{},e=f.estimation||{};
  return{
@@ -42,6 +74,7 @@ function getStats(d={}){
   freeEstViews:num(f,"estimatedViews"),freeApiViews:num(f,"viewCount"),freeEstVideos:num(f,"estimatedVideos"),freeApiVideos:num(f,"videoCount")
  };
 }
+
 function preloadAvatar(url){
  if(!url||avatars[url])return avatars[url];
  avatars[url]=loadImage(url).then(img=>(loadedAvatars[url]=img)).catch(()=>null);
@@ -75,8 +108,9 @@ function miniStats(d){
  avatar(d.avatar,248,226,66);txt(d.name||"VYStats",326,246,15,C.white,900,90);txt(d.handle||"@vystatsyt",326,268,10,C.muted,800,90);line(22,294,414,294);
  [["SUBSCRIBERS",d.freeEst,d.freeApi],["VIEWS",d.freeEstViews,d.freeApiViews],["VIDEOS",d.freeEstVideos,d.freeApiVideos]].forEach((c,i)=>{
   const x=22+i*132;if(i)line(x-8,306,x-8,440);
-  txt(c[0],x+58,324,10,"#b8caff",900,116,"center");txt("EST.",x,354,10,C.muted,900);txt(fmt(c[1]),x+116,354,15,C.white,900,100,"right");
-  txt("API",x,389,10,C.muted,900);txt(fmt(c[2]),x+116,389,15,C.white,900,100,"right");
+  txt(c[0],x+58,324,10,"#b8caff",900,116,"center");
+  odo(fmt(c[1]),x+116,354,15,C.white,900,100,"right",`mini-${i}-est`);
+  odo(fmt(c[2]),x+116,389,15,C.white,900,100,"right",`mini-${i}-api`);
  });
 }
 function mainCard(x,title,accent,type){
@@ -87,7 +121,7 @@ function mainCard(x,title,accent,type){
 function chart(values,x,y,w,h){
  const n=values.length;if(n<2)return;let min=Infinity,max=-Infinity;
  for(let i=0;i<n;i++){const v=values[i];if(v<min)min=v;if(v>max)max=v;}
- const range=max-min||1,px=i=>x+i/(n-1*w),py=v=>y+h-(v-min)/range*h;
+ const range=max-min||1,px=i=>x+i/(n-1)*w,py=v=>y+h-(v-min)/range*h;
  const g=gradient("chart-fill",()=>{const v=ctx.createLinearGradient(0,y,0,y+h);v.addColorStop(0,"#18e9d944");v.addColorStop(1,"#18e9d900");return v;});
  ctx.beginPath();ctx.moveTo(x,y+h);for(let i=0;i<n;i++)ctx.lineTo(px(i),py(values[i]));ctx.lineTo(x+w,y+h);ctx.closePath();ctx.fillStyle=g;ctx.fill();
  ctx.beginPath();for(let i=0;i<n;i++){const xx=px(i),yy=py(values[i]);if(i)ctx.lineTo(xx,yy);else ctx.moveTo(xx,yy);}
@@ -105,18 +139,20 @@ function bars(values,x,y,w,h){
 }
 function subscriberCard(x,current,hourly,daily){
  mainCard(x,"LUCAN · LIVE SUBSCRIBERS",C.blue,"arrow");txt("(LINEAR ESTIMATE)",x+133.5,139,13,"#d7e3ff",900,237,"center");
- txt(fmt(current),x+133.5,202,55,C.white,900,239,"center");chart(history.subs.slice(-18),x+18,250,231,66);line(x+15,330,x+252,330);
+ odo(fmt(current),x+133.5,202,55,C.white,900,239,"center","lucan-subs");chart(history.subs.slice(-18),x+18,250,231,66);line(x+15,330,x+252,330);
  const cols=[["LINEAR ESTIMATE",fmt(current)],["HOURLY GAIN",fmt(hourly)],["DAILY GAIN",fmt(daily)]],widths=[105,77,85];let at=x+8;
- cols.forEach((c,i)=>{if(i)line(at-4,343,at-4,438);txt(c[0],at+widths[i]/2,361,10,"#b9caff",900,widths[i],"center");txt(c[1],at+widths[i]/2,397,17,C.teal,900,widths[i],"center");at+=widths[i];});
+ cols.forEach((c,i)=>{if(i)line(at-4,343,at-4,438);txt(c[0],at+widths[i]/2,361,10,"#b9caff",900,widths[i],"center");odo(c[1],at+widths[i]/2,397,17,C.teal,900,widths[i],"center",`subscriber-info-${i}`);at+=widths[i];});
 }
 function rateCard(x,rate){
- mainCard(x,"SUBS GAINED PER SEC","#2869c9","bolt");txt(rate<0?"−":"+ ",x+67,213,64,C.white,900,65,"center");txt(Math.abs(rate).toFixed(2),x+168,213,64,C.white,900,175,"center");
+ mainCard(x,"SUBS GAINED PER SEC","#2869c9","bolt");txt(rate<0?"−":"+ ",x+67,213,64,C.white,900,65,"center");
+ odo(Math.abs(rate).toFixed(2),x+168,213,64,C.white,900,175,"center","gain-rate");
  bars(history.rates,x+25,280,217,84);txt("LIVE AVERAGE",x+133.5,401,13,C.teal,900,235,"center");
 }
 function goalCard(x,remaining,progress){
  mainCard(x,"SUBSCRIBERS REMAINING",C.purple,"flag");txt("TO 60,000,000",x+133.5,139,13,"#d7e3ff",900,237,"center");
- txt(fmt(remaining),x+133.5,207,55,C.white,900,239,"center");rect(x+20,275,227,15,10,"#111f43",null);rect(x+20,275,227*progress,15,10,"#8b36ff",null);
- txt("ROAD TO 60M",x+20,309,10,"#b9caff",900,120);txt((progress*100).toFixed(1)+"%",x+247,309,10,"#b9caff",900,65,"right");
+ odo(fmt(remaining),x+133.5,207,55,C.white,900,239,"center","remaining-subs");
+ rect(x+20,275,227,15,10,"#111f43",null);rect(x+20,275,227*progress,15,10,"#8b36ff",null);
+ txt("ROAD TO 60M",x+20,309,10,"#b9caff",900,120);odo((progress*100).toFixed(1)+"%",x+247,309,10,"#b9caff",900,65,"right","goal-progress");
  txt("SUBSCRIBERS LEFT",x+133.5,401,13,C.teal,900,235,"center");
 }
 function sources(a,b){
@@ -126,7 +162,7 @@ function sources(a,b){
  ["SCTools Est.","SCTools API","FreeWebTools Est.","FreeWebTools API"].forEach((v,i)=>txt(v,xs[i]+colW/2,522,12,"#d6e3ff",900,colW,"center"));
  [["SUBSCRIBERS",a.est,a.api,b.freeEst,b.freeApi],["TOTAL VIEWS",a.views,a.apiViews,b.freeEstViews,b.freeApiViews],["VIDEOS",a.videos,a.apiVideos,b.freeEstVideos,b.freeApiVideos]].forEach((r,i)=>{
   const y=536+i*43;txt(r[0],left,y+17,11,"#799bff",900,labelW);
-  for(let j=0;j<4;j++){rect(xs[j],y,colW,36,7,"#080d1b","#26375b");txt(fmt(r[j+1]),xs[j]+11,y+18,17,j===0||j===2?C.teal:"#c4d1ff",900,colW-20);}
+  for(let j=0;j<4;j++){rect(xs[j],y,colW,36,7,"#080d1b","#26375b");odo(fmt(r[j+1]),xs[j]+11,y+18,17,j===0||j===2?C.teal:"#c4d1ff",900,colW-20,"left",`source-${i}-${j}`);}
  });
 }
 
@@ -135,46 +171,28 @@ async function renderInternal(data={},mode="png"){
  if(a.avatar&&!loadedAvatars[a.avatar]&&!avatars[a.avatar])jobs.push(preloadAvatar(a.avatar));
  if(b.avatar&&!loadedAvatars[b.avatar]&&!avatars[b.avatar])jobs.push(preloadAvatar(b.avatar));
  if(jobs.length)await Promise.all(jobs);
-
  const current=a.linear??a.est,now=Date.now();
  if(current!=null&&now-history.last>=3000){
   if(history.previous!=null&&history.last){const seconds=(now-history.last)/1000;if(seconds>0)history.rates.push((current-history.previous)/seconds);}
   history.subs.push(current);history.previous=current;history.last=now;
-  if(history.subs.length>60)history.subs.shift();
-  if(history.rates.length>14)history.rates.shift();
+  if(history.subs.length>60)history.subs.shift();if(history.rates.length>14)history.rates.shift();
  }
- const rate=history.rates.length?history.rates[history.rates.length-1]:0;
- const remaining=current==null?null:Math.max(0,60000000-current);
- const progress=current==null?0:Math.min(1,current/60000000);
+ const rate=history.rates.length?history.rates[history.rates.length-1]:0,remaining=current==null?null:Math.max(0,60000000-current),progress=current==null?0:Math.min(1,current/60000000);
  const drawStart=process.hrtime.bigint();
-
- ctx.drawImage(bgCanvas,0,0);
- header();profile(a);miniStats(b);
- subscriberCard(442,current,a.hourly,a.daily);
- rateCard(723,rate);
- goalCard(1004,remaining,progress);
- sources(a,b);
- line(8,686,1272,686,"#ffffff18");
- txt("UPDATED "+new Date().toLocaleTimeString(),22,702,11,"#b9caff",900,300);
- icon("live",1179,702,9,C.teal);
- txt("CONNECTED",1192,702,11,C.teal,900,80);
-
- const drawMs=ms(drawStart),outputStart=process.hrtime.bigint();
- const output=mode==="raw"?canvas.data():canvas.toBuffer("image/png");
- const outputMs=ms(outputStart);
+ ctx.drawImage(bgCanvas,0,0);header();profile(a);miniStats(b);
+ subscriberCard(442,current,a.hourly,a.daily);rateCard(723,rate);goalCard(1004,remaining,progress);sources(a,b);
+ line(8,686,1272,686,"#ffffff18");txt("UPDATED "+new Date().toLocaleTimeString(),22,702,11,"#b9caff",900,300);
+ icon("live",1179,702,9,C.teal);txt("CONNECTED",1192,702,11,C.teal,900,80);
+ const drawMs=ms(drawStart),outputStart=process.hrtime.bigint(),output=mode==="raw"?canvas.data():canvas.toBuffer("image/png"),outputMs=ms(outputStart);
  lastTiming={drawMs,outputMs,totalMs:ms(totalStart)};
  if(mode==="raw"){rawFrameCache=output;rawFrameUpdated=Date.now();}
  return output;
 }
 function renderDashboard(data={}){
- const job=renderQueue.then(()=>renderInternal(data,"png"));
- renderQueue=job.catch(()=>{});
- return job;
+ const job=renderQueue.then(()=>renderInternal(data,"png"));renderQueue=job.catch(()=>{});return job;
 }
 function renderRawFrame(data={}){
- const job=renderQueue.then(()=>renderInternal(data,"raw"));
- renderQueue=job.catch(()=>{});
- return job;
+ const job=renderQueue.then(()=>renderInternal(data,"raw"));renderQueue=job.catch(()=>{});return job;
 }
 function stats(values){
  if(!values.length)return{averageMs:0,medianMs:0,p95Ms:0,minMs:0,maxMs:0};
@@ -184,74 +202,34 @@ function stats(values){
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
 async function runReuseBenchmark(){
- const FPS=15,FRAME_MS=1000/FPS,DURATION=10000,TOTAL=Math.round(DURATION/FRAME_MS);
- const frameTimes=[],lateness=[],memory=[];
- const start=process.hrtime.bigint(),memoryBefore=process.memoryUsage();
- let frame=null,frames=0,checksum=0,missed=0,maxLate=0;
+ const FPS=15,FRAME_MS=1000/FPS,DURATION=10000,TOTAL=Math.round(DURATION/FRAME_MS),lateness=[];
+ const start=process.hrtime.bigint(),memoryBefore=process.memoryUsage();let frame=null,frames=0,checksum=0,missed=0,maxLate=0;
  try{
-  frame=await renderRawFrame();
-  if(!frame||frame.byteLength!==W*H*4)throw new Error("Invalid raw RGBA frame");
-  const firstFrameMs=lastTiming.totalMs;
-  const loopStart=process.hrtime.bigint();
-  let next=loopStart;
+  frame=await renderRawFrame();if(!frame||frame.byteLength!==W*H*4)throw new Error("Invalid raw RGBA frame");
+  const firstFrameMs=lastTiming.totalMs,loopStart=process.hrtime.bigint();let next=loopStart;
   while(frames<TOTAL){
-   next+=BigInt(Math.round(FRAME_MS*1e6));
-   const tick=process.hrtime.bigint();
-   const late=Math.max(0,Number(tick-next)/1e6);
-   lateness.push(late);
-   if(late>FRAME_MS)missed++;
-   maxLate=Math.max(maxLate,late);
-   // Reuse the same RGBA buffer; no redraw and no allocation.
-   checksum=(checksum+frame[frames%frame.length])>>>0;
-   frames++;
-   frameTimes.push(Number(tick-start)/1e6);
-   const remaining=Number(next-process.hrtime.bigint())/1e6;
-   if(remaining>0)await wait(remaining);
-   else await wait(0);
+   next+=BigInt(Math.round(FRAME_MS*1e6));const tick=process.hrtime.bigint(),late=Math.max(0,Number(tick-next)/1e6);
+   lateness.push(late);if(late>FRAME_MS)missed++;maxLate=Math.max(maxLate,late);
+   checksum=(checksum+frame[frames%frame.length])>>>0;frames++;
+   const remaining=Number(next-process.hrtime.bigint())/1e6;if(remaining>0)await wait(remaining);else await wait(0);
   }
   const memoryAfter=process.memoryUsage(),elapsed=ms(start),mib=n=>Number((n/1048576).toFixed(2));
-  return{
-   renderer:"@napi-rs/canvas",
-   mode:"single-render-reused-rgba-frame",
-   resolution:`${W}x${H}`,fpsTarget:FPS,frameIntervalMs:+FRAME_MS.toFixed(3),
-   durationMs:+elapsed.toFixed(2),frames,frameSizeBytes:frame.byteLength,frameSizeMiB:+(frame.byteLength/1048576).toFixed(2),
-   achievedFPS:+(frames/(elapsed/1000)).toFixed(2),
-   frameFeed:{lateness:stats(lateness),maxLatenessMs:+maxLate.toFixed(2),missedDeadlines:missed,missedDeadlinePercent:+(missed/frames*100).toFixed(2)},
-   renderOnce:{totalMs:+firstFrameMs.toFixed(2),drawMs:+lastTiming.drawMs.toFixed(2),rawExtractionMs:+lastTiming.outputMs.toFixed(2)},
-   memory:{heapBeforeMiB:mib(memoryBefore.heapUsed),heapAfterMiB:mib(memoryAfter.heapUsed),externalBeforeMiB:mib(memoryBefore.external),externalAfterMiB:mib(memoryAfter.external),rssBeforeMiB:mib(memoryBefore.rss),rssAfterMiB:mib(memoryAfter.rss)},
-   checksum:checksum>>>0
-  };
+  return{renderer:"@napi-rs/canvas",mode:"single-render-reused-rgba-frame",resolution:`${W}x${H}`,fpsTarget:FPS,frameIntervalMs:+FRAME_MS.toFixed(3),durationMs:+elapsed.toFixed(2),frames,frameSizeBytes:frame.byteLength,frameSizeMiB:+(frame.byteLength/1048576).toFixed(2),achievedFPS:+(frames/(elapsed/1000)).toFixed(2),frameFeed:{lateness:stats(lateness),maxLatenessMs:+maxLate.toFixed(2),missedDeadlines:missed,missedDeadlinePercent:+(missed/frames*100).toFixed(2)},renderOnce:{totalMs:+firstFrameMs.toFixed(2),drawMs:+lastTiming.drawMs.toFixed(2),rawExtractionMs:+lastTiming.outputMs.toFixed(2)},memory:{heapBeforeMiB:mib(memoryBefore.heapUsed),heapAfterMiB:mib(memoryAfter.heapUsed),externalBeforeMiB:mib(memoryBefore.external),externalAfterMiB:mib(memoryAfter.external),rssBeforeMiB:mib(memoryBefore.rss),rssAfterMiB:mib(memoryAfter.rss)},checksum:checksum>>>0};
  }finally{frame=null;}
 }
 
 function attach(app,getData){
  app.get("/api/renderer/preview.png",async(req,res)=>{
   if(benchmarkActive)return res.status(503).send("Benchmark running; retry shortly");
-  try{
-   const png=await renderDashboard(getData());
-   res.set("Content-Type","image/png");
-   res.set("Cache-Control","no-store, no-cache, must-revalidate");
-   res.send(png);
-  }catch(e){
-   console.error("Renderer error:",e.stack||e.message);
-   res.status(500).send("Renderer failed");
-  }
+  try{const png=await renderDashboard(getData());res.set("Content-Type","image/png");res.set("Cache-Control","no-store, no-cache, must-revalidate");res.send(png);}
+  catch(e){console.error("Renderer error:",e.stack||e.message);res.status(500).send("Renderer failed");}
  });
-
  app.get("/api/renderer/benchmark",async(req,res)=>{
   if(benchmarkActive)return res.status(409).json({error:"A renderer benchmark is already running"});
   benchmarkActive=true;
-  try{
-   const result=await runReuseBenchmark();
-   res.set("Cache-Control","no-store");
-   res.json(result);
-  }catch(e){
-   console.error("Frame reuse benchmark error:",e.stack||e.message);
-   if(!res.headersSent)res.status(500).json({error:"Frame reuse benchmark failed",message:e.message});
-  }finally{
-   rawFrameCache=null;
-   benchmarkActive=false;
-  }
+  try{const result=await runReuseBenchmark();res.set("Cache-Control","no-store");res.json(result);}
+  catch(e){console.error("Frame reuse benchmark error:",e.stack||e.message);if(!res.headersSent)res.status(500).json({error:"Frame reuse benchmark failed",message:e.message});}
+  finally{rawFrameCache=null;benchmarkActive=false;}
  });
 }
 
