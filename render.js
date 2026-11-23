@@ -7,7 +7,7 @@ const canvas=createCanvas(W,H),ctx=canvas.getContext("2d");
 const bgCanvas=createCanvas(W,H),bgCtx=bgCanvas.getContext("2d");
 const history={subs:[],rates:[],last:0,previous:null};
 const avatars={},loadedAvatars={},textSizes=new Map(),gradients=new Map();
-let lastTiming={drawMs:0,encodeMs:0,totalMs:0};
+let lastTiming={drawMs:0,encodeMs:0,rawMs:0,rawBytes:0,totalMs:0};
 
 for(const w of [400,500,600,700,800,900]){
   try{GlobalFonts.registerFromPath(require.resolve(`@fontsource/inter/files/inter-latin-${w}-normal.woff2`),"Inter");}catch{}
@@ -159,7 +159,7 @@ function miniStats(d){
 
 function mainCard(x,title,accent,type){
   rect(x,66,267,388,19,"#0b1024",accent);
-  const g=gradient(`card-${x}`,()=> {
+  const g=gradient(`card-${x}`,()=>{
     const v=ctx.createLinearGradient(x,66,x+267,454);
     v.addColorStop(0,"#ffffff08");v.addColorStop(1,"#00000000");return v;
   });
@@ -254,7 +254,7 @@ function sources(a,b){
   });
 }
 
-async function renderDashboard(data={}){
+async function renderDashboard(data={},testRaw=false){
   const totalStart=process.hrtime.bigint();
   const a=getStats(data.lucan||{}),b=getStats(data.mine||{});
   await Promise.all([preloadAvatar(a.avatar),preloadAvatar(b.avatar)]);
@@ -278,10 +278,20 @@ async function renderDashboard(data={}){
   txt("UPDATED "+new Date().toLocaleTimeString(),22,702,11,"#b9caff",900,300);
   icon("live",1179,702,9,C.teal);txt("CONNECTED",1192,702,11,C.teal,900,80);
   const drawMs=Number(process.hrtime.bigint()-drawStart)/1e6;
+
+  let rawMs=0,rawBytes=0;
+  if(testRaw){
+    if(typeof canvas.data!=="function")throw new Error("@napi-rs/canvas canvas.data() is unavailable in this installed version");
+    const rawStart=process.hrtime.bigint();
+    const raw=canvas.data();
+    rawMs=Number(process.hrtime.bigint()-rawStart)/1e6;
+    rawBytes=raw.length;
+  }
+
   const encodeStart=process.hrtime.bigint();
   const png=canvas.toBuffer("image/png");
   const encodeMs=Number(process.hrtime.bigint()-encodeStart)/1e6;
-  lastTiming={drawMs,encodeMs,totalMs:Number(process.hrtime.bigint()-totalStart)/1e6};
+  lastTiming={drawMs,encodeMs,rawMs,rawBytes,totalMs:Number(process.hrtime.bigint()-totalStart)/1e6};
   return png;
 }
 
@@ -300,15 +310,17 @@ function attach(app,getData){
 
   app.get("/api/renderer/benchmark",async(req,res)=>{
     try{
-      const data=getData(),times=[],drawTimes=[],encodeTimes=[];
-      let png;
-      for(let i=0;i<3;i++)png=await renderDashboard(data);
+      const data=getData(),times=[],drawTimes=[],encodeTimes=[],rawTimes=[];
+      let png,rawBytes=0;
+      for(let i=0;i<3;i++)png=await renderDashboard(data,true);
       for(let i=0;i<30;i++){
         const start=process.hrtime.bigint();
-        png=await renderDashboard(data);
+        png=await renderDashboard(data,true);
         times.push(Number(process.hrtime.bigint()-start)/1e6);
         drawTimes.push(lastTiming.drawMs);
         encodeTimes.push(lastTiming.encodeMs);
+        rawTimes.push(lastTiming.rawMs);
+        rawBytes=lastTiming.rawBytes;
       }
       const stats=a=>{
         const sorted=[...a].sort((x,y)=>x-y);
@@ -317,12 +329,14 @@ function attach(app,getData){
         const round=n=>Number(n.toFixed(2));
         return{averageMs:round(avg),medianMs:round(percentile(.5)),p95Ms:round(percentile(.95)),minMs:round(sorted[0]),maxMs:round(sorted.at(-1))};
       };
-      const total=stats(times),draw=stats(drawTimes),encode=stats(encodeTimes);
+      const total=stats(times),draw=stats(drawTimes),encode=stats(encodeTimes),raw=stats(rawTimes);
       res.set("Cache-Control","no-store");
       res.json({
         renderer:"@napi-rs/canvas",frames:times.length,warmupFrames:3,
         ...total,estimatedFPS:Number((1000/total.averageMs).toFixed(2)),
-        draw,encode,pngSizeKB:Number((png.length/1024).toFixed(2)),
+        draw,raw,encode,
+        rawBytes,rawMiB:Number((rawBytes/1024/1024).toFixed(2)),
+        pngSizeKB:Number((png.length/1024).toFixed(2)),
         frameBudgets:{"10fps":100,"15fps":66.67,"30fps":33.33}
       });
     }catch(e){
