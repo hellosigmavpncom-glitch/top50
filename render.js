@@ -1,12 +1,12 @@
-const {createCanvas,loadImage,GlobalFonts}=require("@napi-rs/canvas");
-const {monitorEventLoopDelay,PerformanceObserver}=require("node:perf_hooks");
 
-const W=1280,H=720,FRAME_BYTES=W*H*4;
+const {createCanvas,loadImage,GlobalFonts}=require("@napi-rs/canvas");
+
+const W=1280,H=720;
 const C={bg:"#050713",panel:"#0b1024",panel2:"#101832",border:"#273a68",blue:"#27a9ff",purple:"#8b36ff",teal:"#25e5c0",white:"#f5f7ff",muted:"#aab8df",red:"#ff4267"};
 const canvas=createCanvas(W,H),ctx=canvas.getContext("2d"),bgCanvas=createCanvas(W,H),bgCtx=bgCanvas.getContext("2d");
 const history={subs:[],rates:[],last:0,previous:null},avatars={},loadedAvatars={},textSizes=new Map(),gradients=new Map();
 const numberFormat=new Intl.NumberFormat("en-US");
-let lastTiming={drawMs:0,rawMs:0,rawBytes:0,totalMs:0},benchmarkActive=false,renderQueue=Promise.resolve();
+let lastTiming={drawMs:0,pngMs:0,totalMs:0},benchmarkActive=false,renderQueue=Promise.resolve();
 
 for(const w of [400,500,600,700,800,900])try{GlobalFonts.registerFromPath(require.resolve(`@fontsource/inter/files/inter-latin-${w}-normal.woff2`),"Inter");}catch{}
 
@@ -46,7 +46,8 @@ function getStats(d={}){
 }
 function preloadAvatar(url){
  if(!url||avatars[url])return avatars[url];
- avatars[url]=loadImage(url).then(img=>(loadedAvatars[url]=img)).catch(()=>null);return avatars[url];
+ avatars[url]=loadImage(url).then(img=>(loadedAvatars[url]=img)).catch(()=>null);
+ return avatars[url];
 }
 function avatar(url,x,y,size,border=C.blue){
  const img=loadedAvatars[url];if(!img)return;
@@ -60,6 +61,7 @@ function buildBackground(){
  bgCtx.fillStyle=g;bgCtx.fillRect(0,0,W,H);
 }
 buildBackground();
+
 function header(){
  rect(8,8,1264,48,10,C.panel2,null);txt("LUCAN PEVIDOR",22,32,19,C.white,900,180);txt("| ROAD TO 60M",198,32,19,C.purple,900,230);
  icon("live",1212,32,12,C.red);txt("LIVE",1225,32,15,C.red,900,50);
@@ -129,12 +131,9 @@ function sources(a,b){
   for(let j=0;j<4;j++){rect(xs[j],y,colW,36,7,"#080d1b","#26375b");txt(fmt(r[j+1]),xs[j]+11,y+18,17,j===0||j===2?C.teal:"#c4d1ff",900,colW-20);}
  });
 }
-async function renderInternal(data={},mode="png"){
- const totalStart=process.hrtime.bigint();
- if(mode==="raw-only"){
-  const raw=canvas.data(),rawMs=ms(totalStart);lastTiming={drawMs:0,rawMs,rawBytes:raw.length,totalMs:rawMs};return raw;
- }
- const a=getStats(data.lucan||{}),b=getStats(data.mine||{}),jobs=[];
+
+async function renderInternal(data={}){
+ const totalStart=process.hrtime.bigint(),a=getStats(data.lucan||{}),b=getStats(data.mine||{}),jobs=[];
  if(a.avatar&&!loadedAvatars[a.avatar]&&!avatars[a.avatar])jobs.push(preloadAvatar(a.avatar));
  if(b.avatar&&!loadedAvatars[b.avatar]&&!avatars[b.avatar])jobs.push(preloadAvatar(b.avatar));
  if(jobs.length)await Promise.all(jobs);
@@ -148,44 +147,17 @@ async function renderInternal(data={},mode="png"){
  const drawStart=process.hrtime.bigint();
  ctx.drawImage(bgCanvas,0,0);header();profile(a);miniStats(b);subscriberCard(442,current,a.hourly,a.daily);rateCard(723,rate);goalCard(1004,remaining,progress);sources(a,b);
  line(8,686,1272,686,"#ffffff18");txt("UPDATED "+new Date().toLocaleTimeString(),22,702,11,"#b9caff",900,300);icon("live",1179,702,9,C.teal);txt("CONNECTED",1192,702,11,C.teal,900,80);
- const drawMs=ms(drawStart);
- if(mode==="draw"){lastTiming={drawMs,rawMs:0,rawBytes:0,totalMs:ms(totalStart)};return null;}
- if(mode==="raw"){
-  const rawStart=process.hrtime.bigint(),raw=canvas.data(),rawMs=ms(rawStart);
-  lastTiming={drawMs,rawMs,rawBytes:raw.length,totalMs:ms(totalStart)};return raw;
- }
- const png=canvas.toBuffer("image/png");lastTiming={drawMs,rawMs:0,rawBytes:0,totalMs:ms(totalStart)};return png;
+ const drawMs=ms(drawStart),pngStart=process.hrtime.bigint(),png=canvas.toBuffer("image/png"),pngMs=ms(pngStart);
+ lastTiming={drawMs,pngMs,totalMs:ms(totalStart)};
+ return png;
 }
-function renderDashboard(data={},mode="png"){
- const job=renderQueue.then(()=>renderInternal(data,mode));renderQueue=job.catch(()=>{});return job;
+function renderDashboard(data={}){
+ const job=renderQueue.then(()=>renderInternal(data));renderQueue=job.catch(()=>{});return job;
 }
 function stats(values){
  if(!values.length)return{averageMs:0,medianMs:0,p95Ms:0,minMs:0,maxMs:0};
  const a=[...values].sort((x,y)=>x-y),avg=values.reduce((s,n)=>s+n,0)/values.length,p=q=>a[Math.min(a.length-1,Math.ceil(a.length*q)-1)],r=n=>Number(n.toFixed(2));
  return{averageMs:r(avg),medianMs:r(p(.5)),p95Ms:r(p(.95)),minMs:r(a[0]),maxMs:r(a[a.length-1])};
-}
-const mib=n=>Number((n/1048576).toFixed(2));
-function memory(){const m=process.memoryUsage();return{heapUsedMiB:mib(m.heapUsed),rssMiB:mib(m.rss),externalMiB:mib(m.external),arrayBuffersMiB:mib(m.arrayBuffers)};}
-function eventLoopResults(h){
- const cv=n=>Number((n/1e6).toFixed(2));
- return{minMs:cv(h.min),maxMs:cv(h.max),meanMs:cv(h.mean),p50Ms:cv(h.percentile(50)),p95Ms:cv(h.percentile(95)),p99Ms:cv(h.percentile(99))};
-}
-function pixelProbe(){
- try{const t=createCanvas(1,1),c=t.getContext("2d");c.fillStyle="#112233";c.fillRect(0,0,1,1);if(typeof t.data!=="function")return{available:false};
- const p=[...t.data().subarray(0,4)];return{available:true,format:p.join(",")==="17,34,51,255"?"RGBA":p.join(",")==="51,34,17,255"?"BGRA":"unknown",firstPixel:p};
- }catch(e){return{available:false,error:e.message};}
-}
-async function runPhase(data,name,mode){
- for(let i=0;i<3;i++)await renderDashboard(data,mode);
- const times=[],drawTimes=[],rawTimes=[],before=memory();let bytes=0;
- for(let i=0;i<300;i++){
-  const start=process.hrtime.bigint(),result=await renderDashboard(data,mode);
-  times.push(ms(start));drawTimes.push(lastTiming.drawMs);rawTimes.push(lastTiming.rawMs);if(result?.length)bytes=result.length;
-  await yieldLoop();
- }
- const slowFrames=times.map((total,i)=>({frame:i+1,totalMs:+total.toFixed(2),drawMs:+drawTimes[i].toFixed(2),rawMs:+rawTimes[i].toFixed(2)}))
-  .filter(f=>f.totalMs>=50).sort((a,b)=>b.totalMs-a.totalMs).slice(0,8);
- return{name,frames:times.length,...stats(times),draw:stats(drawTimes),rawExtraction:stats(rawTimes),frameBytes:bytes||FRAME_BYTES,slowFrames,memoryBefore:before,memoryAfter:memory()};
 }
 function attach(app,getData){
  app.get("/api/renderer/preview.png",async(req,res)=>{
@@ -194,40 +166,18 @@ function attach(app,getData){
   catch(e){console.error("Renderer error:",e.stack||e.message);res.status(500).send("Renderer failed");}
  });
  app.get("/api/renderer/benchmark",async(req,res)=>{
-  if(benchmarkActive)return res.status(409).json({error:"A renderer benchmark is already running"});benchmarkActive=true;
+  if(benchmarkActive)return res.status(409).json({error:"A renderer benchmark is already running"});
+  benchmarkActive=true;
   try{
-   const data=getData(),times=[],drawTimes=[],pngTimes=[];for(let i=0;i<3;i++)await renderDashboard(data);
-   for(let i=0;i<30;i++){const start=process.hrtime.bigint();await renderDashboard(data);times.push(ms(start));drawTimes.push(lastTiming.drawMs);pngTimes.push(lastTiming.totalMs-lastTiming.drawMs);await yieldLoop();}
-   res.set("Cache-Control","no-store");res.json({renderer:"@napi-rs/canvas",mode:"png",frames:times.length,warmupFrames:3,...stats(times),estimatedFPS:+(1000/(times.reduce((a,b)=>a+b,0)/times.length)).toFixed(2),draw:stats(drawTimes),pngEncode:stats(pngTimes)});
+   const data=getData(),times=[],drawTimes=[],pngTimes=[];
+   for(let i=0;i<3;i++)await renderDashboard(data);
+   for(let i=0;i<30;i++){
+    const start=process.hrtime.bigint();await renderDashboard(data);times.push(ms(start));drawTimes.push(lastTiming.drawMs);pngTimes.push(lastTiming.pngMs);await yieldLoop();
+   }
+   res.set("Cache-Control","no-store");
+   res.json({renderer:"@napi-rs/canvas",mode:"png",frames:times.length,warmupFrames:3,...stats(times),estimatedFPS:+(1000/(times.reduce((a,b)=>a+b,0)/times.length)).toFixed(2),draw:stats(drawTimes),pngEncode:stats(pngTimes)});
   }catch(e){console.error("PNG benchmark error:",e.stack||e.message);res.status(500).json({error:"PNG benchmark failed",message:e.message});}
   finally{benchmarkActive=false;}
- });
- app.get("/api/renderer/diagnostic",async(req,res)=>{
-  if(benchmarkActive)return res.status(409).json({error:"A renderer benchmark is already running"});benchmarkActive=true;
-  const hist=monitorEventLoopDelay({resolution:10}),gc=[],gcKinds={minor:0,major:0,incremental:0,weakCallback:0,other:0};
-  let gcTotal=0,observer;
-  try{
-   observer=new PerformanceObserver(list=>{for(const e of list.getEntries()){gc.push(e.duration);gcTotal+=e.duration;const k={1:"minor",2:"major",4:"incremental",8:"weakCallback"}[e.kind]||"other";gcKinds[k]++;}});
-   observer.observe({entryTypes:["gc"]});hist.enable();
-   const data=getData(),memoryBefore=memory(),started=process.hrtime.bigint();
-   const drawOnly=await runPhase(data,"draw-only","draw");
-   const rawOnly=await runPhase(data,"raw-only","raw-only");
-   const combined=await runPhase(data,"combined","raw");
-   await new Promise(r=>setTimeout(r,100));hist.disable();observer.disconnect();
-   res.set("Cache-Control","no-store");
-   res.json({
-    renderer:"@napi-rs/canvas",mode:"three-test-diagnostic",framesPerTest:300,warmupFramesPerTest:3,
-    frameSizeBytes:FRAME_BYTES,frameSizeMiB:mib(FRAME_BYTES),totalTestMs:+ms(started).toFixed(2),
-    tests:{drawOnly,rawOnly,combined},
-    eventLoopDelay:eventLoopResults(hist),
-    garbageCollection:{events:gc.length,totalMs:+gcTotal.toFixed(2),...gcKinds,durations:stats(gc)},
-    memory:{before:memoryBefore,after:memory()},pixelProbe:pixelProbe(),
-    frameBudgets:{"10fps":100,"15fps":66.67,"30fps":33.33}
-   });
-  }catch(e){
-   hist.disable();observer?.disconnect();console.error("Diagnostic benchmark error:",e.stack||e.message);
-   res.status(500).json({error:"Diagnostic benchmark failed",message:e.message});
-  }finally{benchmarkActive=false;}
  });
 }
 module.exports={renderDashboard,attach};
