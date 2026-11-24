@@ -1,54 +1,35 @@
 
-const {spawn}=require("child_process");
-const {once}=require("events");
-const fs=require("fs");
-const os=require("os");
-const path=require("path");
-const renderer=require("./render");
-const ffmpeg=require("ffmpeg-static");
-const pidusage=require("pidusage");
+const {spawn}=require("child_process"),{once}=require("events"),fs=require("fs"),os=require("os"),path=require("path"),renderer=require("./render"),ffmpeg=require("ffmpeg-static"),pidusage=require("pidusage");
 
-const W=1280,H=720,FPS=15,SECONDS=60,TOTAL=FPS*SECONDS,BYTES=W*H*4;
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const elapsed=t=>Number(process.hrtime.bigint()-t)/1e6;
-const mib=n=>+(n/1048576).toFixed(2);
-const stats=v=>{
- if(!v.length)return{averageMs:0,p95Ms:0,maxMs:0};
- const a=[...v].sort((x,y)=>x-y);
- return{averageMs:+(v.reduce((s,n)=>s+n,0)/v.length).toFixed(2),p95Ms:+a[Math.min(a.length-1,Math.ceil(a.length*.95)-1)].toFixed(2),maxMs:+a.at(-1).toFixed(2)};
-};
+const W=1280,H=720,FPS=15,TEST_FRAMES=30,BYTES=W*H*4;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms)),elapsed=t=>Number(process.hrtime.bigint()-t)/1e6,mib=n=>+(n/1048576).toFixed(2);
+const stats=v=>{if(!v.length)return{averageMs:0,medianMs:0,p95Ms:0,minMs:0,maxMs:0};const a=[...v].sort((x,y)=>x-y);return{averageMs:+(v.reduce((s,n)=>s+n,0)/v.length).toFixed(2),medianMs:+(a[Math.floor(a.length/2)]).toFixed(2),p95Ms:+a[Math.min(a.length-1,Math.ceil(a.length*.95)-1)].toFixed(2),minMs:+a[0].toFixed(2),maxMs:+a.at(-1).toFixed(2)};};
+const memory=()=>{const m=process.memoryUsage();return{heapUsedMiB:mib(m.heapUsed),externalMiB:mib(m.external),rssMiB:mib(m.rss)};};
 
-let state={running:false,status:"idle",id:null,startedAt:null,finishedAt:null,frames:0,targetFrames:TOTAL,progress:0,error:null,result:null,videoPath:null};
+let state={running:false,status:"idle",id:null,startedAt:null,finishedAt:null,frames:0,targetFrames:TEST_FRAMES,progress:0,error:null,result:null,videoPath:null};
 const publicState=()=>({running:state.running,status:state.status,id:state.id,startedAt:state.startedAt,finishedAt:state.finishedAt,frames:state.frames,targetFrames:state.targetFrames,progress:+state.progress.toFixed(1),error:state.error,result:state.result});
 
 async function run(getData){
  const output=path.join(os.tmpdir(),`encode-test-${state.id}.mp4`);
- let child=null,timer=null,spawnError=null,stderr="",closed,sampling=false;
- const renderTimes=[],writeTimes=[];
- let cpuTotal=0,cpuSamples=0,cpuMax=0,ffmpegMemoryMax=0,ffmpegSpeed=null,ffmpegFps=null,backpressure=0,lateFrames=0;
- const start=process.hrtime.bigint(),nodeMemoryStart=process.memoryUsage();
+ let child=null,timer=null,sampling=false,stderr="",spawnError=null,ffmpegSpeed=null,ffmpegFps=null,ffmpegCpuTotal=0,ffmpegCpuSamples=0,ffmpegCpuMax=0,ffmpegMemoryMax=0;
+ const dataTimes=[],renderTimes=[],writeCallTimes=[],drainWaitTimes=[],frameTimes=[];
+ const start=process.hrtime.bigint(),nodeMemoryStart=memory();
+ let closed;
 
  try{
   if(!ffmpeg)throw Error("FFmpeg binary not found");
+  if(typeof renderer.renderRawFrame!=="function")throw Error("renderer.renderRawFrame is not exported");
   try{await fs.promises.unlink(output);}catch{}
 
-  child=spawn(ffmpeg,[
-   "-hide_banner","-loglevel","info","-stats_period","1",
-   "-f","rawvideo","-pixel_format","rgba","-video_size",`${W}x${H}`,
-   "-framerate",String(FPS),"-i","pipe:0",
-   "-an","-c:v","libx264","-preset","ultrafast","-tune","zerolatency",
-   "-pix_fmt","yuv420p","-movflags","+faststart","-y",output
-  ],{stdio:["pipe","ignore","pipe"]});
+  child=spawn(ffmpeg,["-hide_banner","-loglevel","info","-stats_period","1","-f","rawvideo","-pixel_format","rgba","-video_size",`${W}x${H}`,"-framerate",String(FPS),"-i","pipe:0","-an","-c:v","libx264","-preset","ultrafast","-tune","zerolatency","-pix_fmt","yuv420p","-movflags","+faststart","-y",output],{stdio:["pipe","ignore","pipe"]});
 
+  closed=new Promise((resolve,reject)=>{child.once("close",(code,signal)=>resolve({code,signal}));child.once("error",reject);});
   child.on("error",e=>{spawnError=e;});
   child.stdin.on("error",e=>{spawnError=spawnError||e;});
-  closed=once(child,"close");
-
   child.stderr.setEncoding("utf8");
   child.stderr.on("data",chunk=>{
    stderr=(stderr+chunk).slice(-12000);
-   const speed=[...chunk.matchAll(/speed=\s*([\d.]+)x/g)].pop();
-   const fps=[...chunk.matchAll(/fps=\s*([\d.]+)/g)].pop();
+   const speed=[...chunk.matchAll(/speed=\s*([\d.]+)x/g)].pop(),fps=[...chunk.matchAll(/fps=\s*([\d.]+)/g)].pop();
    if(speed)ffmpegSpeed=Number(speed[1]);
    if(fps)ffmpegFps=Number(fps[1]);
   });
@@ -56,66 +37,61 @@ async function run(getData){
   timer=setInterval(async()=>{
    if(sampling||!child?.pid)return;
    sampling=true;
-   try{
-    const p=await pidusage(child.pid);
-    cpuTotal+=p.cpu;cpuSamples++;
-    cpuMax=Math.max(cpuMax,p.cpu);
-    ffmpegMemoryMax=Math.max(ffmpegMemoryMax,p.memory);
-   }catch{}finally{sampling=false;}
-  },1000);
+   try{const p=await pidusage(child.pid);ffmpegCpuTotal+=p.cpu;ffmpegCpuSamples++;ffmpegCpuMax=Math.max(ffmpegCpuMax,p.cpu);ffmpegMemoryMax=Math.max(ffmpegMemoryMax,p.memory);}catch{}finally{sampling=false;}
+  },500);
 
-  const scheduleStart=process.hrtime.bigint(),interval=1e9/FPS;
-
-  for(let i=0;i<TOTAL;i++){
-   const deadline=scheduleStart+BigInt(Math.round(i*interval));
-   const remaining=Number(deadline-process.hrtime.bigint())/1e6;
-   if(remaining>1)await sleep(remaining-0.5);
-
+  for(let i=0;i<TEST_FRAMES;i++){
+   if(spawnError)throw spawnError;
    const frameStart=process.hrtime.bigint();
-   if(Number(frameStart-deadline)/1e6>2)lateFrames++;
 
-   const frame=await renderer.renderRawFrame(getData());
-   renderTimes.push(elapsed(frameStart));
-   if(!frame||frame.byteLength!==BYTES)throw Error(`Invalid RGBA frame: expected ${BYTES} bytes`);
+   const dataStart=process.hrtime.bigint();
+   const data=await getData();
+   dataTimes.push(elapsed(dataStart));
 
-   const writeStart=process.hrtime.bigint();
-   if(!child.stdin.write(frame)){
-    backpressure++;
-    await Promise.race([
-     once(child.stdin,"drain"),
-     closed.then(()=>{throw Error("FFmpeg closed before accepting all frames");})
-    ]);
+   const renderStart=process.hrtime.bigint();
+   const frame=await renderer.renderRawFrame(data);
+   renderTimes.push(elapsed(renderStart));
+
+   if(!frame||frame.byteLength!==BYTES)throw Error(`Invalid RGBA frame ${i+1}: expected ${BYTES} bytes, received ${frame?.byteLength??"nothing"}`);
+   if(child.stdin.destroyed||child.stdin.writableEnded)throw Error("FFmpeg input pipe closed unexpectedly");
+
+   const writeStart=process.hrtime.bigint(),accepted=child.stdin.write(frame);
+   writeCallTimes.push(elapsed(writeStart));
+
+   if(!accepted){
+    const drainStart=process.hrtime.bigint();
+    await Promise.race([once(child.stdin,"drain"),closed.then(({code,signal})=>{throw Error(`FFmpeg closed while waiting for pipe drain: ${code} ${signal||""}`);})]);
+    drainWaitTimes.push(elapsed(drainStart));
    }
-   writeTimes.push(elapsed(writeStart));
+
+   frameTimes.push(elapsed(frameStart));
    state.frames=i+1;
-   state.progress=state.frames/TOTAL*100;
+   state.progress=state.frames/TEST_FRAMES*100;
   }
 
   child.stdin.end();
-  const [code,signal]=await closed;
+  const exit=await closed;
   if(spawnError)throw spawnError;
-  if(code!==0)throw Error(`FFmpeg exited with code ${code}${signal?` (${signal})`:""}: ${stderr.slice(-1800)}`);
+  if(exit.code!==0)throw Error(`FFmpeg exited with code ${exit.code}${exit.signal?` (${exit.signal})`:""}: ${stderr.slice(-1800)}`);
 
-  const file=await fs.promises.stat(output),duration=elapsed(start),nodeMemoryEnd=process.memoryUsage();
+  const file=await fs.promises.stat(output),duration=elapsed(start),nodeMemoryEnd=memory();
+  const actualFps=state.frames/(duration/1000);
   state.videoPath=output;
   state.result={
-   resolution:`${W}x${H}`,fpsTarget:FPS,durationTargetSeconds:SECONDS,
-   framesSent:state.frames,framesExpected:TOTAL,
-   achievedFPS:+(state.frames/(duration/1000)).toFixed(3),
-   elapsedMs:+duration.toFixed(2),ffmpegSpeed,ffmpegReportedFPS:ffmpegFps,
-   outputSizeBytes:file.size,outputSizeMiB:mib(file.size),
-   render:stats(renderTimes),inputWrite:stats(writeTimes),
-   backpressureCount:backpressure,lateFrames,
-   ffmpegProcess:{averageCpuPercent:cpuSamples?+(cpuTotal/cpuSamples).toFixed(1):null,maxCpuPercent:+cpuMax.toFixed(1),maxMemoryMiB:mib(ffmpegMemoryMax)},
-   nodeMemory:{heapUsedMiB:mib(nodeMemoryEnd.heapUsed),rssMiB:mib(nodeMemoryEnd.rss),externalMiB:mib(nodeMemoryEnd.external),startRssMiB:mib(nodeMemoryStart.rss)},
-   ffmpegExitCode:code
+   renderer:"takumi-js",mode:"maximum-throughput-pipeline",resolution:`${W}x${H}`,fpsTarget:FPS,framesExpected:TEST_FRAMES,framesSent:state.frames,videoDurationSeconds:+(state.frames/FPS).toFixed(2),
+   elapsedMs:+duration.toFixed(2),achievedPipelineFPS:+actualFps.toFixed(3),speedVsTarget:+(actualFps/FPS).toFixed(3),
+   stages:{getData:stats(dataTimes),takumiRender:stats(renderTimes),pipeWriteCall:stats(writeCallTimes),pipeDrainWait:stats(drainWaitTimes),completeFrameCycle:stats(frameTimes)},
+   ffmpeg:{reportedSpeed:ffmpegSpeed,reportedFPS:ffmpegFps,averageCpuPercent:ffmpegCpuSamples?+(ffmpegCpuTotal/ffmpegCpuSamples).toFixed(1):null,maxCpuPercent:+ffmpegCpuMax.toFixed(1),maxMemoryMiB:mib(ffmpegMemoryMax),exitCode:exit.code},
+   output:{sizeBytes:file.size,sizeMiB:mib(file.size),frameBytes:BYTES},
+   memory:{before:nodeMemoryStart,after:nodeMemoryEnd},
+   checksum:state.frames+Math.round(dataTimes.reduce((a,b)=>a+b,0))+Math.round(renderTimes.reduce((a,b)=>a+b,0))
   };
   state.status="completed";state.progress=100;state.finishedAt=new Date().toISOString();
-  console.log("[ENCODE TEST] Completed",JSON.stringify(state.result));
+  console.log("[ENCODE DIAGNOSTIC]",JSON.stringify(state.result));
  }catch(e){
   if(child&&!child.killed)child.kill("SIGKILL");
   state.status="failed";state.error=e.message;state.finishedAt=new Date().toISOString();
-  console.error("[ENCODE TEST]",e.stack||e.message);
+  console.error("[ENCODE DIAGNOSTIC]",e.stack||e.message);
  }finally{
   if(timer)clearInterval(timer);
   state.running=false;
@@ -127,16 +103,13 @@ function attach(app,getData){
   const token=process.env.ENCODE_TEST_TOKEN;
   if(token&&req.get("x-encode-test-token")!==token)return res.status(401).json({error:"Unauthorized"});
   if(state.running)return res.status(409).json({error:"Benchmark already running",status:publicState()});
-  state={running:true,status:"running",id:Date.now(),startedAt:new Date().toISOString(),finishedAt:null,frames:0,targetFrames:TOTAL,progress:0,error:null,result:null,videoPath:null};
-  run(getData);
+  state={running:true,status:"running",id:Date.now(),startedAt:new Date().toISOString(),finishedAt:null,frames:0,targetFrames:TEST_FRAMES,progress:0,error:null,result:null,videoPath:null};
   res.set("Cache-Control","no-store");
   res.status(202).json({started:true,status:publicState()});
+  run(getData);
  });
 
- app.get("/api/encode-test/status",(req,res)=>{
-  res.set("Cache-Control","no-store");
-  res.json(publicState());
- });
+ app.get("/api/encode-test/status",(req,res)=>{res.set("Cache-Control","no-store");res.json(publicState());});
 
  app.get("/api/encode-test/results",(req,res)=>{
   res.set("Cache-Control","no-store");
@@ -145,20 +118,16 @@ function attach(app,getData){
   res.json(state.result);
  });
 
- // Browser playback: displays the MP4 instead of forcing a download.
  app.get("/api/encode-test/video",(req,res)=>{
   if(state.running)return res.status(409).send("Benchmark still running");
-  if(state.status!=="completed"||!state.videoPath||!fs.existsSync(state.videoPath))
-   return res.status(404).send("No completed video available");
+  if(state.status!=="completed"||!state.videoPath||!fs.existsSync(state.videoPath))return res.status(404).send("No completed video available");
   res.set({"Cache-Control":"no-store","Content-Type":"video/mp4","Content-Disposition":'inline; filename="encode-test.mp4"',"Accept-Ranges":"bytes"});
   res.sendFile(state.videoPath);
  });
 
- // Separate endpoint for downloading the MP4.
  app.get("/api/encode-test/download",(req,res)=>{
   if(state.running)return res.status(409).send("Benchmark still running");
-  if(state.status!=="completed"||!state.videoPath||!fs.existsSync(state.videoPath))
-   return res.status(404).send("No completed video available");
+  if(state.status!=="completed"||!state.videoPath||!fs.existsSync(state.videoPath))return res.status(404).send("No completed video available");
   res.download(state.videoPath,"encode-test.mp4");
  });
 }
