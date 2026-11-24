@@ -12,6 +12,7 @@
     "@resvg/resvg-js": "^2.6.2",
     "express": "^5.1.0",
     "ffmpeg-static": "^5.2.0",
+    "takumi-js": "^2.22.1",
     "pidusage": "^3.0.0"
   }
 }
