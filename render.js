@@ -1,10 +1,13 @@
 
 const {Resvg}=require("@resvg/resvg-js");
 const fs=require("fs"),path=require("path");
+
 const W=1280,H=720,FPS=15,FRAME_MS=1000/FPS;
 const C={bg:"#050713",blue:"#27a9ff",purple:"#8b36ff",teal:"#25e5c0",white:"#f5f7ff",muted:"#aab8df",border:"#273a68",red:"#ff4267"};
-const DIR="/tmp/inter-static",WEIGHTS=["Regular","Medium","SemiBold","Bold","ExtraBold","Black"];
+const DIR="/tmp/inter-static-v3";
+const WEIGHTS=["Regular","Medium","SemiBold","Bold","ExtraBold","Black"];
 const FONT={loadSystemFonts:false,fontFiles:WEIGHTS.map(n=>path.join(DIR,`Inter-${n}.ttf`)),defaultFontFamily:"Inter"};
+const LOWER={i:.25,l:.28,j:.3,f:.34,r:.37,t:.37,m:.83,w:.75};
 const nf=new Intl.NumberFormat("en-US"),avatars=new Map(),numberState=new Map();
 const history={subs:[],rates:[],previous:null,last:0};
 let queue=Promise.resolve(),benchmarkActive=false,lastTiming={};
@@ -14,13 +17,12 @@ const esc=s=>String(s??"—").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">"
 const fmt=v=>v==null||!Number.isFinite(Number(v))?"—":nf.format(Math.round(Number(v)));
 const num=(o,...keys)=>{for(const k of keys)if(o?.[k]!=null&&o[k]!==""&&Number.isFinite(Number(o[k])))return Number(o[k]);return null;};
 
-// Approximate Inter glyph advances, used only to fit text without stretching it.
 function units(s){
  return [...String(s??"—")].reduce((n,c)=>n+(
   /[0-9]/.test(c)?.62:
   /[A-Z]/.test(c)?.66:
-  /[a-z]/.test(c)?({i:.25,l:.28,j:.3,f:.34,r:.37,t:.37,m:.83,w:.75}. [c]??.53):
-  c===","||c==="."||c===":"? .25:
+  /[a-z]/.test(c)?(LOWER[c]??.53):
+  c===","||c==="."||c===":"?.25:
   c===" "?.28:c==="%"?.82:c==="+"?.62:c==="−"||c==="-"?.4:.58
  ),0);
 }
@@ -29,13 +31,11 @@ function txt(v,x,y,size=16,color=C.white,weight=700,max=Infinity,anchor="start",
  const s=esc(v),fs=Math.max(7,fitSize(v,size,max));
  return `<text x="${x}" y="${y}" fill="${color}" font-family="Inter" font-size="${fs}" font-weight="${weight}" text-anchor="${anchor}" dominant-baseline="middle" font-variant-numeric="tabular-nums" ${extra}>${s}</text>`;
 }
-
-// Single-string number animation: no duplicate old digits, guessed digit positions or stretched glyphs.
 function wheel(v,x,y,size=20,color=C.white,max=Infinity,anchor="start",key=""){
  const s=String(v??"—"),fs=Math.max(7,fitSize(s,size,max)),now=Date.now();
  let st=numberState.get(key);
  if(!st||st.value!==s){st={value:s,time:now};numberState.set(key,st);}
- const p=Math.min(1,(now-st.time)/190),dy=(1-(1-Math.pow(1-p,3)))*fs*.35;
+ const p=Math.min(1,(now-st.time)/190),dy=(1-Math.pow(1-p,3))*fs*.35;
  const cw=max===Infinity?1800:max,cx=anchor==="center"?x-cw/2:anchor==="right"?x-cw:x;
  const id="clip-"+String(key).replace(/[^a-z0-9]/gi,"");
  return `<defs><clipPath id="${id}"><rect x="${cx}" y="${y-fs*1.2}" width="${cw}" height="${fs*2.4}"/></clipPath></defs><g clip-path="url(#${id})"><text x="${x}" y="${y+dy}" fill="${color}" font-family="Inter" font-size="${fs}" font-weight="900" text-anchor="${anchor}" dominant-baseline="middle" font-variant-numeric="tabular-nums" opacity="${.55+.45*p}">${esc(s)}</text></g>`;
@@ -49,7 +49,7 @@ async function ensureFont(){
   const r=await fetch(`https://unpkg.com/inter-font@3.19.0/ttf/Inter-${n}.ttf`,{signal:AbortSignal.timeout(30000)});
   if(!r.ok)throw Error(`Inter ${n} download failed: HTTP ${r.status}`);
   const b=Buffer.from(await r.arrayBuffer());
-  if(b.length<100000)throw Error(`Invalid Inter ${n} font`);
+  if(b.length<100000||b.toString("ascii",0,4)!=="\u0000\u0001\u0000\u0000")throw Error(`Invalid Inter ${n} TTF file`);
   await fs.promises.writeFile(file,b);
  }
 }
@@ -75,10 +75,8 @@ function getStats(d={}){
  };
 }
 
-const rect=(x,y,w,h,r=12,fill="#111a35",stroke=C.border,sw=1)=>
- `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${fill}"${stroke?` stroke="${stroke}" stroke-width="${sw}"`:""}/>`;
-const line=(x,y,x2,y2,color="#ffffff20",width=1)=>
- `<path d="M${x} ${y}L${x2} ${y2}" fill="none" stroke="${color}" stroke-width="${width}"/>`;
+const rect=(x,y,w,h,r=12,fill="#111a35",stroke=C.border,sw=1)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${fill}"${stroke?` stroke="${stroke}" stroke-width="${sw}"`:""}/>`;
+const line=(x,y,x2,y2,color="#ffffff20",width=1)=>`<path d="M${x} ${y}L${x2} ${y2}" fill="none" stroke="${color}" stroke-width="${width}"/>`;
 
 async function avatar(url){
  if(!url)return"";
@@ -175,7 +173,6 @@ function mainStats(a){
  const x=[440.4,722.8,1005.2],w=268.4,y=66,h=388;
  let o="";
 
- // Subscriber count and chart.
  o+=panel(x[0],y,w,h,19,"#287bff");
  o+=icon("arrow",x[0]+43,117,C.blue,23);
  o+=txt("LUCAN · LIVE SUBSCRIBERS",x[0]+w/2+8,108,14,"#d7e3ff",900,230,"middle");
@@ -190,7 +187,6 @@ function mainStats(a){
  ["LINEAR ESTIMATE","HOURLY GAIN","DAILY GAIN"].forEach((v,i)=>o+=txt(v,centers[i],348,9,"#b9caff",800,tracks[i]-3,"middle"));
  [current,a.hourly,a.daily].forEach((v,i)=>o+=wheel(fmt(v),centers[i],390,16,C.teal,tracks[i]-5,"center",`metric-${i}`));
 
- // Rate card: render the sign and value as one fitted string.
  o+=panel(x[1],y,w,h,19,"#2869c9");
  o+=icon("bolt",x[1]+48,117,C.blue,24);
  o+=txt("SUBS GAINED PER SEC",x[1]+w/2+8,117,15,"#d7e3ff",900,225,"middle");
@@ -199,7 +195,6 @@ function mainStats(a){
  o+=icon("bars",x[1]+88,416,C.teal,13);
  o+=txt("LIVE AVERAGE",x[1]+w/2+8,416,12,C.teal,900,145,"middle");
 
- // Goal card.
  o+=panel(x[2],y,w,h,19,"#793dff");
  o+=icon("flag",x[2]+43,117,C.blue,25);
  o+=txt("SUBSCRIBERS REMAINING",x[2]+w/2+8,108,14,"#d7e3ff",900,230,"middle");
