@@ -45,29 +45,7 @@ html,body{width:1280px!important;height:720px!important;min-width:1280px!importa
 </style>`;
 async function getTemplate(){if(!templatePromise)templatePromise=(async()=>{let html=await getHtml();html=html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,"").replace(/<link\b[^>]*>/gi,"");if(!html.includes("</head>"))throw Error("index.html is missing </head>");html=html.replace("</head>",css+"</head>");return compileTemplate(html);})().catch(e=>{templatePromise=null;throw e;});return templatePromise;}
 async function avatar(url){if(!url)return"";if(images.has(url))return images.get(url);const task=(async()=>{try{const r=await fetch(url,{signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error("HTTP "+r.status);const b=Buffer.from(await r.arrayBuffer());if(b.length>2e6)throw Error("Avatar too large");console.log(`[AVATAR] OK | ${b.length} bytes | ${url.slice(0,85)}`);return`data:${r.headers.get("content-type")||"image/jpeg"};base64,${b.toString("base64")}`;}catch(e){console.error(`[AVATAR] FAILED | ${e.message} | ${url}`);return"";}})();images.set(url,task);return task;}
-function rollingMarkup(id,value,decimals=0,suffix=""){
-  const n=numeric(value);
-  if(n===null)return`<span class="odometer" data-odometer="${esc(id)}">—</span>`;
-  const rounded=decimals?Number(n.toFixed(decimals)):Math.round(n),target=(decimals?rounded.toFixed(decimals):nf.format(rounded))+suffix,now=Date.now();
-  let s=rollStates.get(id);
-  if(!s){s={targetString:target,transitions:[]};rollStates.set(id,s);}
-  else if(s.targetString!==target){
-    const oldDigits=(s.targetString.match(/\d/g)||[]),newDigits=(target.match(/\d/g)||[]);
-    s.transitions=newDigits.map((d,i)=>({from:oldDigits[oldDigits.length-newDigits.length+i]??d,to:d,start:now}));
-    s.targetString=target;
-  }
-  let digitIndex=0,out="";
-  for(const ch of target){
-    if(/\d/.test(ch)){
-      const t=s.transitions[digitIndex++];
-      if(t&&t.from!==t.to){
-        const p=Math.max(0,Math.min(1,(now-t.start)/650));
-        out+=p<1?`<span class="roll-window"><span class="roll-strip" style="transform:translateY(-${p.toFixed(3)}em)"><span>${t.from}</span><span>${t.to}</span></span></span>`:ch;
-      }else out+=ch;
-    }else out+=esc(ch);
-  }
-  return`<span class="odometer" data-odometer="${esc(id)}">${out}</span>`;
-}
+function rollingMarkup(id,value,decimals=0,suffix=""){const n=numeric(value);if(n===null)return`<span class="odometer" data-odometer="${esc(id)}">—</span>`;const rounded=decimals?Number(n.toFixed(decimals)):Math.round(n),target=(decimals?rounded.toFixed(decimals):nf.format(rounded))+suffix,now=Date.now();let s=rollStates.get(id);if(!s){s={targetString:target,transitions:[]};rollStates.set(id,s);}else if(s.targetString!==target){const oldDigits=(s.targetString.match(/\d/g)||[]),newDigits=(target.match(/\d/g)||[]);s.transitions=newDigits.map((d,i)=>({from:oldDigits[oldDigits.length-newDigits.length+i]??d,to:d,start:now}));s.targetString=target;}let digitIndex=0,out="";for(const ch of target){if(/\d/.test(ch)){const t=s.transitions[digitIndex++];if(t&&t.from!==t.to){const p=Math.max(0,Math.min(1,(now-t.start)/650));out+=p<1?`<span class="roll-window"><span class="roll-strip" style="transform:translateY(-${p.toFixed(3)}em)"><span>${t.from}</span><span>${t.to}</span></span></span>`:ch;}else out+=ch;}else out+=esc(ch);}return`<span class="odometer" data-odometer="${esc(id)}">${out}</span>`;}
 function svgIcon(type){const paths={arrow:'<path d="M7 17 17 7M7 7h10v10"/>',bolt:'<path d="m13 2-9 12h7l-1 8 10-12h-7z"/>',flag:'<path d="M5 3v18M5 4h13l-3 5 3 5H5"/>',grid:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>',refresh:'<path d="M20 7v5h-5M4 17v-5h5M5.6 9a7 7 0 0 1 11.8-2L20 12M4 12l2.6 5a7 7 0 0 0 11.8-2"/>'};return`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="#27a9ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${paths[type]||paths.grid}</svg>`;}
 function chartPoints(a){if(a.length<2)return"0,65 60,55 120,52 180,45 240,38 300,30 360,22 400,15";const min=Math.min(...a),max=Math.max(...a),range=Math.max(1,max-min);return a.map((v,i)=>`${(i/(a.length-1)*400).toFixed(1)},${(68-((v-min)/range)*52).toFixed(1)}`).join(" ");}
 function chartMarkup(points){return`<defs><linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#18e9d9" stop-opacity=".35"/><stop offset="100%" stop-color="#18e9d9" stop-opacity="0"/></linearGradient></defs><polygon class="chart-fill" id="chartFill" points="0,80 ${points} 400,80" style="fill:url(#chartGradient);stroke:none;opacity:1"/><polyline points="${points}" fill="none" style="stroke:#168fff;stroke-width:10;stroke-linecap:round;stroke-linejoin:round;opacity:.16"/><polyline id="chartLine" points="${points}" fill="none" style="stroke:#25e5c0;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:1"/>`;}
@@ -80,230 +58,24 @@ function addAttrPatch(patches,html,p,id,name,value){const x=p[id];if(!x){diagnos
 function takeSample(){if(latestMain==null||!Number.isFinite(latestMain))return;const now=Date.now(),n=latestMain;history.subs.push(n);if(history.subs.length>18)history.subs.shift();history.samples.push({t:now,n});if(history.samples.length>6)history.samples.shift();if(history.samples.length>1){const first=history.samples[0],last=history.samples.at(-1),seconds=(last.t-first.t)/1000;if(seconds>0){history.rates.push((last.n-first.n)/seconds);if(history.rates.length>14)history.rates.shift();}}history.lastSample=now;}
 function record(main){if(main!=null&&Number.isFinite(Number(main)))latestMain=Number(main);if(!sampleTimer&&latestMain!=null){takeSample();sampleTimer=setInterval(takeSample,2000);sampleTimer.unref?.();}}
 function layoutDiagnostics(html,p){const ids=["lucanAvatar","mineAvatar","lucanCount","lucanRemaining","lucanRate","srcCard","rateBars","goalProgress","mineEstSubs","mineApiSubs","mineEstViews","mineApiViews","mineEstVideos","mineApiVideos"],found=ids.map(id=>`${id}:${p[id]?"YES":"NO"}`).join(" | ");return{ids:found,gridRules:(html.match(/grid-template-(?:rows|columns)\s*:/gi)||[]).length,flexRules:(html.match(/display\s*:\s*flex/gi)||[]).length,hero:/\.hero\s*\{[^}]*display\s*:\s*grid/i.test(html),main:/\.main-stats\s*\{[^}]*display\s*:\s*grid/i.test(html)};}
-async function buildHtml(data={}){
-  const started=process.hrtime.bigint(),l=data.lucan||{},m=data.mine||{},st=l.sctools||{},fw=l.freewebtools||{},mst=m.sctools||{},mfw=m.freewebtools||{},lc=l.channel||{},mc=m.channel||{};
-  const main=st.linearSubscribers??st.estSubscribers??fw.estimatedSubscribers??st.apiSubscribers??fw.apiSubscribers,remaining=main==null?null:Math.max(0,60000000-Number(main)),progress=main==null?0:Math.min(100,Number(main)/60000000*100),hourly=st.hourly??fw.hourly,daily=st.daily??fw.daily;
-  record(main);
-  const[la,ma,template]=await Promise.all([avatar(lc.avatar),avatar(mc.avatar),getTemplate()]);
-  diagnostics.length=0;
-  const base=template.html,p=template.index,patches=[],rate=history.rates.at(-1)??null;
-  addAttrPatch(patches,base,p,"lucanAvatar","src",la||"data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=");
-  addAttrPatch(patches,base,p,"mineAvatar","src",ma||"data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=");
-  const fields={lucanName:lc.name||"Lucan Pevidor",lucanHandle:lc.handle||"@LucanPevidor",lucanDescription:englishDescription(lc),mineName:mc.name||"VYStats",mineHandle:mc.handle||"@vystatsyt",lucanRateSign:rate!=null&&rate<0?"−":"+",updated:(l.updated||m.updated)?"↻ UPDATED "+new Date(Math.max(l.updated||0,m.updated||0)).toLocaleTimeString():"WAITING FOR DATA",status:l.updated||m.updated?"● CONNECTED":"● CONNECTING"};
-  for(const[id,v]of Object.entries(fields))addTextPatch(patches,base,p,id,v);
-  for(const[id,v,d]of [["lucanCount",main,0],["lucanRemaining",remaining,0],["lucanRate",rate==null?null:Math.abs(rate),2],["stLinearText",st.linearSubscribers??st.estSubscribers,0],["stHourlyText",hourly,0],["stDailyText",daily,0],["mineEstSubs",mst.estSubscribers??mfw.estimatedSubscribers,0],["mineApiSubs",mst.apiSubscribers??mfw.apiSubscribers,0],["mineEstViews",mst.estViews??mfw.estimatedViews,0],["mineApiViews",mst.apiViews??mfw.viewCount,0],["mineEstVideos",mst.estVideos??mfw.videoCount,0],["mineApiVideos",mst.apiVideos??mfw.videoCount,0],["goalPercent",progress,1]])addInnerPatch(patches,base,p,id,rollingMarkup(id,v,d,id==="goalPercent"?"%":""));
-  addAttrPatch(patches,base,p,"goalProgress","style",`width:${progress}%;`);
-  addInnerPatch(patches,base,p,"srcCard",sourceCard({st,fw}));
-  addInnerPatch(patches,base,p,"rateBars",rateBars());
-  if(p.chart)patches.push({start:p.chart.start,end:p.chart.end,value:p.chart.open+chartMarkup(chartPoints(history.subs))+p.chart.close});else diagnostics.push("MISSING CHART SVG");
-  let html=applyPatches(base,patches);
-  html=html.replace('<span class="stat-icon">↗</span>',`<span class="stat-icon">${svgIcon("arrow")}</span>`).replace('<span class="stat-icon">ϟ</span>',`<span class="stat-icon">${svgIcon("bolt")}</span>`).replace('<span class="stat-icon">⚑</span>',`<span class="stat-icon">${svgIcon("flag")}</span>`);
-  html=html.replace(/●/g,'<span class="live-dot"></span>').replace(/[◉◎]/g,"").replace("↻ UPDATED",`${svgIcon("refresh")} UPDATED`);
-  if(!diagLogged){const after=layoutDiagnostics(html,p),key=JSON.stringify({after,diagnostics});if(key!==lastDiag||Date.now()-lastLog>60000){lastDiag=key;lastLog=Date.now();console.log(`[HTML DIAGNOSTICS] original=${template.originalLength} | final=${html.length} chars | build=${elapsed(started).toFixed(1)}ms`);console.log("[HTML IDS]",after.ids);console.log("[LAYOUT CHECK]",JSON.stringify(after));console.log("[HTML CHANGES]",diagnostics.length?diagnostics.join(" || "):"All requested replacements found");}diagLogged=true;}
-  return html;
-}
-async function renderInternal(data={},mode="png"){
-  const start=process.hrtime.bigint();
-  try{
-    const[html,fonts]=await Promise.all([buildHtml(data),getFonts()]),built=process.hrtime.bigint();
-    const output=await render(html,{width:W,height:H,format:mode==="raw"?"raw":"png",fonts}),result=Buffer.from(output);
-    lastTiming={buildMs:elapsed(start,built),renderMs:elapsed(built),totalMs:elapsed(start)};
-    if(mode==="raw"&&result.length!==W*H*4)throw Error(`Bad RGBA frame: ${result.length}; expected ${W*H*4}`);
-    if(mode==="png"){const signature=result.subarray(0,8).toString("hex"),width=result.length>=24?result.readUInt32BE(16):0,height=result.length>=24?result.readUInt32BE(20):0;if(signature!=="89504e470d0a1a0a")throw Error("Invalid PNG signature: "+signature);console.log(`[TAKUMI] PNG OK | ${width}x${height} | ${(result.length/1024).toFixed(1)} KB | build=${lastTiming.buildMs.toFixed(1)}ms render=${lastTiming.renderMs.toFixed(1)}ms total=${lastTiming.totalMs.toFixed(1)}ms`);if(width!==W||height!==H)console.warn(`[TAKUMI] WRONG SIZE ${width}x${height}`);}
-    else if(result.length!==W*H*4)throw Error(`Bad RGBA frame: ${result.length}; expected ${W*H*4}`);
-    return result;
-  }catch(e){console.error(`[TAKUMI FATAL] ${mode} failed after ${elapsed(start).toFixed(1)}ms`);console.error(e.stack||e);throw e;}
-}
+async function buildHtml(data={}){const started=process.hrtime.bigint(),l=data.lucan||{},m=data.mine||{},st=l.sctools||{},fw=l.freewebtools||{},mst=m.sctools||{},mfw=m.freewebtools||{},lc=l.channel||{},mc=m.channel||{},main=st.linearSubscribers??st.estSubscribers??fw.estimatedSubscribers??st.apiSubscribers??fw.apiSubscribers,remaining=main==null?null:Math.max(0,60000000-Number(main)),progress=main==null?0:Math.min(100,Number(main)/60000000*100),hourly=st.hourly??fw.hourly,daily=st.daily??fw.daily;record(main);const[la,ma,template]=await Promise.all([avatar(lc.avatar),avatar(mc.avatar),getTemplate()]);diagnostics.length=0;const base=template.html,p=template.index,patches=[],rate=history.rates.at(-1)??null;addAttrPatch(patches,base,p,"lucanAvatar","src",la||"data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=");addAttrPatch(patches,base,p,"mineAvatar","src",ma||"data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=");const fields={lucanName:lc.name||"Lucan Pevidor",lucanHandle:lc.handle||"@LucanPevidor",lucanDescription:englishDescription(lc),mineName:mc.name||"VYStats",mineHandle:mc.handle||"@vystatsyt",lucanRateSign:rate!=null&&rate<0?"−":"+",updated:(l.updated||m.updated)?"↻ UPDATED "+new Date(Math.max(l.updated||0,m.updated||0)).toLocaleTimeString():"WAITING FOR DATA",status:l.updated||m.updated?"● CONNECTED":"● CONNECTING"};for(const[id,v]of Object.entries(fields))addTextPatch(patches,base,p,id,v);for(const[id,v,d]of [["lucanCount",main,0],["lucanRemaining",remaining,0],["lucanRate",rate==null?null:Math.abs(rate),2],["stLinearText",st.linearSubscribers??st.estSubscribers,0],["stHourlyText",hourly,0],["stDailyText",daily,0],["mineEstSubs",mst.estSubscribers??mfw.estimatedSubscribers,0],["mineApiSubs",mst.apiSubscribers??mfw.apiSubscribers,0],["mineEstViews",mst.estViews??mfw.estimatedViews,0],["mineApiViews",mst.apiViews??mfw.viewCount,0],["mineEstVideos",mst.estVideos??mfw.videoCount,0],["mineApiVideos",mst.apiVideos??mfw.videoCount,0],["goalPercent",progress,1]])addInnerPatch(patches,base,p,id,rollingMarkup(id,v,d,id==="goalPercent"?"%":""));addAttrPatch(patches,base,p,"goalProgress","style",`width:${progress}%;`);addInnerPatch(patches,base,p,"srcCard",sourceCard({st,fw}));addInnerPatch(patches,base,p,"rateBars",rateBars());if(p.chart)patches.push({start:p.chart.start,end:p.chart.end,value:p.chart.open+chartMarkup(chartPoints(history.subs))+p.chart.close});else diagnostics.push("MISSING CHART SVG");let html=applyPatches(base,patches);html=html.replace('<span class="stat-icon">↗</span>',`<span class="stat-icon">${svgIcon("arrow")}</span>`).replace('<span class="stat-icon">ϟ</span>',`<span class="stat-icon">${svgIcon("bolt")}</span>`).replace('<span class="stat-icon">⚑</span>',`<span class="stat-icon">${svgIcon("flag")}</span>`);html=html.replace(/●/g,'<span class="live-dot"></span>').replace(/[◉◎]/g,"").replace("↻ UPDATED",`${svgIcon("refresh")} UPDATED`);if(!diagLogged){const after=layoutDiagnostics(html,p),key=JSON.stringify({after,diagnostics});if(key!==lastDiag||Date.now()-lastLog>60000){lastDiag=key;lastLog=Date.now();console.log(`[HTML DIAGNOSTICS] original=${template.originalLength} | final=${html.length} chars | build=${elapsed(started).toFixed(1)}ms`);console.log("[HTML IDS]",after.ids);console.log("[LAYOUT CHECK]",JSON.stringify(after));console.log("[HTML CHANGES]",diagnostics.length?diagnostics.join(" || "):"All requested replacements found");}diagLogged=true;}return html;}
+async function renderInternal(data={},mode="png"){const start=process.hrtime.bigint();try{const[html,fonts]=await Promise.all([buildHtml(data),getFonts()]),built=process.hrtime.bigint(),output=await render(html,{width:W,height:H,format:mode==="raw"?"raw":"png",fonts}),result=Buffer.from(output);lastTiming={buildMs:elapsed(start,built),renderMs:elapsed(built),totalMs:elapsed(start)};if(mode==="raw"&&result.length!==W*H*4)throw Error(`Bad RGBA frame: ${result.length}; expected ${W*H*4}`);if(mode==="png"){const signature=result.subarray(0,8).toString("hex"),width=result.length>=24?result.readUInt32BE(16):0,height=result.length>=24?result.readUInt32BE(20):0;if(signature!=="89504e470d0a1a0a")throw Error("Invalid PNG signature: "+signature);console.log(`[TAKUMI] PNG OK | ${width}x${height} | ${(result.length/1024).toFixed(1)} KB | build=${lastTiming.buildMs.toFixed(1)}ms render=${lastTiming.renderMs.toFixed(1)}ms total=${lastTiming.totalMs.toFixed(1)}ms`);if(width!==W||height!==H)console.warn(`[TAKUMI] WRONG SIZE ${width}x${height}`);}else if(result.length!==W*H*4)throw Error(`Bad RGBA frame: ${result.length}; expected ${W*H*4}`);return result;}catch(e){console.error(`[TAKUMI FATAL] ${mode} failed after ${elapsed(start).toFixed(1)}ms`);console.error(e.stack||e);throw e;}}
 function run(data,mode){const job=queue.then(()=>renderInternal(data,mode));queue=job.catch(e=>console.error("[RENDER QUEUE]",e.message));return job;}
 const renderDashboard=data=>run(data,"png"),renderRawFrame=data=>run(data,"raw");
 function stats(a){if(!a.length)return{averageMs:0,medianMs:0,p95Ms:0,minMs:0,maxMs:0};const s=[...a].sort((x,y)=>x-y),avg=a.reduce((x,y)=>x+y,0)/a.length,p=q=>s[Math.min(s.length-1,Math.ceil(s.length*q)-1)],r=n=>+n.toFixed(2);return{averageMs:r(avg),medianMs:r(p(.5)),p95Ms:r(p(.95)),minMs:r(s[0]),maxMs:r(s.at(-1))};}
-async function freshBenchmark(getData){
-  const duration=10000,interval=BigInt(Math.round(FRAME_MS*1e6));
-  await getFonts();await getTemplate();
-  const warmData=await getData();await renderRawFrame(warmData);
-  const start=process.hrtime.bigint(),before=process.memoryUsage(),times=[],buildTimes=[],renderTimes=[];
-  let frames=0,missed=0,maxLate=0,checksum=0,firstSize=0,next=start+interval;
-  const cpu=process.cpuUsage();
-  while(elapsed(start)<duration){
-    const t=process.hrtime.bigint(),data=await getData(),frame=await renderRawFrame(data),done=process.hrtime.bigint();
-    times.push(elapsed(t,done));buildTimes.push(lastTiming.buildMs||0);renderTimes.push(lastTiming.renderMs||0);
-    frames++;firstSize=frame.length;checksum=(checksum+frame[(frames*997)%frame.length])>>>0;
-    if(done>next){const late=done-next,slots=Number(late/interval)+1;missed+=slots;maxLate=Math.max(maxLate,Number(late)/1e6);next+=BigInt(slots)*interval;}else next+=interval;
-  }
-  const after=process.memoryUsage(),used=process.cpuUsage(cpu),total=elapsed(start),m=n=>+(n/1048576).toFixed(2);
-  const timing=stats(times),estimatedFPS=total>0?frames/(total/1000):0,averageFrameFPS=timing.averageMs>0?1000/timing.averageMs:0,goalPercent=estimatedFPS/FPS*100;
-  return{
-    renderer:"takumi-js",mode:"warmed-render-with-rolling-digits",warmupFrames:1,
-    resolution:`${W}x${H}`,fpsTarget:FPS,frameIntervalMs:+FRAME_MS.toFixed(3),
-    durationMs:+total.toFixed(2),frames,frameSizeBytes:firstSize,frameSizeMiB:m(firstSize),
-    freshRenderFPS:+estimatedFPS.toFixed(2),estimatedFPS:+estimatedFPS.toFixed(2),
-    averageFrameCapacityFPS:+averageFrameFPS.toFixed(2),fpsGoal:FPS,
-    fpsGoalAchievedPercent:+goalPercent.toFixed(2),fpsGoalMet:estimatedFPS>=FPS,
-    renderTime:timing,stages:{htmlPreparation:stats(buildTimes),takumiRender:stats(renderTimes)},
-    missedDeadlines:missed,missedDeadlinePercent:+(missed/Math.max(1,frames+missed)*100).toFixed(2),
-    maxLatenessMs:+maxLate.toFixed(2),
-    cpu:{userMs:+(used.user/1000).toFixed(2),systemMs:+(used.system/1000).toFixed(2)},
-    memory:{heapBeforeMiB:m(before.heapUsed),heapAfterMiB:m(after.heapUsed),externalBeforeMiB:m(before.external),externalAfterMiB:m(after.external),rssBeforeMiB:m(before.rss),rssAfterMiB:m(after.rss)},
-    checksum
-  };
-}
+async function freshBenchmark(getData){const duration=10000,interval=BigInt(Math.round(FRAME_MS*1e6));await getFonts();await getTemplate();const warmData=await getData();await renderRawFrame(warmData);const start=process.hrtime.bigint(),before=process.memoryUsage(),times=[],buildTimes=[],renderTimes=[];let frames=0,missed=0,maxLate=0,firstSize=0,next=start+interval;const cpu=process.cpuUsage();while(elapsed(start)<duration){const t=process.hrtime.bigint(),data=await getData(),frame=await renderRawFrame(data),done=process.hrtime.bigint();times.push(elapsed(t,done));buildTimes.push(lastTiming.buildMs||0);renderTimes.push(lastTiming.renderMs||0);frames++;firstSize=frame.length;if(done>next){const late=done-next,slots=Number(late/interval)+1;missed+=slots;maxLate=Math.max(maxLate,Number(late)/1e6);next+=BigInt(slots)*interval;}else next+=interval;}const after=process.memoryUsage(),used=process.cpuUsage(cpu),total=elapsed(start),m=n=>+(n/1048576).toFixed(2),timing=stats(times),estimatedFPS=total>0?frames/(total/1000):0,averageFrameFPS=timing.averageMs>0?1000/timing.averageMs:0,goalPercent=estimatedFPS/FPS*100;return{renderer:"takumi-js",mode:"warmed-render-with-rolling-digits",warmupFrames:1,resolution:`${W}x${H}`,fpsTarget:FPS,frameIntervalMs:+FRAME_MS.toFixed(3),durationMs:+total.toFixed(2),frames,frameSizeBytes:firstSize,frameSizeMiB:m(firstSize),freshRenderFPS:+estimatedFPS.toFixed(2),estimatedFPS:+estimatedFPS.toFixed(2),averageFrameCapacityFPS:+averageFrameFPS.toFixed(2),fpsGoal:FPS,fpsGoalAchievedPercent:+goalPercent.toFixed(2),fpsGoalMet:estimatedFPS>=FPS,renderTime:timing,stages:{htmlPreparation:stats(buildTimes),takumiRender:stats(renderTimes)},missedDeadlines:missed,missedDeadlinePercent:+(missed/Math.max(1,frames+missed)*100).toFixed(2),maxLatenessMs:+maxLate.toFixed(2),cpu:{userMs:+(used.user/1000).toFixed(2),systemMs:+(used.system/1000).toFixed(2)},memory:{heapBeforeMiB:m(before.heapUsed),heapAfterMiB:m(after.heapUsed),externalBeforeMiB:m(before.external),externalAfterMiB:m(after.external),rssBeforeMiB:m(before.rss),rssAfterMiB:m(after.rss)}};}
 
-/* COMPONENT DIAGNOSTICS */
+/* COMBINED + AVATAR DIAGNOSTICS */
 
-function replaceElementInner(html,id,inner){
-  const x=locate(html,id);
-  if(!x||x.selfClosing)return html;
-  return html.slice(0,x.openEnd)+inner+html.slice(x.closeStart);
-}
+function replaceElementInner(html,id,inner){const x=locate(html,id);if(!x||x.selfClosing)return html;return html.slice(0,x.openEnd)+inner+html.slice(x.closeStart);}
+function replaceAvatarSource(html,id){const x=locate(html,id);if(!x)return html;const open=html.slice(x.start,x.openEnd),re=/\ssrc=["'][^"']*["']/i,next=re.test(open)?open.replace(re,' src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="'):open.replace(/\/?>$/,end=>' src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="'+end);return html.slice(0,x.start)+next+html.slice(x.openEnd);}
+function noRollingDigits(html){return html.replace(/<span class="roll-window"><span class="roll-strip"[^>]*><span>\d<\/span><span>(\d)<\/span><\/span><\/span>/g,"$1");}
+function noVisualEffects(html){return html.replace(/(?:box-shadow|text-shadow|filter|backdrop-filter)\s*:[^;}]+;?/gi,"");}
+function noChart(html){return html.replace(/<svg\b(?=[^>]*\bclass=["'][^"']*\bchart\b[^"']*["'])[^>]*>[\s\S]*?<\/svg>/i,'<svg class="chart" viewBox="0 0 400 80"></svg>');}
+function noSourcePanel(html){return replaceElementInner(html,"srcCard",'<div style="height:100%;width:100%"></div>');}
+function noRateBars(html){return replaceElementInner(html,"rateBars","");}
+function diagnosticVariants(html){const noAvatars=replaceAvatarSource(replaceAvatarSource(html,"lucanAvatar"),"mineAvatar"),noSource=noSourcePanel(noAvatars),noBars=noRateBars(noAvatars),noRoll=noRollingDigits(noAvatars),noEffects=noVisualEffects(noAvatars),noChartVersion=noChart(noAvatars);return{baseline:html,noLucanAvatar:replaceAvatarSource(html,"lucanAvatar"),noMineAvatar:replaceAvatarSource(html,"mineAvatar"),tinyAvatars:noAvatars,"no avatars + no source panel":noSource,"no avatars + no rate bars":noBars,"no avatars + no rolling digits":noRoll,"no avatars + no visual effects":noEffects,"no avatars + no chart":noChartVersion,"all expensive components simplified":noChart(noVisualEffects(noRollingDigits(noRateBars(noSource(noAvatars)))))};}
+async function runDiagnostics(getData){console.log("[RENDER DIAGNOSTICS] Getting dashboard data...");const data=await getData(),html=await buildHtml(data),fonts=await getFonts(),variants=diagnosticVariants(html),names=Object.keys(variants),results={},measurements=15;console.log(`[RENDER DIAGNOSTICS] ${names.length} variants | ${measurements} measured frames each | ${W}x${H}`);console.log("[RENDER DIAGNOSTICS] Warming every variant before measuring...");for(const name of names){try{const output=await render(variants[name],{width:W,height:H,format:"raw",fonts});if(Buffer.from(output).length!==W*H*4)throw Error("Warm-up frame has an unexpected size");results[name]={status:"warming"};}catch(e){results[name]={status:"failed",error:e.message};console.error(`[DIAGNOSTIC WARMUP] ${name} FAILED | ${e.message}`);}}for(const name of names)if(results[name]?.status==="warming")results[name]={status:"completed",times:[]};console.log("[RENDER DIAGNOSTICS] Measuring variants in alternating rounds...");for(let i=0;i<measurements;i++){for(const name of names){const result=results[name];if(result?.status!=="completed")continue;try{const start=process.hrtime.bigint(),output=await render(variants[name],{width:W,height:H,format:"raw",fonts}),frame=Buffer.from(output);if(frame.length!==W*H*4)throw Error(`Invalid RGBA frame: ${frame.length}`);result.times.push(elapsed(start));}catch(e){result.status="failed";result.error=e.message;console.error(`[DIAGNOSTIC] ${name} FAILED | ${e.message}`);}}console.log(`[DIAGNOSTIC PROGRESS] ${i+1}/${measurements} measurement rounds complete`);}for(const name of names){const result=results[name];if(result?.status!=="completed")continue;const measured=stats(result.times),fps=measured.averageMs>0?1000/measured.averageMs:0;results[name]={status:"completed",measuredFrames:result.times.length,renderTime:measured,estimatedFPS:+fps.toFixed(2)};console.log(`[DIAGNOSTIC] ${name} | ${measured.averageMs}ms | ${fps.toFixed(2)} FPS`);}const baseline=results.baseline?.renderTime?.averageMs;if(baseline){for(const[name,result]of Object.entries(results)){if(name==="baseline"||!result.renderTime)continue;result.timeSavedMs=+(baseline-result.renderTime.averageMs).toFixed(2);result.improvementPercent=+((baseline-result.renderTime.averageMs)/baseline*100).toFixed(2);}}const completed=Object.entries(results).filter(([,v])=>v.renderTime).sort((a,b)=>a[1].renderTime.averageMs-b[1].renderTime.averageMs),combined=completed.filter(([name])=>name.includes("+")||name==="all expensive components simplified"),avatarTests=completed.filter(([name])=>["baseline","noLucanAvatar","noMineAvatar","tinyAvatars"].includes(name));return{renderer:"takumi-js",mode:"combined-dashboard-component-diagnostics",resolution:`${W}x${H}`,targetFPS:FPS,targetFrameTimeMs:+FRAME_MS.toFixed(3),warmupFrames:1,measuredFramesPerVariant:measurements,measurementOrder:"All variants warmed first; measurements then run in alternating rounds to reduce timing drift.",results,fastestVariant:completed[0]?.[0]||null,slowestVariant:completed.at(-1)?.[0]||null,fastestCombinedVariant:combined[0]?.[0]||null,avatarComparison:avatarTests.map(([name,value])=>({name,averageMs:value.renderTime.averageMs,estimatedFPS:value.estimatedFPS})),note:"Avatar tests replace only the selected avatar image source with a 1x1 transparent image. Combined tests apply the requested component simplifications together. Savings are measured independently and are not additive."};}
 
-function diagnosticVariants(html){
-  const variants={baseline:html};
-
-  if(locate(html,"srcCard"))
-    variants.noSourcePanel=replaceElementInner(html,"srcCard",'<div style="height:100%;width:100%"></div>');
-
-  if(locate(html,"rateBars"))
-    variants.noRateBars=replaceElementInner(html,"rateBars","");
-
-  variants.noAvatars=html.replace(
-    /(<img\b[^>]*\bsrc=["'])[^"']*(["'][^>]*>)/gi,
-    '$1data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=$2'
-  );
-
-  variants.noChart=html.replace(
-    /<svg\b(?=[^>]*\bclass=["'][^"']*\bchart\b[^"']*["'])[^>]*>[\s\S]*?<\/svg>/i,
-    '<svg class="chart" viewBox="0 0 400 80"></svg>'
-  );
-
-  variants.noRollingDigits=html.replace(
-    /<span class="roll-window"><span class="roll-strip" style="transform:translateY\(-[\d.]+em\)"><span>\d<\/span><span>(\d)<\/span><\/span><\/span>/g,
-    "$1"
-  );
-
-  variants.noVisualEffects=html.replace(
-    /(?:box-shadow|text-shadow|filter|backdrop-filter)\s*:[^;}]+;?/gi,
-    ""
-  );
-
-  variants.simplifiedSvg=html.replace(
-    /<svg\b[^>]*>[\s\S]*?<\/svg>/gi,
-    '<svg viewBox="0 0 24 24" width="1" height="1"></svg>'
-  );
-
-  return variants;
-}
-
-async function runDiagnostics(getData){
-  console.log("[RENDER DIAGNOSTICS] Getting dashboard data...");
-  const data=await getData();
-  const html=await buildHtml(data);
-  const fonts=await getFonts();
-  const variants=diagnosticVariants(html);
-  const results={};
-
-  console.log(`[RENDER DIAGNOSTICS] Starting ${Object.keys(variants).length} tests | ${W}x${H}`);
-
-  for(const[name,variant]of Object.entries(variants)){
-    const times=[];
-    let checksum=0;
-
-    try{
-      const warm=await render(variant,{width:W,height:H,format:"raw",fonts});
-      if(Buffer.from(warm).length!==W*H*4)
-        throw Error("Warm-up frame has an unexpected size");
-
-      for(let i=0;i<5;i++){
-        const start=process.hrtime.bigint();
-        const output=await render(variant,{width:W,height:H,format:"raw",fonts});
-        const frame=Buffer.from(output);
-
-        if(frame.length!==W*H*4)
-          throw Error(`Invalid RGBA frame: ${frame.length}`);
-
-        times.push(elapsed(start));
-        checksum=(checksum+frame[(i*997)%frame.length])>>>0;
-      }
-
-      const measured=stats(times),fps=measured.averageMs>0?1000/measured.averageMs:0;
-
-      results[name]={
-        status:"completed",
-        renderTime:measured,
-        estimatedFPS:+fps.toFixed(2),
-        checksum
-      };
-
-      console.log(`[DIAGNOSTIC] ${name} | ${measured.averageMs}ms | ${fps.toFixed(2)} FPS`);
-
-    }catch(e){
-      results[name]={status:"failed",error:e.message};
-      console.error(`[DIAGNOSTIC] ${name} FAILED | ${e.message}`);
-    }
-  }
-
-  const baseline=results.baseline?.renderTime?.averageMs;
-
-  if(baseline){
-    for(const[name,result]of Object.entries(results)){
-      if(name==="baseline"||!result.renderTime)continue;
-      result.timeSavedMs=+(baseline-result.renderTime.averageMs).toFixed(2);
-      result.improvementPercent=+((baseline-result.renderTime.averageMs)/baseline*100).toFixed(2);
-    }
-  }
-
-  const completed=Object.entries(results).filter(([,v])=>v.renderTime).sort((a,b)=>a[1].renderTime.averageMs-b[1].renderTime.averageMs);
-
-  return{
-    renderer:"takumi-js",
-    mode:"isolated-dashboard-component-diagnostics",
-    resolution:`${W}x${H}`,
-    targetFPS:FPS,
-    targetFrameTimeMs:+FRAME_MS.toFixed(3),
-    warmupFrames:1,
-    measuredFramesPerVariant:5,
-    results,
-    fastestVariant:completed[0]?.[0]||null,
-    slowestVariant:completed.at(-1)?.[0]||null,
-    note:"Each test removes or simplifies one component group. Savings are comparative estimates, not additive."
-  };
-}
-
-function attach(app,getData){
-  app.get("/api/renderer/preview.png",async(req,res)=>{
-    if(benchmarkActive)return res.status(503).send("Benchmark running; retry shortly");
-    try{
-      console.log("[PREVIEW REQUEST]",new Date().toISOString());
-      const data=await getData();
-      console.log("[PREVIEW DATA]",JSON.stringify({lucanUpdated:data?.lucan?.updated,mineUpdated:data?.mine?.updated,lucanSources:Object.keys(data?.lucan?.sctools||{}),mineSources:Object.keys(data?.mine?.sctools||{})}));
-      const png=await renderDashboard(data);
-      res.set({"Content-Type":"image/png","Cache-Control":"no-store, no-cache, must-revalidate"}).send(png);
-      console.log(`[PREVIEW SENT] ${png.length} bytes`);
-    }catch(e){console.error("[PREVIEW ROUTE]",e.stack||e.message);if(!res.headersSent)res.status(500).send(e.stack||e.message);}
-  });
-
-  app.get("/api/renderer/benchmark",async(req,res)=>{
-    if(benchmarkActive)return res.status(409).json({error:"Benchmark already running"});
-    benchmarkActive=true;
-    try{
-      res.set("Cache-Control","no-store").json(await freshBenchmark(getData));
-    }catch(e){
-      console.error("[TAKUMI BENCHMARK]",e.stack||e.message);
-      if(!res.headersSent)res.status(500).json({error:"Benchmark failed",message:e.message});
-    }finally{benchmarkActive=false;}
-  });
-
-  app.get("/api/renderer/diagnostics",async(req,res)=>{
-    if(benchmarkActive)return res.status(409).json({error:"Another benchmark is running"});
-    benchmarkActive=true;
-    try{
-      const job=queue.then(()=>runDiagnostics(getData));
-      queue=job.catch(e=>console.error("[DIAGNOSTIC QUEUE]",e.message));
-      res.set("Cache-Control","no-store");
-      res.json(await job);
-    }catch(e){
-      console.error("[RENDER DIAGNOSTICS]",e.stack||e.message);
-      if(!res.headersSent)res.status(500).json({error:"Diagnostics failed",message:e.message});
-    }finally{benchmarkActive=false;}
-  });
-}
+function attach(app,getData){app.get("/api/renderer/preview.png",async(req,res)=>{if(benchmarkActive)return res.status(503).send("Benchmark running; retry shortly");try{console.log("[PREVIEW REQUEST]",new Date().toISOString());const data=await getData();console.log("[PREVIEW DATA]",JSON.stringify({lucanUpdated:data?.lucan?.updated,mineUpdated:data?.mine?.updated,lucanSources:Object.keys(data?.lucan?.sctools||{}),mineSources:Object.keys(data?.mine?.sctools||{})}));const png=await renderDashboard(data);res.set({"Content-Type":"image/png","Cache-Control":"no-store, no-cache, must-revalidate"}).send(png);console.log(`[PREVIEW SENT] ${png.length} bytes`);}catch(e){console.error("[PREVIEW ROUTE]",e.stack||e.message);if(!res.headersSent)res.status(500).send(e.stack||e.message);}});app.get("/api/renderer/benchmark",async(req,res)=>{if(benchmarkActive)return res.status(409).json({error:"Benchmark already running"});benchmarkActive=true;try{res.set("Cache-Control","no-store").json(await freshBenchmark(getData));}catch(e){console.error("[TAKUMI BENCHMARK]",e.stack||e.message);if(!res.headersSent)res.status(500).json({error:"Benchmark failed",message:e.message});}finally{benchmarkActive=false;}});app.get("/api/renderer/diagnostics",async(req,res)=>{if(benchmarkActive)return res.status(409).json({error:"Another benchmark is running"});benchmarkActive=true;try{const job=queue.then(()=>runDiagnostics(getData));queue=job.catch(e=>console.error("[DIAGNOSTIC QUEUE]",e.message));res.set("Cache-Control","no-store");res.json(await job);}catch(e){console.error("[RENDER DIAGNOSTICS]",e.stack||e.message);if(!res.headersSent)res.status(500).json({error:"Diagnostics failed",message:e.message});}finally{benchmarkActive=false;}});}
 module.exports={renderDashboard,renderRawFrame,attach};
