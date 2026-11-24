@@ -93,7 +93,7 @@ async function buildHtml(data={}){
  const [la,ma]=await Promise.all([avatar(lc.avatar),avatar(mc.avatar)]);
  record({main});
  let html=await getHtml();
- html=html.replace(/<script\\b[^>]*>[\\s\\S]*?<\\/script>/gi,"").replace(/<link\\b[^>]*>/gi,"");
+html=html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,"").replace(/<link\b[^>]*>/gi,"");
  html=html.replace("</head>",`<style>html,body{width:1280px!important;height:720px!important;min-width:1280px!important;min-height:720px!important;overflow:hidden!important}.pg{width:99%!important;height:720px!important;min-height:720px!important}</style></head>`);
  html=setAttr(html,"lucanAvatar","src",la||"data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=");
  html=setAttr(html,"mineAvatar","src",ma||"data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=");
