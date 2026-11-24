@@ -2,8 +2,11 @@
 const fs=require("fs"),path=require("path"),{render}=require("takumi-js"),{googleFonts}=require("takumi-js/helpers");
 const W=1280,H=720,FPS=15,FRAME_MS=1000/FPS,DIR=__dirname,nf=new Intl.NumberFormat("en-US"),images=new Map(),rollStates=new Map(),history={subs:[],rates:[],samples:[],lastSample:0};
 let queue=Promise.resolve(),benchmarkActive=false,lastTiming={},fontPromise=null,htmlPromise=null,templatePromise=null,lastDiag="",lastLog=0,diagLogged=false,sampleTimer=null,latestMain=null;
-const elapsed=(a,b=process.hrtime.bigint())=>Number(b-a)/1e6,mib=n=>+(n/1048576).toFixed(2),esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])),diagnostics=[],voidTags=new Set(["area","base","br","col","embed","hr","img","input","link","meta","param","source","track","wbr"]);
+const elapsed=(a,b=process.hrtime.bigint())=>Number(b-a)/1e6,mib=n=>+(n/1048576).toFixed(2),esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const diagnostics=[],voidTags=new Set(["area","base","br","col","embed","hr","img","input","link","meta","param","source","track","wbr"]);
 function numeric(v){if(v==null||v==="")return null;if(typeof v==="number")return Number.isFinite(v)?v:null;const s=String(v).trim().replace(/,/g,""),m=s.match(/^([-+]?\d*\.?\d+)\s*([KMB])?$/i);if(!m)return null;const n=Number(m[1]),factor=({K:1e3,M:1e6,B:1e9})[String(m[2]||"").toUpperCase()]||1;return Number.isFinite(n)?n*factor:null;}
+function looksSpanish(s){return /\b(el|la|los|las|de|del|para|con|por|que|una|uno|sus|bienvenidos|gracias|suscríbete|canal|vídeos|videos)\b|[áéíóúñ¿¡]/i.test(String(s||""));}
+function englishDescription(c){const choices=[c.descriptionEnglish,c.englishDescription,c.description_en,c.descriptionEn,c.enDescription,c.localized?.en?.description,c.translations?.en?.description];for(const v of choices)if(typeof v==="string"&&v.trim())return v.trim();const generic=typeof c.description==="string"?c.description.trim():"";return generic&&!looksSpanish(generic)?generic:"Jesus loves you! I hope every video makes you smile!";}
 function locate(html,id){const safe=String(id).replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),re=new RegExp(`<([a-z][\\w:-]*)\\b(?=[^>]*\\bid=["']${safe}["'])[^>]*>`,"i"),m=re.exec(html);if(!m)return null;const tag=m[1].toLowerCase(),start=m.index,openEnd=start+m[0].length;if(voidTags.has(tag)||/\/\s*>$/.test(m[0]))return{tag,start,openEnd,closeStart:openEnd,end:openEnd,selfClosing:true};const token=new RegExp(`<\\/?${tag}\\b[^>]*>`,"gi");token.lastIndex=openEnd;let depth=1,x;while((x=token.exec(html))){if(/^<\//.test(x[0]))depth--;else if(!/\/\s*>$/.test(x[0]))depth++;if(depth===0)return{tag,start,openEnd,closeStart:x.index,end:token.lastIndex,selfClosing:false};}return null;}
 function compileTemplate(html){const ids=["lucanAvatar","mineAvatar","lucanName","lucanHandle","lucanDescription","mineName","mineHandle","lucanRateSign","updated","status","lucanCount","lucanRemaining","lucanRate","stLinearText","stHourlyText","stDailyText","mineEstSubs","mineApiSubs","mineEstViews","mineApiViews","mineEstVideos","mineApiVideos","goalPercent","goalProgress","srcCard","rateBars"];const index={};for(const id of ids){index[id]=locate(html,id);if(!index[id])diagnostics.push("MISSING TEMPLATE ID: "+id);}const re=/(<svg\b(?=[^>]*\bclass=["'][^"']*\bchart\b[^"']*["'])[^>]*>)[\s\S]*?(<\/svg>)/i,m=re.exec(html);index.chart=m?{start:m.index,end:m.index+m[0].length,open:m[1],close:m[2]}:null;if(!index.chart)diagnostics.push("MISSING CHART SVG");return{html,index,originalLength:html.length};}
 async function getFonts(){if(!fontPromise)fontPromise=googleFonts([{name:"Inter",weight:"700..900"}]).catch(e=>{fontPromise=null;throw e;});return fontPromise;}
@@ -39,7 +42,6 @@ html,body{width:1280px!important;height:720px!important;min-width:1280px!importa
 .roll-window{display:inline-block!important;position:relative!important;width:.62em!important;height:1em!important;min-width:.62em!important;max-width:.62em!important;overflow:hidden!important;vertical-align:baseline!important;line-height:1em!important;padding:0!important;margin:0!important;clip-path:inset(0)!important}
 .roll-strip{position:absolute!important;display:block!important;left:0!important;top:0!important;width:100%!important;height:auto!important;line-height:1em!important;padding:0!important;margin:0!important;will-change:transform!important}
 .roll-strip>span{display:block!important;position:relative!important;width:100%!important;height:1em!important;min-height:1em!important;max-height:1em!important;line-height:1em!important;padding:0!important;margin:0!important;text-align:center!important;white-space:nowrap!important;font-size:1em!important;font-weight:inherit!important;font-family:inherit!important;font-style:normal!important}
-.roll-mark{display:inline-block!important;position:relative!important;line-height:1em!important;height:1em!important;vertical-align:baseline!important;white-space:pre!important;padding:0!important;margin:0!important}
 </style>`;
 async function getTemplate(){if(!templatePromise)templatePromise=(async()=>{let html=await getHtml();html=html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,"").replace(/<link\b[^>]*>/gi,"");if(!html.includes("</head>"))throw Error("index.html is missing </head>");html=html.replace("</head>",css+"</head>");return compileTemplate(html);})().catch(e=>{templatePromise=null;throw e;});return templatePromise;}
 async function avatar(url){if(!url)return"";if(images.has(url))return images.get(url);const task=(async()=>{try{const r=await fetch(url,{signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error("HTTP "+r.status);const b=Buffer.from(await r.arrayBuffer());if(b.length>2e6)throw Error("Avatar too large");console.log(`[AVATAR] OK | ${b.length} bytes | ${url.slice(0,85)}`);return`data:${r.headers.get("content-type")||"image/jpeg"};base64,${b.toString("base64")}`;}catch(e){console.error(`[AVATAR] FAILED | ${e.message} | ${url}`);return"";}})();images.set(url,task);return task;}
@@ -51,26 +53,24 @@ function rollingMarkup(id,value,decimals=0,suffix=""){
  if(!s){s={targetString:target,transitions:[]};rollStates.set(id,s);}
  else if(s.targetString!==target){
   const oldDigits=(s.targetString.match(/\d/g)||[]),newDigits=(target.match(/\d/g)||[]);
-  s.transitions=newDigits.map((d,i)=>{const from=oldDigits[oldDigits.length-newDigits.length+i]??d;return{from,to:d,start:now};});
+  s.transitions=newDigits.map((d,i)=>({from:oldDigits[oldDigits.length-newDigits.length+i]??d,to:d,start:now}));
   s.targetString=target;
  }
  let digitIndex=0,out="";
  for(const ch of target){
   if(/\d/.test(ch)){
-   const t=s.transitions[digitIndex];
+   const t=s.transitions[digitIndex++];
    if(t&&t.from!==t.to){
     const p=Math.max(0,Math.min(1,(now-t.start)/650));
-    if(p<1)out+=`<span class="roll-window"><span class="roll-strip" style="transform:translateY(-${p.toFixed(3)}em)"><span>${t.from}</span><span>${t.to}</span></span></span>`;
-    else out+=`<span class="roll-window"><span class="roll-strip"><span>${ch}</span></span></span>`;
-   }else out+=`<span class="roll-window"><span class="roll-strip"><span>${ch}</span></span></span>`;
-   digitIndex++;
-  }else out+=`<span class="roll-mark">${esc(ch)}</span>`;
+    out+=p<1?`<span class="roll-window"><span class="roll-strip" style="transform:translateY(-${p.toFixed(3)}em)"><span>${t.from}</span><span>${t.to}</span></span></span>`:ch;
+   }else out+=ch;
+  }else out+=esc(ch);
  }
  return`<span class="odometer" data-odometer="${esc(id)}">${out}</span>`;
 }
 function svgIcon(type){const paths={arrow:'<path d="M7 17 17 7M7 7h10v10"/>',bolt:'<path d="m13 2-9 12h7l-1 8 10-12h-7z"/>',flag:'<path d="M5 3v18M5 4h13l-3 5 3 5H5"/>',grid:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>',refresh:'<path d="M20 7v5h-5M4 17v-5h5M5.6 9a7 7 0 0 1 11.8-2L20 12M4 12l2.6 5a7 7 0 0 0 11.8-2"/>'};return`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="#27a9ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${paths[type]||paths.grid}</svg>`;}
 function chartPoints(a){if(a.length<2)return"0,65 60,55 120,52 180,45 240,38 300,30 360,22 400,15";const min=Math.min(...a),max=Math.max(...a),range=Math.max(1,max-min);return a.map((v,i)=>`${(i/(a.length-1)*400).toFixed(1)},${(68-((v-min)/range)*52).toFixed(1)}`).join(" ");}
-function chartMarkup(points){return`<defs><linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#18e9d9" stop-opacity=".35"/><stop offset="100%" stop-color="#18e9d9" stop-opacity="0"/></linearGradient><filter id="chartNeon" x="-50%" y="-100%" width="200%" height="300%"><feGaussianBlur in="SourceGraphic" stdDeviation="3.2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><polygon class="chart-fill" id="chartFill" points="0,80 ${points} 400,80" style="fill:url(#chartGradient);stroke:none;opacity:1"/><polyline points="${points}" fill="none" style="stroke:#168fff;stroke-width:13;stroke-linecap:round;stroke-linejoin:round;opacity:.12;filter:none"/><polyline points="${points}" fill="none" style="stroke:#18e9d9;stroke-width:9;stroke-linecap:round;stroke-linejoin:round;opacity:.22;filter:none"/><polyline points="${points}" fill="none" style="stroke:#18e9d9;stroke-width:5;stroke-linecap:round;stroke-linejoin:round;opacity:.42;filter:none"/><polyline id="chartLine" points="${points}" fill="none" style="stroke:#25e5c0;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:1;filter:url(#chartNeon)"/>`;}
+function chartMarkup(points){return`<defs><linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#18e9d9" stop-opacity=".35"/><stop offset="100%" stop-color="#18e9d9" stop-opacity="0"/></linearGradient></defs><polygon class="chart-fill" id="chartFill" points="0,80 ${points} 400,80" style="fill:url(#chartGradient);stroke:none;opacity:1"/><polyline points="${points}" fill="none" style="stroke:#168fff;stroke-width:10;stroke-linecap:round;stroke-linejoin:round;opacity:.16"/><polyline id="chartLine" points="${points}" fill="none" style="stroke:#25e5c0;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:1"/>`;}
 function rateBars(){return history.rates.slice(-14).map((v,i,a)=>{const n=Math.min(12,Math.max(1,Math.round(Math.abs(v)*4)));return`<span style="height:${Math.max(12,n*7)}px;opacity:${.55+i/Math.max(1,a.length)*.45}"></span>`;}).join("");}
 function sourceCard(a){const rows=[["SUBSCRIBERS",a.st.estSubscribers,a.st.apiSubscribers,a.fw.estimatedSubscribers,a.fw.apiSubscribers],["TOTAL VIEWS",a.st.estViews,a.st.apiViews,a.fw.estimatedViews,a.fw.viewCount],["VIDEOS",a.st.estVideos,a.st.apiVideos,a.fw.estimatedVideos,a.fw.videoCount]],heads=["","SCTools Est.","SCTools API","FreeWebTools Est.","FreeWebTools API"],display=a.fw.displayCount??a.fw.estimation?.display_count??"—",hourly=a.fw.hourly??a.fw.estimation?.growth_rate_per_hour,daily=a.fw.daily??a.fw.estimation?.growth_rate_per_day;return`<div class="src-h"><span>${svgIcon("grid")} DATA SOURCES</span><span class="src-status"><span class="live-dot"></span> LIVE · BOTH PROVIDERS</span></div><div class="mtx">${heads.map((v,i)=>`<div class="${i?"mh":"mg"}">${v}</div>`).join("")}${rows.map((row,r)=>`<div class="mg">${row[0]}</div>`+row.slice(1).map((v,i)=>`<div class="cell"><span class="vl ${i%2?"api":"fw"}">${rollingMarkup(`src-${r}-${i}`,v)}</span></div>`).join("")).join("")}</div><div class="src-meta"><div><span>FREEWEBTOOLS DISPLAY COUNT</span><b>${rollingMarkup("fw-display-count",display)}</b></div><div><span>FREEWEBTOOLS HOURLY GROWTH</span><b>${rollingMarkup("fw-hourly",hourly)}</b></div><div><span>FREEWEBTOOLS DAILY GROWTH</span><b>${rollingMarkup("fw-daily",daily)}</b></div><div><span>FREEWEBTOOLS CONFIDENCE</span><b>${esc(a.fw.confidence||"—").toUpperCase()}</b></div></div>`;}
 function applyPatches(template,patches){let html=template;patches.sort((a,b)=>b.start-a.start);for(const p of patches)html=html.slice(0,p.start)+p.value+html.slice(p.end);return html;}
@@ -80,25 +80,95 @@ function addAttrPatch(patches,html,p,id,name,value){const x=p[id];if(!x){diagnos
 function takeSample(){if(latestMain==null||!Number.isFinite(latestMain))return;const now=Date.now(),n=latestMain;history.subs.push(n);if(history.subs.length>18)history.subs.shift();history.samples.push({t:now,n});if(history.samples.length>6)history.samples.shift();if(history.samples.length>1){const first=history.samples[0],last=history.samples.at(-1),seconds=(last.t-first.t)/1000;if(seconds>0){history.rates.push((last.n-first.n)/seconds);if(history.rates.length>14)history.rates.shift();}}history.lastSample=now;}
 function record(main){if(main!=null&&Number.isFinite(Number(main)))latestMain=Number(main);if(!sampleTimer&&latestMain!=null){takeSample();sampleTimer=setInterval(takeSample,2000);sampleTimer.unref?.();}}
 function layoutDiagnostics(html,p){const ids=["lucanAvatar","mineAvatar","lucanCount","lucanRemaining","lucanRate","srcCard","rateBars","goalProgress","mineEstSubs","mineApiSubs","mineEstViews","mineApiViews","mineEstVideos","mineApiVideos"],found=ids.map(id=>`${id}:${p[id]?"YES":"NO"}`).join(" | ");return{ids:found,gridRules:(html.match(/grid-template-(?:rows|columns)\s*:/gi)||[]).length,flexRules:(html.match(/display\s*:\s*flex/gi)||[]).length,hero:/\.hero\s*\{[^}]*display\s*:\s*grid/i.test(html),main:/\.main-stats\s*\{[^}]*display\s*:\s*grid/i.test(html)};}
-async function buildHtml(data={}){const started=process.hrtime.bigint();diagnostics.length=0;const l=data.lucan||{},m=data.mine||{},st=l.sctools||{},fw=l.freewebtools||{},mst=m.sctools||{},mfw=m.freewebtools||{},lc=l.channel||{},mc=m.channel||{},main=st.linearSubscribers??st.estSubscribers??fw.estimatedSubscribers??st.apiSubscribers??fw.apiSubscribers,remaining=main==null?null:Math.max(0,60000000-Number(main)),progress=main==null?0:Math.min(100,Number(main)/60000000*100),hourly=st.hourly??fw.hourly,daily=st.daily??fw.daily;record(main);const[la,ma,template]=await Promise.all([avatar(lc.avatar),avatar(mc.avatar),getTemplate()]);const base=template.html,p=template.index,patches=[],rate=history.rates.at(-1)??null;
-addAttrPatch(patches,base,p,"lucanAvatar","src",la||"data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=");
-addAttrPatch(patches,base,p,"mineAvatar","src",ma||"data:image/gif;base64,R0lGODlhAQABAAAAACw=");
-const fields={lucanName:lc.name||"Lucan Pevidor",lucanHandle:lc.handle||"@LucanPevidor",lucanDescription:lc.description||"Jesus loves you! I hope every video makes you smile!",mineName:mc.name||"VYStats",mineHandle:mc.handle||"@vystatsyt",lucanRateSign:rate!=null&&rate<0?"−":"+",updated:(l.updated||m.updated)?"↻ UPDATED "+new Date(Math.max(l.updated||0,m.updated||0)).toLocaleTimeString():"WAITING FOR DATA",status:l.updated||m.updated?"● CONNECTED":"● CONNECTING"};
-for(const[id,v]of Object.entries(fields))addTextPatch(patches,base,p,id,v);
-for(const[id,v,d]of [["lucanCount",main,0],["lucanRemaining",remaining,0],["lucanRate",rate==null?null:Math.abs(rate),2],["stLinearText",st.linearSubscribers??st.estSubscribers,0],["stHourlyText",hourly,0],["stDailyText",daily,0],["mineEstSubs",mst.estSubscribers??mfw.estimatedSubscribers,0],["mineApiSubs",mst.apiSubscribers??mfw.apiSubscribers,0],["mineEstViews",mst.estViews??mfw.estimatedViews,0],["mineApiViews",mst.apiViews??mfw.viewCount,0],["mineEstVideos",mst.estVideos??mfw.videoCount,0],["mineApiVideos",mst.apiVideos??mfw.videoCount,0],["goalPercent",progress,1]])addInnerPatch(patches,base,p,id,rollingMarkup(id,v,d,id==="goalPercent"?"%":""));
-addAttrPatch(patches,base,p,"goalProgress","style",`width:${progress}%;`);
-addInnerPatch(patches,base,p,"srcCard",sourceCard({st,fw}));
-addInnerPatch(patches,base,p,"rateBars",rateBars());
-if(p.chart)patches.push({start:p.chart.start,end:p.chart.end,value:p.chart.open+chartMarkup(chartPoints(history.subs))+p.chart.close});else diagnostics.push("MISSING CHART SVG");
-let html=applyPatches(base,patches);
-html=html.replace('<span class="stat-icon">↗</span>',`<span class="stat-icon">${svgIcon("arrow")}</span>`).replace('<span class="stat-icon">ϟ</span>',`<span class="stat-icon">${svgIcon("bolt")}</span>`).replace('<span class="stat-icon">⚑</span>',`<span class="stat-icon">${svgIcon("flag")}</span>`);
-html=html.replace(/●/g,'<span class="live-dot"></span>').replace(/[◉◎]/g,"").replace("↻ UPDATED",`${svgIcon("refresh")} UPDATED`);
-if(!diagLogged){const after=layoutDiagnostics(html,p),key=JSON.stringify({after,diagnostics});if(key!==lastDiag||Date.now()-lastLog>60000){lastDiag=key;lastLog=Date.now();console.log(`[HTML DIAGNOSTICS] original=${template.originalLength} | final=${html.length} chars | build=${elapsed(started).toFixed(1)}ms`);console.log("[HTML IDS]",after.ids);console.log("[LAYOUT CHECK]",JSON.stringify(after));console.log("[HTML CHANGES]",diagnostics.length?diagnostics.join(" || "):"All requested replacements found");}diagLogged=true;}
-return html;}
-async function renderInternal(data={},mode="png"){const start=process.hrtime.bigint();try{const[html,fonts]=await Promise.all([buildHtml(data),getFonts()]),built=process.hrtime.bigint();const output=await render(html,{width:W,height:H,format:mode==="raw"?"raw":"png",fonts}),result=Buffer.from(output);lastTiming={buildMs:elapsed(start,built),renderMs:elapsed(built),totalMs:elapsed(start)};if(mode==="raw"&&result.length!==W*H*4)throw Error(`Bad RGBA frame: ${result.length}; expected ${W*H*4}`);if(mode==="png"){const signature=result.subarray(0,8).toString("hex"),width=result.length>=24?result.readUInt32BE(16):0,height=result.length>=24?result.readUInt32BE(20):0;if(signature!=="89504e470d0a1a0a")throw Error("Invalid PNG signature: "+signature);console.log(`[TAKUMI] PNG OK | ${width}x${height} | ${(result.length/1024).toFixed(1)} KB | build=${lastTiming.buildMs.toFixed(1)}ms render=${lastTiming.renderMs.toFixed(1)}ms total=${lastTiming.totalMs.toFixed(1)}ms`);if(width!==W||height!==H)console.warn(`[TAKUMI] WRONG SIZE ${width}x${height}`);}else if(result.length!==W*H*4)throw Error(`Bad RGBA frame: ${result.length}; expected ${W*H*4}`);return result;}catch(e){console.error(`[TAKUMI FATAL] ${mode} failed after ${elapsed(start).toFixed(1)}ms`);console.error(e.stack||e);throw e;}}
+async function buildHtml(data={}){
+ const started=process.hrtime.bigint(),l=data.lucan||{},m=data.mine||{},st=l.sctools||{},fw=l.freewebtools||{},mst=m.sctools||{},mfw=m.freewebtools||{},lc=l.channel||{},mc=m.channel||{};
+ const main=st.linearSubscribers??st.estSubscribers??fw.estimatedSubscribers??st.apiSubscribers??fw.apiSubscribers,remaining=main==null?null:Math.max(0,60000000-Number(main)),progress=main==null?0:Math.min(100,Number(main)/60000000*100),hourly=st.hourly??fw.hourly,daily=st.daily??fw.daily;
+ record(main);
+ const[la,ma,template]=await Promise.all([avatar(lc.avatar),avatar(mc.avatar),getTemplate()]);
+ diagnostics.length=0;
+ const base=template.html,p=template.index,patches=[],rate=history.rates.at(-1)??null;
+ addAttrPatch(patches,base,p,"lucanAvatar","src",la||"data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=");
+ addAttrPatch(patches,base,p,"mineAvatar","src",ma||"data:image/gif;base64,R0lGODlhAQABAAAAACw=");
+ const fields={lucanName:lc.name||"Lucan Pevidor",lucanHandle:lc.handle||"@LucanPevidor",lucanDescription:englishDescription(lc),mineName:mc.name||"VYStats",mineHandle:mc.handle||"@vystatsyt",lucanRateSign:rate!=null&&rate<0?"−":"+",updated:(l.updated||m.updated)?"↻ UPDATED "+new Date(Math.max(l.updated||0,m.updated||0)).toLocaleTimeString():"WAITING FOR DATA",status:l.updated||m.updated?"● CONNECTED":"● CONNECTING"};
+ for(const[id,v]of Object.entries(fields))addTextPatch(patches,base,p,id,v);
+ for(const[id,v,d]of [["lucanCount",main,0],["lucanRemaining",remaining,0],["lucanRate",rate==null?null:Math.abs(rate),2],["stLinearText",st.linearSubscribers??st.estSubscribers,0],["stHourlyText",hourly,0],["stDailyText",daily,0],["mineEstSubs",mst.estSubscribers??mfw.estimatedSubscribers,0],["mineApiSubs",mst.apiSubscribers??mfw.apiSubscribers,0],["mineEstViews",mst.estViews??mfw.estimatedViews,0],["mineApiViews",mst.apiViews??mfw.viewCount,0],["mineEstVideos",mst.estVideos??mfw.videoCount,0],["mineApiVideos",mst.apiVideos??mfw.videoCount,0],["goalPercent",progress,1]])addInnerPatch(patches,base,p,id,rollingMarkup(id,v,d,id==="goalPercent"?"%":""));
+ addAttrPatch(patches,base,p,"goalProgress","style",`width:${progress}%;`);
+ addInnerPatch(patches,base,p,"srcCard",sourceCard({st,fw}));
+ addInnerPatch(patches,base,p,"rateBars",rateBars());
+ if(p.chart)patches.push({start:p.chart.start,end:p.chart.end,value:p.chart.open+chartMarkup(chartPoints(history.subs))+p.chart.close});else diagnostics.push("MISSING CHART SVG");
+ let html=applyPatches(base,patches);
+ html=html.replace('<span class="stat-icon">↗</span>',`<span class="stat-icon">${svgIcon("arrow")}</span>`).replace('<span class="stat-icon">ϟ</span>',`<span class="stat-icon">${svgIcon("bolt")}</span>`).replace('<span class="stat-icon">⚑</span>',`<span class="stat-icon">${svgIcon("flag")}</span>`);
+ html=html.replace(/●/g,'<span class="live-dot"></span>').replace(/[◉◎]/g,"").replace("↻ UPDATED",`${svgIcon("refresh")} UPDATED`);
+ if(!diagLogged){const after=layoutDiagnostics(html,p),key=JSON.stringify({after,diagnostics});if(key!==lastDiag||Date.now()-lastLog>60000){lastDiag=key;lastLog=Date.now();console.log(`[HTML DIAGNOSTICS] original=${template.originalLength} | final=${html.length} chars | build=${elapsed(started).toFixed(1)}ms`);console.log("[HTML IDS]",after.ids);console.log("[LAYOUT CHECK]",JSON.stringify(after));console.log("[HTML CHANGES]",diagnostics.length?diagnostics.join(" || "):"All requested replacements found");}diagLogged=true;}
+ return html;
+}
+async function renderInternal(data={},mode="png"){
+ const start=process.hrtime.bigint();
+ try{
+  const[html,fonts]=await Promise.all([buildHtml(data),getFonts()]),built=process.hrtime.bigint();
+  const output=await render(html,{width:W,height:H,format:mode==="raw"?"raw":"png",fonts}),result=Buffer.from(output);
+  lastTiming={buildMs:elapsed(start,built),renderMs:elapsed(built),totalMs:elapsed(start)};
+  if(mode==="raw"&&result.length!==W*H*4)throw Error(`Bad RGBA frame: ${result.length}; expected ${W*H*4}`);
+  if(mode==="png"){const signature=result.subarray(0,8).toString("hex"),width=result.length>=24?result.readUInt32BE(16):0,height=result.length>=24?result.readUInt32BE(20):0;if(signature!=="89504e470d0a1a0a")throw Error("Invalid PNG signature: "+signature);console.log(`[TAKUMI] PNG OK | ${width}x${height} | ${(result.length/1024).toFixed(1)} KB | build=${lastTiming.buildMs.toFixed(1)}ms render=${lastTiming.renderMs.toFixed(1)}ms total=${lastTiming.totalMs.toFixed(1)}ms`);if(width!==W||height!==H)console.warn(`[TAKUMI] WRONG SIZE ${width}x${height}`);}
+  else if(result.length!==W*H*4)throw Error(`Bad RGBA frame: ${result.length}; expected ${W*H*4}`);
+  return result;
+ }catch(e){console.error(`[TAKUMI FATAL] ${mode} failed after ${elapsed(start).toFixed(1)}ms`);console.error(e.stack||e);throw e;}
+}
 function run(data,mode){const job=queue.then(()=>renderInternal(data,mode));queue=job.catch(e=>console.error("[RENDER QUEUE]",e.message));return job;}
 const renderDashboard=data=>run(data,"png"),renderRawFrame=data=>run(data,"raw");
 function stats(a){if(!a.length)return{averageMs:0,medianMs:0,p95Ms:0,minMs:0,maxMs:0};const s=[...a].sort((x,y)=>x-y),avg=a.reduce((x,y)=>x+y,0)/a.length,p=q=>s[Math.min(s.length-1,Math.ceil(s.length*q)-1)],r=n=>+n.toFixed(2);return{averageMs:r(avg),medianMs:r(p(.5)),p95Ms:r(p(.95)),minMs:r(s[0]),maxMs:r(s.at(-1))};}
-async function freshBenchmark(getData){const duration=10000,interval=BigInt(Math.round(FRAME_MS*1e6));await getFonts();await getTemplate();const warmData=await getData();await renderRawFrame(warmData);const start=process.hrtime.bigint(),before=process.memoryUsage(),times=[],buildTimes=[],renderTimes=[];let frames=0,missed=0,maxLate=0,checksum=0,firstSize=0,next=start+interval;const cpu=process.cpuUsage();while(elapsed(start)<duration){const t=process.hrtime.bigint(),data=await getData(),frame=await renderRawFrame(data),done=process.hrtime.bigint();times.push(elapsed(t,done));buildTimes.push(lastTiming.buildMs||0);renderTimes.push(lastTiming.renderMs||0);frames++;firstSize=frame.length;checksum=(checksum+frame[(frames*997)%frame.length])>>>0;if(done>next){const late=done-next,slots=Number(late/interval)+1;missed+=slots;maxLate=Math.max(maxLate,Number(late)/1e6);next+=BigInt(slots)*interval;}else next+=interval;}const after=process.memoryUsage(),used=process.cpuUsage(cpu),total=elapsed(start),m=n=>+(n/1048576).toFixed(2);return{renderer:"takumi-js",mode:"warmed-render-with-rolling-digits",warmupFrames:1,resolution:`${W}x${H}`,fpsTarget:FPS,frameIntervalMs:+FRAME_MS.toFixed(3),durationMs:+total.toFixed(2),frames,frameSizeBytes:firstSize,frameSizeMiB:m(firstSize),freshRenderFPS:+(frames/(total/1000)).toFixed(2),renderTime:stats(times),stages:{htmlPreparation:stats(buildTimes),takumiRender:stats(renderTimes)},missedDeadlines:missed,missedDeadlinePercent:+(missed/Math.max(1,frames+missed)*100).toFixed(2),maxLatenessMs:+maxLate.toFixed(2),cpu:{userMs:+(used.user/1000).toFixed(2),systemMs:+(used.system/1000).toFixed(2)},memory:{heapBeforeMiB:m(before.heapUsed),heapAfterMiB:m(after.heapUsed),externalBeforeMiB:m(before.external),externalAfterMiB:m(after.external),rssBeforeMiB:m(before.rss),rssAfterMiB:m(after.rss)},checksum};}
-function attach(app,getData){app.get("/api/renderer/preview.png",async(req,res)=>{if(benchmarkActive)return res.status(503).send("Benchmark running; retry shortly");try{console.log("[PREVIEW REQUEST]",new Date().toISOString());const data=await getData();console.log("[PREVIEW DATA]",JSON.stringify({lucanUpdated:data?.lucan?.updated,mineUpdated:data?.mine?.updated,lucanSources:Object.keys(data?.lucan?.sctools||{}),mineSources:Object.keys(data?.mine?.sctools||{})}));const png=await renderDashboard(data);res.set({"Content-Type":"image/png","Cache-Control":"no-store, no-cache, must-revalidate"}).send(png);console.log(`[PREVIEW SENT] ${png.length} bytes`);}catch(e){console.error("[PREVIEW ROUTE]",e.stack||e.message);if(!res.headersSent)res.status(500).send(e.stack||e.message);}});app.get("/api/renderer/benchmark",async(req,res)=>{if(benchmarkActive)return res.status(409).json({error:"Benchmark already running"});benchmarkActive=true;try{res.set("Cache-Control","no-store").json(await freshBenchmark(getData));}catch(e){console.error("[TAKUMI BENCHMARK]",e.stack||e.message);if(!res.headersSent)res.status(500).json({error:"Benchmark failed",message:e.message});}finally{benchmarkActive=false;}});}
+async function freshBenchmark(getData){
+ const duration=10000,interval=BigInt(Math.round(FRAME_MS*1e6));
+ await getFonts();await getTemplate();
+ const warmData=await getData();await renderRawFrame(warmData);
+ const start=process.hrtime.bigint(),before=process.memoryUsage(),times=[],buildTimes=[],renderTimes=[];
+ let frames=0,missed=0,maxLate=0,checksum=0,firstSize=0,next=start+interval;
+ const cpu=process.cpuUsage();
+ while(elapsed(start)<duration){
+  const t=process.hrtime.bigint(),data=await getData(),frame=await renderRawFrame(data),done=process.hrtime.bigint();
+  times.push(elapsed(t,done));buildTimes.push(lastTiming.buildMs||0);renderTimes.push(lastTiming.renderMs||0);
+  frames++;firstSize=frame.length;checksum=(checksum+frame[(frames*997)%frame.length])>>>0;
+  if(done>next){const late=done-next,slots=Number(late/interval)+1;missed+=slots;maxLate=Math.max(maxLate,Number(late)/1e6);next+=BigInt(slots)*interval;}else next+=interval;
+ }
+ const after=process.memoryUsage(),used=process.cpuUsage(cpu),total=elapsed(start),m=n=>+(n/1048576).toFixed(2);
+ const timing=stats(times),estimatedFPS=total>0?frames/(total/1000):0,averageFrameFPS=timing.averageMs>0?1000/timing.averageMs:0,goalPercent=estimatedFPS/FPS*100;
+ return{
+  renderer:"takumi-js",mode:"warmed-render-with-rolling-digits",warmupFrames:1,
+  resolution:`${W}x${H}`,fpsTarget:FPS,frameIntervalMs:+FRAME_MS.toFixed(3),
+  durationMs:+total.toFixed(2),frames,frameSizeBytes:firstSize,frameSizeMiB:m(firstSize),
+  freshRenderFPS:+estimatedFPS.toFixed(2),
+  estimatedFPS:+estimatedFPS.toFixed(2),
+  averageFrameCapacityFPS:+averageFrameFPS.toFixed(2),
+  fpsGoal:FPS,
+  fpsGoalAchievedPercent:+goalPercent.toFixed(2),
+  fpsGoalMet:estimatedFPS>=FPS,
+  renderTime:timing,
+  stages:{htmlPreparation:stats(buildTimes),takumiRender:stats(renderTimes)},
+  missedDeadlines:missed,missedDeadlinePercent:+(missed/Math.max(1,frames+missed)*100).toFixed(2),
+  maxLatenessMs:+maxLate.toFixed(2),
+  cpu:{userMs:+(used.user/1000).toFixed(2),systemMs:+(used.system/1000).toFixed(2)},
+  memory:{heapBeforeMiB:m(before.heapUsed),heapAfterMiB:m(after.heapUsed),externalBeforeMiB:m(before.external),externalAfterMiB:m(after.external),rssBeforeMiB:m(before.rss),rssAfterMiB:m(after.rss)},
+  checksum
+ };
+}
+function attach(app,getData){
+ app.get("/api/renderer/preview.png",async(req,res)=>{
+  if(benchmarkActive)return res.status(503).send("Benchmark running; retry shortly");
+  try{
+   console.log("[PREVIEW REQUEST]",new Date().toISOString());
+   const data=await getData();
+   console.log("[PREVIEW DATA]",JSON.stringify({lucanUpdated:data?.lucan?.updated,mineUpdated:data?.mine?.updated,lucanSources:Object.keys(data?.lucan?.sctools||{}),mineSources:Object.keys(data?.mine?.sctools||{})}));
+   const png=await renderDashboard(data);
+   res.set({"Content-Type":"image/png","Cache-Control":"no-store, no-cache, must-revalidate"}).send(png);
+   console.log(`[PREVIEW SENT] ${png.length} bytes`);
+  }catch(e){console.error("[PREVIEW ROUTE]",e.stack||e.message);if(!res.headersSent)res.status(500).send(e.stack||e.message);}
+ });
+ app.get("/api/renderer/benchmark",async(req,res)=>{
+  if(benchmarkActive)return res.status(409).json({error:"Benchmark already running"});
+  benchmarkActive=true;
+  try{res.set("Cache-Control","no-store").json(await freshBenchmark(getData));}
+  catch(e){console.error("[TAKUMI BENCHMARK]",e.stack||e.message);if(!res.headersSent)res.status(500).json({error:"Benchmark failed",message:e.message});}
+  finally{benchmarkActive=false;}
+ });
+}
 module.exports={renderDashboard,renderRawFrame,attach};
