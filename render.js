@@ -60,16 +60,16 @@ const line=(x,y,x2,y2,color="#ffffff20",width=1)=>
 function txt(v,x,y,size=16,color=C.white,weight=700,max=Infinity,anchor="start",extra=""){
  const s=esc(v),n=String(v??"—").length;
  const fit=max===Infinity?size:Math.min(size,max/Math.max(1,n*.55));
- return `<text x="${x}" y="${y}" fill="${color}" font-family="Inter" font-size="${Math.max(8,fit)}" font-weight="${weight}" text-anchor="${anchor}" dominant-baseline="middle" ${extra}>${s}</text>`;
+ const bold=weight>=800?Math.max(.35,fit*.025):0;
+ return `<text x="${x}" y="${y}" fill="${color}" stroke="${color}" stroke-width="${bold}" stroke-linejoin="round" paint-order="stroke" font-family="Inter" font-size="${Math.max(8,fit)}" font-weight="${weight}" text-anchor="${anchor}" dominant-baseline="middle" ${extra}>${s}</text>`;
 }
 
 function wheel(v,x,y,size=20,color=C.white,max=Infinity,anchor="start",key=""){
- const s=String(v??"—");
- const chars=[...s];
- const widths=chars.map(ch=>ch===","||ch==="."?.29:ch===" "?.3:.55);
- let unit=widths.reduce((a,b)=>a+b,0);
- let scale=max===Infinity?1:Math.min(1,max/(unit*size));
- const fs=size*scale,cw=widths.map(n=>n*fs),total=cw.reduce((a,b)=>a+b,0);
+ const chars=[...String(v??"—")];
+ const widths=chars.map(ch=>/\d/.test(ch)?.535:ch===","?.25:ch==="."?.27:.55);
+ const unit=widths.reduce((a,b)=>a+b,0);
+ const fs=size*(max===Infinity?1:Math.min(1,max/(unit*size)));
+ const cw=widths.map(n=>n*fs),total=cw.reduce((a,b)=>a+b,0);
  let px=anchor==="center"?x-total/2:anchor==="right"?x-total:x;
  let out="";
  const now=Date.now();
@@ -77,29 +77,30 @@ function wheel(v,x,y,size=20,color=C.white,max=Infinity,anchor="start",key=""){
  chars.forEach((ch,i)=>{
   const w=cw[i],id=`${key}-${i}`;
   if(!/\d/.test(ch)){
-   out+=txt(ch,px,y,fs,color,900,w,"start",`textLength="${w}" lengthAdjust="spacingAndGlyphs"`);
+   out+=txt(ch,px+w/2,y,fs,color,900,w,"middle",`textLength="${w}" lengthAdjust="spacingAndGlyphs"`);
    px+=w;return;
   }
 
   let old=digits.get(id);
   if(!old||old.value!==ch){
-   digits.set(id,{value:ch,time:now});
-   old=digits.get(id);
+   old={value:ch,previous:old?.value,time:now};
+   digits.set(id,old);
   }
 
-  const p=Math.min(1,(now-old.time)/520),ease=1-Math.pow(1-p,3);
+  const p=Math.min(1,(now-old.time)/550);
+  const ease=1-Math.pow(1-p,3);
+  const stroke=Math.max(.4,fs*.025);
+
   if(old.previous!==undefined&&p<1){
-   const clip=`clip-${digits.size}-${i}-${String(key).replace(/[^a-z0-9]/gi,"")}`;
-   out+=`<svg x="${px}" y="${y-fs*.78}" width="${w}" height="${fs*1.56}" viewBox="0 0 ${w} ${fs*1.56}"><defs><clipPath id="${clip}"><rect width="${w}" height="${fs*1.56}"/></clipPath></defs><g clip-path="url(#${clip})">`;
-   out+=`<text x="${w/2}" y="${fs*.78+ease*fs}" fill="${color}" font-family="Inter" font-size="${fs}" font-weight="900" text-anchor="middle" dominant-baseline="middle" textLength="${w}" lengthAdjust="spacingAndGlyphs">${old.previous}</text>`;
-   out+=`<text x="${w/2}" y="${fs*.78-(1-ease)*fs}" fill="${color}" font-family="Inter" font-size="${fs}" font-weight="900" text-anchor="middle" dominant-baseline="middle" textLength="${w}" lengthAdjust="spacingAndGlyphs">${ch}</text></g></svg>`;
+   const clip=`clip-${String(key).replace(/[^a-z0-9]/gi,"")}-${i}`;
+   out+=`<svg x="${px}" y="${y-fs*.8}" width="${w}" height="${fs*1.6}" viewBox="0 0 ${w} ${fs*1.6}"><defs><clipPath id="${clip}"><rect width="${w}" height="${fs*1.6}"/></clipPath></defs><g clip-path="url(#${clip})">`;
+   out+=`<text x="${w/2}" y="${fs*.8+ease*fs}" fill="${color}" stroke="${color}" stroke-width="${stroke}" paint-order="stroke" font-family="Inter" font-size="${fs}" font-weight="900" text-anchor="middle" dominant-baseline="middle" textLength="${w}" lengthAdjust="spacingAndGlyphs">${old.previous}</text>`;
+   out+=`<text x="${w/2}" y="${fs*.8-(1-ease)*fs}" fill="${color}" stroke="${color}" stroke-width="${stroke}" paint-order="stroke" font-family="Inter" font-size="${fs}" font-weight="900" text-anchor="middle" dominant-baseline="middle" textLength="${w}" lengthAdjust="spacingAndGlyphs">${ch}</text></g></svg>`;
   }else{
    out+=txt(ch,px+w/2,y,fs,color,900,w,"middle",`textLength="${w}" lengthAdjust="spacingAndGlyphs"`);
   }
-
   px+=w;
  });
-
  return out;
 }
 
@@ -113,10 +114,7 @@ async function avatar(url){
    const b=Buffer.from(await r.arrayBuffer());
    if(b.length>2e6)throw Error("Avatar too large");
    return `data:${r.headers.get("content-type")||"image/jpeg"};base64,${b.toString("base64")}`;
-  }catch(e){
-   console.error("Avatar load:",e.message);
-   return "";
-  }
+  }catch(e){console.error("Avatar load:",e.message);return"";}
  })();
  avatars.set(url,p);
  return p;
@@ -124,54 +122,54 @@ async function avatar(url){
 
 function defs(){
  return `<defs>
- <linearGradient id="background" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#111a35"/><stop offset=".8" stop-color="#070b19"/></linearGradient>
+ <linearGradient id="background" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#111a35ed"/><stop offset=".8" stop-color="#070b19f5"/></linearGradient>
  <linearGradient id="cardGlow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#873aff" stop-opacity=".09"/><stop offset=".5" stop-color="#873aff" stop-opacity="0"/><stop offset="1" stop-color="#148bff" stop-opacity=".05"/></linearGradient>
- <linearGradient id="progress" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8b36ff"/><stop offset=".55" stop-color="#267bff"/><stop offset="1" stop-color="#20dfd0"/></linearGradient>
+ <linearGradient id="progress"><stop offset="0" stop-color="#8b36ff"/><stop offset=".55" stop-color="#267bff"/><stop offset="1" stop-color="#20dfd0"/></linearGradient>
  <linearGradient id="bar" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#5420c7"/><stop offset="1" stop-color="#a63cff"/></linearGradient>
  <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#18e9d9" stop-opacity=".35"/><stop offset="1" stop-color="#18e9d9" stop-opacity="0"/></linearGradient>
  <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="8"/></filter>
- <clipPath id="lucanClip"><circle cx="59" cy="104" r="46"/></clipPath>
+ <clipPath id="lucanClip"><circle cx="78" cy="134" r="57"/></clipPath>
  </defs>`;
 }
 
-function panel(x,y,w,h,r=18,border=C.border,glow=false){
+function panel(x,y,w,h,r=19,border=C.border){
  return rect(x,y,w,h,r,"url(#background)",border)+
  `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="url(#cardGlow)"/>`;
 }
 
 function profile(d){
- let o=panel(10,41,336,126,16,"#743dff",true);
- o+=`<circle cx="60" cy="104" r="48" fill="#168fff" opacity=".2" filter="url(#shadow)"/>`;
- if(d.avatar)o+=`<image href="${d.avatar}" x="13" y="58" width="92" height="92" preserveAspectRatio="xMidYMid slice" clip-path="url(#lucanClip)"/>`;
- o+=`<circle cx="59" cy="104" r="47" fill="none" stroke="${C.blue}" stroke-width="2.4"/>`;
- o+=txt(d.name,126,83,22,C.white,900,205);
- o+=txt(d.handle,127,108,11,C.muted,800,205);
- o+=txt("Jesus loves you! I hope every",127,128,10,"#dce5ff",800,205);
- o+=txt("video makes you smile!",127,141,10,"#dce5ff",800,205);
- o+=rect(126,151,102,20,7,"#5426c9",null);
- o+=txt("ROAD TO 60M",177,161,9,C.white,900,90,"middle");
+ let o=panel(6,66,420,136,19,"#743dff");
+ o+=`<circle cx="78" cy="134" r="59" fill="#168fff" opacity=".2" filter="url(#shadow)"/>`;
+ if(d.avatar)o+=`<image href="${d.avatar}" x="21" y="77" width="114" height="114" preserveAspectRatio="xMidYMid slice" clip-path="url(#lucanClip)"/>`;
+ o+=`<circle cx="78" cy="134" r="58" fill="none" stroke="${C.blue}" stroke-width="3"/>`;
+ o+=txt(d.name,157,94,22,C.white,900,250);
+ o+=txt(d.handle,158,119,11,C.muted,800,250);
+ o+=txt("Jesus loves you! I hope every",158,142,13,"#dce5ff",800,245);
+ o+=txt("video makes you smile!",158,158,13,"#dce5ff",800,245);
+ o+=rect(157,174,102,24,8,"url(#progress)",null);
+ o+=txt("ROAD TO 60M",208,186,10,C.white,900,95,"middle");
  return o;
 }
 
 function miniStats(d){
- let o=panel(10,177,336,192,16,"#245caa",true);
- o+=txt("MY CHANNEL",21,198,13,"#d7e5ff",900,115);
- o+=`<circle cx="244" cy="226" r="27" fill="#06102a" stroke="${C.blue}" stroke-width="2"/>`;
- o+=`<circle cx="244" cy="226" r="22" fill="none" stroke="#8b36ff" stroke-width="1"/>`;
- o+=txt("VY",244,220,20,C.white,900,40,"middle");
- o+=txt("STATS",244,234,7,C.teal,900,35,"middle");
- o+=txt(d.name||"VYStats",280,218,13,C.white,900,110);
- o+=txt(d.handle||"@vystatsyt",280,237,9,C.muted,800,110);
- o+=line(21,251,335,251);
+ let o=panel(6,214,420,240,19,"#245caa");
+ o+=txt("MY CHANNEL",21,236,16,"#d7e5ff",900,140);
+ o+=`<circle cx="309" cy="249" r="33" fill="#06102a" stroke="${C.blue}" stroke-width="2"/>`;
+ o+=`<circle cx="309" cy="249" r="28" fill="none" stroke="#8b36ff" stroke-width="1"/>`;
+ o+=txt("VY",309,245,23,C.white,900,48,"middle");
+ o+=txt("STATS",309,262,8,C.teal,900,42,"middle");
+ o+=txt(d.name||"VYStats",350,244,16,C.white,900,110);
+ o+=txt(d.handle||"@vystatsyt",350,264,11,C.muted,800,110);
+ o+=line(21,282,411,282);
  const groups=[["SUBSCRIBERS",d.freeEst,d.freeApi],["VIEWS",d.freeEstViews,d.freeApiViews],["VIDEOS",d.freeEstVideos,d.freeApiVideos]];
  groups.forEach((g,i)=>{
-  const x=21+i*105;
-  if(i)o+=line(x-7,260,x-7,352);
-  o+=txt(g[0],x+43,278,8,"#b8caff",900,88,"middle");
-  o+=txt("EST.",x,302,8,C.muted,900,30);
-  o+=wheel(fmt(g[1]),x+96,302,13,C.white,61,"right",`mine-${i}-est`);
-  o+=txt("API",x,327,8,C.muted,900,30);
-  o+=wheel(fmt(g[2]),x+96,327,13,C.white,61,"right",`mine-${i}-api`);
+  const x=21+i*130;
+  if(i)o+=line(x-9,292,x-9,440);
+  o+=txt(g[0],x+55,307,11,"#b8caff",900,110,"middle");
+  o+=txt("EST.",x,339,10,C.muted,900,35);
+  o+=wheel(fmt(g[1]),x+112,339,17,C.white,78,"right",`mine-${i}-est`);
+  o+=txt("API",x,372,10,C.muted,900,35);
+  o+=wheel(fmt(g[2]),x+112,372,17,C.white,78,"right",`mine-${i}-api`);
  });
  return o;
 }
@@ -181,83 +179,84 @@ function chart(values,x,y,w,h){
  const lo=Math.min(...values),hi=Math.max(...values),range=hi-lo||1;
  const pts=values.map((v,i)=>`${x+i/(values.length-1)*w},${y+h-(v-lo)/range*h}`).join(" ");
  return `<polygon points="${x},${y+h} ${pts} ${x+w},${y+h}" fill="url(#chartGradient)"/>`+
- `<polyline points="${pts}" fill="none" stroke="${C.teal}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`;
+ `<polyline points="${pts}" fill="none" stroke="${C.teal}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
 }
 
 function bars(values,x,y,w,h){
- const a=values.slice(-14),max=Math.max(1,...a.map(Math.abs)),gap=5,bw=Math.min(15,(w-gap*(a.length-1))/a.length);
+ const a=values.slice(-14),max=Math.max(1,...a.map(Math.abs)),gap=6,bw=Math.min(20,(w-gap*(a.length-1))/a.length);
  return a.map((v,i)=>{
-  const bh=Math.max(7,Math.abs(v)/max*h);
-  return `<rect x="${x+i*(bw+gap)}" y="${y+h-bh}" width="${bw}" height="${bh}" rx="4" fill="url(#bar)" opacity="${.55+.45*i/a.length}"/>`;
+  const bh=Math.max(8,Math.abs(v)/max*h);
+  return `<rect x="${x+i*(bw+gap)}" y="${y+h-bh}" width="${bw}" height="${bh}" rx="5" fill="url(#bar)" opacity="${.55+.45*i/a.length}"/>`;
  }).join("");
 }
 
 function mainStats(a){
- const current=a.linear??a.est;
- const goal=60000000,remaining=current==null?null:Math.max(0,goal-current);
+ const current=a.linear??a.est,goal=60000000;
+ const remaining=current==null?null:Math.max(0,goal-current);
  const progress=current==null?0:Math.min(1,current/goal);
  const rate=history.rates.at(-1)||0;
+ const x=[440,708.4,976.8],w=254.4,y=66,h=388;
  let o="";
 
- // Subscriber card
- o+=panel(357,41,297,328,18,"#287bff",true);
- o+=txt("↗",388,75,22,C.blue,900,28,"middle");
- o+=txt("LUCAN · LIVE SUBSCRIBERS",506,70,13,"#d7e3ff",900,230,"middle");
- o+=txt("(LINEAR ESTIMATE)",506,89,12,"#d7e3ff",900,230,"middle");
- o+=wheel(fmt(current),506,158,55,C.white,275,"center","lucan-count");
- o+=chart(history.subs.slice(-18),369,201,272,62);
- o+=line(369,263,642,263);
- o+=line(487,272,487,350);
- o+=line(567,272,567,350);
- o+=txt("LINEAR ESTIMATE",428,280,9,"#b9caff",900,112,"middle");
- o+=txt("HOURLY GAIN",527,280,9,"#b9caff",900,75,"middle");
- o+=txt("DAILY GAIN",605,280,9,"#b9caff",900,73,"middle");
- o+=wheel(fmt(current),428,316,17,C.teal,112,"center","linear-stat");
- o+=wheel(fmt(a.hourly),527,316,17,C.teal,75,"center","hourly-stat");
- o+=wheel(fmt(a.daily),605,316,17,C.teal,73,"center","daily-stat");
+ // Card 1: subscriber count
+ o+=panel(x[0],y,w,h,19,"#287bff");
+ o+=txt("↗",x[0]+42,106,27,C.blue,900,32,"middle");
+ o+=txt("LUCAN · LIVE SUBSCRIBERS",x[0]+w/2+8,98,14,"#d7e3ff",900,225,"middle");
+ o+=txt("(LINEAR ESTIMATE)",x[0]+w/2+8,119,14,"#d7e3ff",900,225,"middle");
+ o+=wheel(fmt(current),x[0]+w/2,193,55,C.white,w-28,"center","lucan-count");
+ o+=chart(history.subs.slice(-18),x[0]+15,225,w-30,67);
+ o+=line(x[0]+15,322,x[0]+w-15,322);
+ o+=line(x[0]+143,334,x[0]+143,438);
+ o+=line(x[0]+207,334,x[0]+207,438);
+ o+=txt("LINEAR ESTIMATE",x[0]+79,346,10,"#b9caff",900,125,"middle");
+ o+=txt("HOURLY GAIN",x[0]+175,346,10,"#b9caff",900,85,"middle");
+ o+=txt("DAILY GAIN",x[0]+230,346,10,"#b9caff",900,70,"middle");
+ o+=wheel(fmt(current),x[0]+79,389,19,C.teal,125,"center","linear-stat");
+ o+=wheel(fmt(a.hourly),x[0]+175,389,19,C.teal,85,"center","hourly-stat");
+ o+=wheel(fmt(a.daily),x[0]+230,389,19,C.teal,70,"center","daily-stat");
 
- // Rate card
- o+=panel(666,41,297,328,18,"#2869c9",true);
- o+=txt("ϟ",707,75,24,C.blue,900,25,"middle");
- o+=txt("SUBS GAINED PER SEC",822,75,14,"#d7e3ff",900,230,"middle");
- o+=txt(rate<0?"−":"+",713,171,55,C.white,900,48,"middle");
- o+=wheel(Math.abs(rate).toFixed(2),847,171,58,C.white,175,"center","rate-value");
- o+=bars(history.rates,682,232,265,63);
- o+=txt("◉ LIVE AVERAGE",814,309,11,C.teal,900,200,"middle");
+ // Card 2: rate
+ o+=panel(x[1],y,w,h,19,"#2869c9");
+ o+=txt("ϟ",x[1]+48,106,29,C.blue,900,30,"middle");
+ o+=txt("SUBS GAINED PER SEC",x[1]+w/2+7,106,15,"#d7e3ff",900,220,"middle");
+ o+=txt(rate<0?"−":"+",x[1]+72,226,61,C.white,900,55,"middle");
+ o+=wheel(Math.abs(rate).toFixed(2),x[1]+170,226,61,C.white,135,"center","rate-value");
+ o+=bars(history.rates,x[1]+18,289,w-36,42);
+ o+=txt("◉ LIVE AVERAGE",x[1]+w/2,416,12,C.teal,900,200,"middle");
 
- // Remaining card
- o+=panel(975,41,295,328,18,"#793dff",true);
- o+=txt("⚑",1013,75,22,C.blue,900,25,"middle");
- o+=txt("SUBSCRIBERS REMAINING",1137,70,13,"#d7e3ff",900,240,"middle");
- o+=txt("TO 60,000,000",1137,90,13,"#d7e3ff",900,240,"middle");
- o+=wheel(fmt(remaining),1122,161,55,C.white,258,"center","remaining");
- o+=rect(987,209,271,12,8,"#111f43",null);
- o+=rect(987,209,271*progress,12,8,"url(#progress)",null);
- o+=txt("ROAD TO 60M",987,235,9,"#b9caff",900,110);
- o+=wheel((progress*100).toFixed(1)+"%",1258,235,9,"#b9caff",60,"right","goal-percent");
- o+=txt("◎ SUBSCRIBERS LEFT",1122,309,11,C.teal,900,220,"middle");
+ // Card 3: remaining
+ o+=panel(x[2],y,w,h,19,"#793dff");
+ o+=txt("⚑",x[2]+43,106,27,C.blue,900,30,"middle");
+ o+=txt("SUBSCRIBERS REMAINING",x[2]+w/2+8,98,14,"#d7e3ff",900,225,"middle");
+ o+=txt("TO 60,000,000",x[2]+w/2+8,119,14,"#d7e3ff",900,225,"middle");
+ o+=wheel(fmt(remaining),x[2]+w/2,193,55,C.white,w-28,"center","remaining");
+ o+=rect(x[2]+15,275,w-30,15,9,"#111f43",null);
+ o+=rect(x[2]+15,275,(w-30)*progress,15,9,"url(#progress)",null);
+ o+=txt("ROAD TO 60M",x[2]+15,306,10,"#b9caff",900,110);
+ o+=wheel((progress*100).toFixed(1)+"%",x[2]+w-15,306,10,"#b9caff",65,"right","goal-percent");
+ o+=txt("◎ SUBSCRIBERS LEFT",x[2]+w/2,416,12,C.teal,900,220,"middle");
  return o;
 }
 
 function sources(a,b){
- const left=21,labelW=111,gap=7,colW=(1238-labelW-gap*4)/4;
+ const left=21,labelW=130,gap=9,colW=(1238-labelW-gap*4)/4;
  const xs=Array.from({length:4},(_,i)=>left+labelW+gap*(i+1)+colW*i);
- let o=panel(6,377,1268,168,18,"#4268a8",true);
- o+=txt("▤  DATA SOURCES",23,392,14,"#d6e3ff",900,250);
- o+=txt("● LIVE · BOTH PROVIDERS",1257,392,9,C.teal,900,170,"end");
- o+=line(21,412,1259,412);
- ["SCTools Est.","SCTools API","FreeWebTools Est.","FreeWebTools API"].forEach((v,i)=>o+=txt(v,xs[i]+colW/2,426,11,"#d6e3ff",900,colW,"middle"));
+ let o=panel(6,464,1268,210,19,"#4268a8");
+ o+=txt("▤  DATA SOURCES",23,493,16,"#d6e3ff",900,260);
+ o+=txt("● LIVE · BOTH PROVIDERS",1257,493,11,C.teal,900,180,"end");
+ o+=line(21,516,1259,516);
+ ["SCTools Est.","SCTools API","FreeWebTools Est.","FreeWebTools API"].forEach((v,i)=>o+=txt(v,xs[i]+colW/2,536,13,"#d6e3ff",900,colW,"middle"));
  const rows=[
   ["SUBSCRIBERS",a.est,a.api,b.freeEst,b.freeApi],
   ["TOTAL VIEWS",a.views,a.apiViews,b.freeEstViews,b.freeApiViews],
   ["VIDEOS",a.videos,a.apiVideos,b.freeEstVideos,b.freeApiVideos]
  ];
  rows.forEach((r,i)=>{
-  const y=435+i*35;
-  o+=txt(r[0],left,y+15,9,"#799bff",900,labelW);
+  const yy=545+i*42;
+  o+=txt(r[0],left,yy+19,10,"#799bff",900,labelW);
   for(let j=0;j<4;j++){
-   o+=rect(xs[j],y,colW,31,7,"#080d1b","#26375b");
-   o+=wheel(fmt(r[j+1]),xs[j]+9,y+16,16,j%2?"#c4d1ff":C.teal,colW-18,"start",`source-${i}-${j}`);
+   o+=rect(xs[j],yy,colW,38,8,"#080d1b","#26375b");
+   o+=wheel(fmt(r[j+1]),xs[j]+10,yy+19,20,j%2?"#c4d1ff":C.teal,colW-20,"start",`source-${i}-${j}`);
   }
  });
  return o;
@@ -287,19 +286,18 @@ async function buildSVG(data={}){
  s+=`<rect width="${W}" height="${H}" fill="url(#background)" opacity=".38"/>`;
 
  // Header
- s+=txt("LUCAN PEVIDOR",19,25,18,C.white,900,200);
- s+=txt("| ROAD TO 60M",193,25,18,C.purple,900,210);
- s+=txt("● LIVE",1258,25,14,C.red,900,100,"end");
+ s+=txt("LUCAN PEVIDOR",19,25,23,C.white,900,260);
+ s+=txt("| ROAD TO 60M",194,25,23,C.purple,900,250);
+ s+=txt("● LIVE",1258,25,17,C.red,900,100,"end");
 
- // Main layout
  s+=profile({...a,avatar:aa});
- s+=miniStats({...b,name:b.name||"VYStats",handle:b.handle||"@vystatsyt",avatar:bb});
+ s+=miniStats({...b,avatar:bb});
  s+=mainStats(a);
  s+=sources(a,b);
 
- s+=line(6,553,1274,553,"#ffffff18");
- s+=txt("↻ UPDATED "+new Date().toLocaleTimeString(),18,567,10,"#b9caff",900,300);
- s+=txt("● CONNECTED",1258,567,10,C.teal,900,120,"end");
+ s+=line(6,684,1274,684,"#ffffff18");
+ s+=txt("↻ UPDATED "+new Date().toLocaleTimeString(),18,706,12,"#b9caff",900,300);
+ s+=txt("● CONNECTED",1258,706,12,C.teal,900,120,"end");
  return s+"</svg>";
 }
 
@@ -407,9 +405,7 @@ function attach(app,getData){
   }catch(e){
    console.error("Fresh renderer benchmark:",e.stack||e.message);
    if(!res.headersSent)res.status(500).json({error:"Benchmark failed",message:e.message});
-  }finally{
-   benchmarkActive=false;
-  }
+  }finally{benchmarkActive=false;}
  });
 }
 
