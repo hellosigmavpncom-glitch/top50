@@ -3,167 +3,26 @@ const fs=require("fs"),path=require("path"),{render}=require("takumi-js"),{googl
 const W=1280,H=720,FPS=15,FRAME_MS=1000/FPS,DIR=__dirname;
 const nf=new Intl.NumberFormat("en-US"),images=new Map(),history={subs:[],rates:[],samples:[],previous:null,last:0,lastSample:0};
 let queue=Promise.resolve(),benchmarkActive=false,lastTiming={},fontPromise=null,htmlPromise=null;
-
 const ms=t=>Number(process.hrtime.bigint()-t)/1e6;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=v=>v==null||v===""||!Number.isFinite(Number(v))?"—":nf.format(Math.round(Number(v)));
 const decimal=v=>v==null||!Number.isFinite(Number(v))?"—":Number(v).toFixed(2);
 const value=(o,k)=>o?.[k]??null;
-
-function setText(html,id,v){
- const re=new RegExp(`(<([a-z][\\w:-]*)\\b(?=[^>]*\\bid=["']${id}["'])[^>]*>)[\\s\\S]*?(</\\2>)`,"i");
- return html.replace(re,(_,a,b,c)=>a+esc(v??"—")+c);
-}
-function setAttr(html,id,name,v){
- const re=new RegExp(`<([a-z][\\w:-]*)\\b([^>]*\\bid=["']${id}["'][^>]*)>`,"i");
- return html.replace(re,(_,tag,attrs)=>{
-  const reAttr=new RegExp(`\\s${name}=["'][^"']*["']`,"i");
-  attrs=reAttr.test(attrs)?attrs.replace(reAttr,` ${name}="${esc(v)}"`):attrs+` ${name}="${esc(v)}"`;
-  return `<${tag}${attrs}>`;
- });
-}
-function setInner(html,id,inner){
- const re=new RegExp(`(<([a-z][\\w:-]*)\\b(?=[^>]*\\bid=["']${id}["'])[^>]*>)[\\s\\S]*?(</\\2>)`,"i");
- return html.replace(re,(_,a,b,c)=>a+inner+c);
-}
-function getFonts(){
- if(!fontPromise)fontPromise=googleFonts([{name:"Inter",weight:"700..900"}]).catch(e=>{fontPromise=null;throw e;});
- return fontPromise;
-}
-async function getHtml(){
- if(!htmlPromise)htmlPromise=fs.promises.readFile(path.join(DIR,"index.html"),"utf8");
- return htmlPromise;
-}
-async function avatar(url){
- if(!url)return"";
- if(images.has(url))return images.get(url);
- const task=(async()=>{
-  try{
-   const r=await fetch(url,{signal:AbortSignal.timeout(10000)});
-   if(!r.ok)throw Error(`HTTP ${r.status}`);
-   const b=Buffer.from(await r.arrayBuffer());
-   if(b.length>2e6)throw Error("Avatar too large");
-   return `data:${r.headers.get("content-type")||"image/jpeg"};base64,${b.toString("base64")}`;
-  }catch(e){console.error("[TAKUMI AVATAR]",e.message);return"";}
- })();
- images.set(url,task);return task;
-}
-function chartPoints(a){
- if(a.length<2)return"0,65 60,55 120,52 180,45 240,38 300,30 360,22 400,15";
- const min=Math.min(...a),max=Math.max(...a),range=Math.max(1,max-min);
- return a.map((v,i)=>`${(i/(a.length-1)*400).toFixed(1)},${(68-(v-min)/range*52).toFixed(1)}`).join(" ");
-}
-function rateBars(){
- return history.rates.slice(-14).map((v,i,a)=>{
-  const n=Math.min(12,Math.max(1,Math.round(Math.abs(v)*4)));
-  return `<span style="height:${Math.max(12,n*7)}px;opacity:${.55+i/a.length*.45}"></span>`;
- }).join("");
-}
-function sourceCard(a){
- const rows=[
-  ["SUBSCRIBERS",a.st.estSubscribers,a.st.apiSubscribers,a.fw.estimatedSubscribers,a.fw.apiSubscribers],
-  ["TOTAL VIEWS",a.st.estViews,a.st.apiViews,a.fw.estimatedViews,a.fw.viewCount],
-  ["VIDEOS",a.st.estVideos,a.st.apiVideos,a.fw.estimatedVideos,a.fw.videoCount]
- ];
- return `<div class="src-h"><span>▤ &nbsp; DATA SOURCES</span><span class="src-status">● LIVE · BOTH PROVIDERS</span></div><div class="mtx"><div></div><div class="mh">SCTools Est.</div><div class="mh">SCTools API</div><div class="mh">FreeWebTools Est.</div><div class="mh">FreeWebTools API</div>${rows.map(row=>`<div class="mg">${row[0]}</div>`+row.slice(1).map((v,i)=>`<div class="cell"><span class="vl odometer ${i%2?"api":"fw"}">${fmt(v)}</span></div>`).join("")).join("")}</div>`;
-}
-function record(a){
- const current=a.main;
- const now=Date.now();
- if(current!=null&&now-history.lastSample>=1000){
-  history.samples.push({t:now,n:current});
-  if(history.samples.length>6)history.samples.shift();
-  history.subs.push(current);
-  if(history.subs.length>18)history.subs.shift();
-  if(history.samples.length>1){
-   const first=history.samples[0],last=history.samples.at(-1),seconds=(last.t-first.t)/1000;
-   const rate=seconds>0?(last.n-first.n)/seconds:0;
-   history.rates.push(rate);
-   if(history.rates.length>14)history.rates.shift();
-  }
-  history.lastSample=now;
- }
-}
-async function buildHtml(data={}){
- const l=data.lucan||{},m=data.mine||{},st=l.sctools||{},fw=l.freewebtools||{},mst=m.sctools||{},mfw=m.freewebtools||{},lc=l.channel||{},mc=m.channel||{};
- const main=st.linearSubscribers??st.estSubscribers??fw.estimatedSubscribers??st.apiSubscribers??fw.apiSubscribers;
- const remaining=main==null?null:Math.max(0,60000000-Number(main)),progress=main==null?0:Math.min(100,Number(main)/60000000*100);
- const hourly=st.hourly??fw.hourly,daily=st.daily??fw.daily;
- const rate=history.rates.at(-1)??null;
- const [la,ma]=await Promise.all([avatar(lc.avatar),avatar(mc.avatar)]);
- record({main});
- let html=await getHtml();
-html=html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,"").replace(/<link\b[^>]*>/gi,"");
- html=html.replace("</head>",`<style>html,body{width:1280px!important;height:720px!important;min-width:1280px!important;min-height:720px!important;overflow:hidden!important}.pg{width:99%!important;height:720px!important;min-height:720px!important}</style></head>`);
- html=setAttr(html,"lucanAvatar","src",la||"data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=");
- html=setAttr(html,"mineAvatar","src",ma||"data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=");
- const fields={
-  lucanName:lc.name||"Lucan Pevidor",lucanHandle:lc.handle||"@LucanPevidor",
-  lucanDescription:lc.description||"Jesus loves you! I hope every video makes you smile!",
-  mineName:mc.name||"VYStats",mineHandle:mc.handle||"@vystatsyt",
-  lucanCount:fmt(main),lucanRemaining:fmt(remaining),
-  lucanRate:rate==null?"—":decimal(Math.abs(rate)),lucanRateSign:rate!=null&&rate<0?"−":"+",
-  stLinearText:fmt(st.linearSubscribers??st.estSubscribers),stHourlyText:fmt(hourly),stDailyText:fmt(daily),
-  mineEstSubs:fmt(mst.estSubscribers??mfw.estimatedSubscribers),mineApiSubs:fmt(mst.apiSubscribers??mfw.apiSubscribers),
-  mineEstViews:fmt(mst.estViews),mineApiViews:fmt(mst.apiViews),
-  mineEstVideos:fmt(mst.estVideos),mineApiVideos:fmt(mst.apiVideos),
-  goalPercent:main==null?"—":progress.toFixed(1)+"%",
-  updated:(l.updated||m.updated)?"↻ UPDATED "+new Date(Math.max(l.updated||0,m.updated||0)).toLocaleTimeString():"WAITING FOR DATA",
-  status:l.updated||m.updated?"● CONNECTED":"● CONNECTING"
- };
- for(const [id,v] of Object.entries(fields))html=setText(html,id,v);
- html=html.replace(/id=["']goalProgress["']([^>]*)/i,(_,a)=>`id="goalProgress"${a.replace(/\sstyle=["'][^"']*["']/i,"")} style="width:${progress}%;"`);
- html=setInner(html,"srcCard",sourceCard({st,fw}));
- const points=chartPoints(history.subs);
- html=setAttr(html,"chartLine","points",points);
- html=setAttr(html,"chartFill","points",`0,80 ${points} 400,80`);
- html=setInner(html,"rateBars",rateBars());
- return html;
-}
-async function renderInternal(data={},mode="png"){
- const start=process.hrtime.bigint(),html=await buildHtml(data),draw=process.hrtime.bigint();
- const output=await render(html,{width:W,height:H,format:mode==="raw"?"raw":"png",fonts:getFonts()});
- const result=Buffer.from(output);
- lastTiming={renderMs:ms(draw),totalMs:ms(start)};
- if(mode==="raw"&&result.length!==W*H*4)throw Error(`Bad RGBA frame: ${result.length}; expected ${W*H*4}`);
- return result;
-}
-function run(data,mode){
- const job=queue.then(()=>renderInternal(data,mode));
- queue=job.catch(()=>{});
- return job;
-}
-const renderDashboard=data=>run(data,"png");
-const renderRawFrame=data=>run(data,"raw");
-function stats(a){
- if(!a.length)return{averageMs:0,medianMs:0,p95Ms:0,minMs:0,maxMs:0};
- const s=[...a].sort((x,y)=>x-y),avg=a.reduce((x,y)=>x+y,0)/a.length,p=q=>s[Math.min(s.length-1,Math.ceil(s.length*q)-1)],r=n=>+n.toFixed(2);
- return{averageMs:r(avg),medianMs:r(p(.5)),p95Ms:r(p(.95)),minMs:r(s[0]),maxMs:r(s.at(-1))};
-}
-async function freshBenchmark(getData){
- const duration=10000,interval=BigInt(Math.round(FRAME_MS*1e6)),start=process.hrtime.bigint(),before=process.memoryUsage(),times=[];
- let frames=0,missed=0,maxLate=0,checksum=0,firstSize=0,next=start+interval;
- const cpu=process.cpuUsage();
- while(ms(start)<duration){
-  const t=process.hrtime.bigint(),frame=await renderRawFrame(await getData()),done=process.hrtime.bigint();
-  times.push(Number(done-t)/1e6);frames++;firstSize=frame.length;checksum=(checksum+frame[(frames*997)%frame.length])>>>0;
-  if(done>next){const late=done-next,slots=Number(late/interval)+1;missed+=slots;maxLate=Math.max(maxLate,Number(late)/1e6);next+=BigInt(slots+1)*interval;}else next+=interval;
- }
- const after=process.memoryUsage(),used=process.cpuUsage(cpu),elapsed=ms(start),mib=n=>+(n/1048576).toFixed(2);
- return{renderer:"takumi-js",mode:"fresh-render-each-frame",resolution:`${W}x${H}`,fpsTarget:FPS,frameIntervalMs:+FRAME_MS.toFixed(3),durationMs:+elapsed.toFixed(2),frames,frameSizeBytes:firstSize,frameSizeMiB:mib(firstSize),freshRenderFPS:+(frames/(elapsed/1000)).toFixed(2),renderTime:stats(times),missedDeadlines:missed,missedDeadlinePercent:+(missed/Math.max(1,frames+missed)*100).toFixed(2),maxLatenessMs:+maxLate.toFixed(2),cpu:{userMs:+(used.user/1000).toFixed(2),systemMs:+(used.system/1000).toFixed(2)},memory:{heapBeforeMiB:mib(before.heapUsed),heapAfterMiB:mib(after.heapUsed),externalBeforeMiB:mib(before.external),externalAfterMiB:mib(after.external),rssBeforeMiB:mib(before.rss),rssAfterMiB:mib(after.rss)},checksum};
-}
-function attach(app,getData){
- app.get("/api/renderer/preview.png",async(req,res)=>{
-  if(benchmarkActive)return res.status(503).send("Benchmark running; retry shortly");
-  try{const png=await renderDashboard(await getData());res.set({"Content-Type":"image/png","Cache-Control":"no-store, no-cache, must-revalidate"}).send(png);}
-  catch(e){console.error("[TAKUMI RENDER]",e.stack||e.message);res.status(500).send(e.message);}
- });
- app.get("/api/renderer/benchmark",async(req,res)=>{
-  if(benchmarkActive)return res.status(409).json({error:"Benchmark already running"});
-  benchmarkActive=true;
-  try{res.set("Cache-Control","no-store").json(await freshBenchmark(getData));}
-  catch(e){console.error("[TAKUMI BENCHMARK]",e.stack||e.message);if(!res.headersSent)res.status(500).json({error:"Benchmark failed",message:e.message});}
-  finally{benchmarkActive=false;}
- });
-}
+function setText(html,id,v){const re=new RegExp(`(<([a-z][\\w:-]*)\\b(?=[^>]*\\bid=["']${id}["'])[^>]*>)[\\s\\S]*?(</\\2>)`,"i");return html.replace(re,(_,a,b,c)=>a+esc(v??"—")+c);}
+function setAttr(html,id,name,v){const re=new RegExp(`<([a-z][\\w:-]*)\\b([^>]*\\bid=["']${id}["'][^>]*)>`,"i");return html.replace(re,(_,tag,attrs)=>{const reAttr=new RegExp(`\\s${name}=["'][^"']*["']`,"i");attrs=reAttr.test(attrs)?attrs.replace(reAttr,` ${name}="${esc(v)}"`):attrs+` ${name}="${esc(v)}"`;return `<${tag}${attrs}>`;});}
+function setInner(html,id,inner){const re=new RegExp(`(<([a-z][\\w:-]*)\\b(?=[^>]*\\bid=["']${id}["'])[^>]*>)[\\s\\S]*?(</\\2>)`,"i");return html.replace(re,(_,a,b,c)=>a+inner+c);}
+function getFonts(){if(!fontPromise)fontPromise=googleFonts([{name:"Inter",weight:"700..900"}]).catch(e=>{fontPromise=null;throw e;});return fontPromise;}
+async function getHtml(){if(!htmlPromise)htmlPromise=fs.promises.readFile(path.join(DIR,"index.html"),"utf8");return htmlPromise;}
+async function avatar(url){if(!url)return"";if(images.has(url))return images.get(url);const task=(async()=>{try{const r=await fetch(url,{signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error(`HTTP ${r.status}`);const b=Buffer.from(await r.arrayBuffer());if(b.length>2e6)throw Error("Avatar too large");return `data:${r.headers.get("content-type")||"image/jpeg"};base64,${b.toString("base64")}`;}catch(e){console.error("[TAKUMI AVATAR]",e.message);return"";}})();images.set(url,task);return task;}
+function chartPoints(a){if(a.length<2)return"0,65 60,55 120,52 180,45 240,38 300,30 360,22 400,15";const min=Math.min(...a),max=Math.max(...a),range=Math.max(1,max-min);return a.map((v,i)=>`${(i/(a.length-1)*400).toFixed(1)},${(68-(v-min)/range*52).toFixed(1)}`).join(" ");}
+function rateBars(){return history.rates.slice(-14).map((v,i,a)=>{const n=Math.min(12,Math.max(1,Math.round(Math.abs(v)*4)));return `<span style="height:${Math.max(12,n*7)}px;opacity:${.55+i/a.length*.45}"></span>`;}).join("");}
+function sourceCard(a){const rows=[["SUBSCRIBERS",a.st.estSubscribers,a.st.apiSubscribers,a.fw.estimatedSubscribers,a.fw.apiSubscribers],["TOTAL VIEWS",a.st.estViews,a.st.apiViews,a.fw.estimatedViews,a.fw.viewCount],["VIDEOS",a.st.estVideos,a.st.apiVideos,a.fw.estimatedVideos,a.fw.videoCount]];return `<div class="src-h"><span>▤ &nbsp; DATA SOURCES</span><span class="src-status">● LIVE · BOTH PROVIDERS</span></div><div class="mtx"><div></div><div class="mh">SCTools Est.</div><div class="mh">SCTools API</div><div class="mh">FreeWebTools Est.</div><div class="mh">FreeWebTools API</div>${rows.map(row=>`<div class="mg">${row[0]}</div>`+row.slice(1).map((v,i)=>`<div class="cell"><span class="vl odometer ${i%2?"api":"fw"}">${fmt(v)}</span></div>`).join("")).join("")}</div>`;}
+function record(a){const current=a.main,now=Date.now();if(current!=null&&now-history.lastSample>=1000){history.samples.push({t:now,n:current});if(history.samples.length>6)history.samples.shift();history.subs.push(current);if(history.subs.length>18)history.subs.shift();if(history.samples.length>1){const first=history.samples[0],last=history.samples.at(-1),seconds=(last.t-first.t)/1000,rate=seconds>0?(last.n-first.n)/seconds:0;history.rates.push(rate);if(history.rates.length>14)history.rates.shift();}history.lastSample=now;}}
+async function buildHtml(data={}){const l=data.lucan||{},m=data.mine||{},st=l.sctools||{},fw=l.freewebtools||{},mst=m.sctools||{},mfw=m.freewebtools||{},lc=l.channel||{},mc=m.channel||{};const main=st.linearSubscribers??st.estSubscribers??fw.estimatedSubscribers??st.apiSubscribers??fw.apiSubscribers,remaining=main==null?null:Math.max(0,60000000-Number(main)),progress=main==null?0:Math.min(100,Number(main)/60000000*100),hourly=st.hourly??fw.hourly,daily=st.daily??fw.daily,rate=history.rates.at(-1)??null;const [la,ma]=await Promise.all([avatar(lc.avatar),avatar(mc.avatar)]);record({main});let html=await getHtml();html=html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,"").replace(/<link\b[^>]*>/gi,"");html=html.replace("</head>",`<style>html,body{width:1280px!important;height:720px!important;min-width:1280px!important;min-height:720px!important;overflow:hidden!important}.pg{width:99%!important;height:720px!important;min-height:720px!important}#lucanCount{font-size:40px!important;letter-spacing:-2px!important;white-space:nowrap!important;max-width:100%!important;}</style></head>`);html=setAttr(html,"lucanAvatar","src",la||"data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=");html=setAttr(html,"mineAvatar","src",ma||"data:image/gif;base64,R0lGODlhAQABAAAAACw=");const fields={lucanName:lc.name||"Lucan Pevidor",lucanHandle:lc.handle||"@LucanPevidor",lucanDescription:lc.description||"Jesus loves you! I hope every video makes you smile!",mineName:mc.name||"VYStats",mineHandle:mc.handle||"@vystatsyt",lucanCount:fmt(main),lucanRemaining:fmt(remaining),lucanRate:rate==null?"—":decimal(Math.abs(rate)),lucanRateSign:rate!=null&&rate<0?"−":"+",stLinearText:fmt(st.linearSubscribers??st.estSubscribers),stHourlyText:fmt(hourly),stDailyText:fmt(daily),mineEstSubs:fmt(mst.estSubscribers??mfw.estimatedSubscribers),mineApiSubs:fmt(mst.apiSubscribers??mfw.apiSubscribers),mineEstViews:fmt(mst.estViews),mineApiViews:fmt(mst.apiViews),mineEstVideos:fmt(mst.estVideos),mineApiVideos:fmt(mst.apiVideos),goalPercent:main==null?"—":progress.toFixed(1)+"%",updated:(l.updated||m.updated)?"↻ UPDATED "+new Date(Math.max(l.updated||0,m.updated||0)).toLocaleTimeString():"WAITING FOR DATA",status:l.updated||m.updated?"● CONNECTED":"● CONNECTING"};for(const [id,v] of Object.entries(fields))html=setText(html,id,v);html=html.replace(/id=["']goalProgress["']([^>]*)/i,(_,a)=>`id="goalProgress"${a.replace(/\sstyle=["'][^"']*["']/i,"")} style="width:${progress}%;"`);html=setInner(html,"srcCard",sourceCard({st,fw}));const points=chartPoints(history.subs);html=setAttr(html,"chartLine","points",points);html=setAttr(html,"chartFill","points",`0,80 ${points} 400,80`);html=setInner(html,"rateBars",rateBars());return html;}
+async function renderInternal(data={},mode="png"){const start=process.hrtime.bigint(),html=await buildHtml(data),draw=process.hrtime.bigint(),output=await render(html,{width:W,height:H,format:mode==="raw"?"raw":"png",fonts:getFonts()}),result=Buffer.from(output);lastTiming={renderMs:ms(draw),totalMs:ms(start)};if(mode==="raw"&&result.length!==W*H*4)throw Error(`Bad RGBA frame: ${result.length}; expected ${W*H*4}`);return result;}
+function run(data,mode){const job=queue.then(()=>renderInternal(data,mode));queue=job.catch(()=>{});return job;}
+const renderDashboard=data=>run(data,"png"),renderRawFrame=data=>run(data,"raw");
+function stats(a){if(!a.length)return{averageMs:0,medianMs:0,p95Ms:0,minMs:0,maxMs:0};const s=[...a].sort((x,y)=>x-y),avg=a.reduce((x,y)=>x+y,0)/a.length,p=q=>s[Math.min(s.length-1,Math.ceil(s.length*q)-1)],r=n=>+n.toFixed(2);return{averageMs:r(avg),medianMs:r(p(.5)),p95Ms:r(p(.95)),minMs:r(s[0]),maxMs:r(s.at(-1))};}
+async function freshBenchmark(getData){const duration=10000,interval=BigInt(Math.round(FRAME_MS*1e6)),start=process.hrtime.bigint(),before=process.memoryUsage(),times=[];let frames=0,missed=0,maxLate=0,checksum=0,firstSize=0,next=start+interval;const cpu=process.cpuUsage();while(ms(start)<duration){const t=process.hrtime.bigint(),frame=await renderRawFrame(await getData()),done=process.hrtime.bigint();times.push(Number(done-t)/1e6);frames++;firstSize=frame.length;checksum=(checksum+frame[(frames*997)%frame.length])>>>0;if(done>next){const late=done-next,slots=Number(late/interval)+1;missed+=slots;maxLate=Math.max(maxLate,Number(late)/1e6);next+=BigInt(slots+1)*interval;}else next+=interval;}const after=process.memoryUsage(),used=process.cpuUsage(cpu),elapsed=ms(start),mib=n=>+(n/1048576).toFixed(2);return{renderer:"takumi-js",mode:"fresh-render-each-frame",resolution:`${W}x${H}`,fpsTarget:FPS,frameIntervalMs:+FRAME_MS.toFixed(3),durationMs:+elapsed.toFixed(2),frames,frameSizeBytes:firstSize,frameSizeMiB:mib(firstSize),freshRenderFPS:+(frames/(elapsed/1000)).toFixed(2),renderTime:stats(times),missedDeadlines:missed,missedDeadlinePercent:+(missed/Math.max(1,frames+missed)*100).toFixed(2),maxLatenessMs:+maxLate.toFixed(2),cpu:{userMs:+(used.user/1000).toFixed(2),systemMs:+(used.system/1000).toFixed(2)},memory:{heapBeforeMiB:mib(before.heapUsed),heapAfterMiB:mib(after.heapUsed),externalBeforeMiB:mib(before.external),externalAfterMiB:mib(after.external),rssBeforeMiB:mib(before.rss),rssAfterMiB:mib(after.rss)},checksum};}
+function attach(app,getData){app.get("/api/renderer/preview.png",async(req,res)=>{if(benchmarkActive)return res.status(503).send("Benchmark running; retry shortly");try{const png=await renderDashboard(await getData());res.set({"Content-Type":"image/png","Cache-Control":"no-store, no-cache, must-revalidate"}).send(png);}catch(e){console.error("[TAKUMI RENDER]",e.stack||e.message);res.status(500).send(e.message);}});app.get("/api/renderer/benchmark",async(req,res)=>{if(benchmarkActive)return res.status(409).json({error:"Benchmark already running"});benchmarkActive=true;try{res.set("Cache-Control","no-store").json(await freshBenchmark(getData));}catch(e){console.error("[TAKUMI BENCHMARK]",e.stack||e.message);if(!res.headersSent)res.status(500).json({error:"Benchmark failed",message:e.message});}finally{benchmarkActive=false;}});}
 module.exports={renderDashboard,renderRawFrame,attach};
