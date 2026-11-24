@@ -37,15 +37,45 @@ html,body{width:1280px!important;height:720px!important;min-width:1280px!importa
 .src-meta>div{display:flex!important;flex:1 1 0!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:3px!important;background:#080d1b!important;border:1px solid #26375b!important;border-radius:8px!important;padding:4px 6px!important;min-width:0!important;overflow:hidden!important}
 .src-meta span{font-size:12px!important;line-height:1.15!important;font-weight:900!important;color:#c4d2f3!important;text-align:center!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:clip!important}
 .src-meta b{font-size:18px!important;line-height:1.1!important;font-weight:900!important;color:#25e5c0!important;white-space:nowrap!important;flex-shrink:0!important}
-.odometer{font-family:Inter,sans-serif!important;white-space:nowrap!important;display:inline-flex!important;align-items:baseline!important;line-height:1em!important;vertical-align:baseline!important;font-variant-numeric:tabular-nums!important}
-.odometer-digit{display:inline-block!important;height:1em!important;overflow:hidden!important;vertical-align:baseline!important;line-height:1em!important}
-.odometer-ribbon{display:flex!important;flex-direction:column!important;line-height:1em!important;will-change:transform!important}
-.odometer-ribbon>span{display:block!important;height:1em!important;line-height:1em!important;white-space:pre!important}
-.odometer-mark{display:inline-block!important;line-height:1em!important}
+
+/* FIXED ROLLING DIGITS: independent fixed-size clipping window per digit */
+.odometer{font-family:Inter,sans-serif!important;white-space:nowrap!important;display:inline-block!important;line-height:1em!important;vertical-align:baseline!important;font-variant-numeric:tabular-nums!important;font-feature-settings:"tnum" 1!important}
+.roll-window{display:inline-block!important;position:relative!important;width:.62em!important;height:1em!important;min-width:.62em!important;max-width:.62em!important;overflow:hidden!important;vertical-align:baseline!important;line-height:1em!important;padding:0!important;margin:0!important;clip-path:inset(0)!important}
+.roll-strip{position:absolute!important;display:block!important;left:0!important;top:0!important;width:100%!important;height:auto!important;line-height:1em!important;padding:0!important;margin:0!important;will-change:transform!important}
+.roll-strip>span{display:block!important;position:relative!important;width:100%!important;height:1em!important;min-height:1em!important;max-height:1em!important;line-height:1em!important;padding:0!important;margin:0!important;text-align:center!important;white-space:nowrap!important;font-size:1em!important;font-weight:inherit!important;font-family:inherit!important;font-style:normal!important}
+.roll-mark{display:inline-block!important;position:relative!important;line-height:1em!important;height:1em!important;vertical-align:baseline!important;white-space:pre!important;padding:0!important;margin:0!important}
 </style>`;
 async function getBaseHtml(){if(!baseHtmlPromise)baseHtmlPromise=(async()=>{let html=await getHtml();html=html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,"").replace(/<link\b[^>]*>/gi,"");if(!html.includes("</head>"))throw Error("index.html is missing </head>");return html.replace("</head>",css+"</head>");})().catch(e=>{baseHtmlPromise=null;throw e;});return baseHtmlPromise;}
 async function avatar(url){if(!url)return"";if(images.has(url))return images.get(url);const task=(async()=>{try{const r=await fetch(url,{signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error("HTTP "+r.status);const b=Buffer.from(await r.arrayBuffer());if(b.length>2e6)throw Error("Avatar too large");console.log(`[AVATAR] OK | ${b.length} bytes | ${url.slice(0,85)}`);return`data:${r.headers.get("content-type")||"image/jpeg"};base64,${b.toString("base64")}`;}catch(e){console.error(`[AVATAR] FAILED | ${e.message} | ${url}`);return"";}})();images.set(url,task);return task;}
-function rollingMarkup(id,value,decimals=0,suffix=""){const n=numeric(value);if(n===null)return`<span class="odometer" data-odometer="${esc(id)}">—</span>`;const rounded=decimals?Number(n.toFixed(decimals)):Math.round(n),target=(decimals?rounded.toFixed(decimals):nf.format(rounded))+suffix,now=Date.now();let s=rollStates.get(id);if(!s){s={targetString:target,lastString:target,transitions:[]};rollStates.set(id,s);}else if(s.targetString!==target){const oldDigits=(s.targetString.match(/\d/g)||[]),newDigits=(target.match(/\d/g)||[]);s.transitions=newDigits.map((d,i)=>{const from=oldDigits[oldDigits.length-newDigits.length+i]??d;return{from,to:d,start:now};});s.lastString=s.targetString;s.targetString=target;}let digitIndex=0,out="";for(const ch of target){if(/\d/.test(ch)){const t=s.transitions[digitIndex];if(t&&t.from!==t.to){const p=Math.max(0,Math.min(1,(now-t.start)/650));if(p<1){out+=`<span class="odometer-digit"><span class="odometer-ribbon" style="transform:translateY(-${p.toFixed(3)}em)"><span>${t.from}</span><span>${t.to}</span></span></span>`;}else out+=`<span class="odometer-digit"><span class="odometer-ribbon"><span>${ch}</span></span></span>`;}else out+=`<span class="odometer-digit"><span class="odometer-ribbon"><span>${ch}</span></span></span>`;digitIndex++;}else out+=`<span class="odometer-mark">${esc(ch)}</span>`;}return`<span class="odometer" data-odometer="${esc(id)}">${out}</span>`;}
+
+/* Each digit gets its own clipping viewport. The ribbon is absolutely positioned,
+   so the lower digit cannot escape the viewport or affect the number's layout. */
+function rollingMarkup(id,value,decimals=0,suffix=""){
+ const n=numeric(value);
+ if(n===null)return`<span class="odometer" data-odometer="${esc(id)}">—</span>`;
+ const rounded=decimals?Number(n.toFixed(decimals)):Math.round(n),target=(decimals?rounded.toFixed(decimals):nf.format(rounded))+suffix,now=Date.now();
+ let s=rollStates.get(id);
+ if(!s){s={targetString:target,transitions:[]};rollStates.set(id,s);}
+ else if(s.targetString!==target){
+  const oldDigits=(s.targetString.match(/\d/g)||[]),newDigits=(target.match(/\d/g)||[]);
+  s.transitions=newDigits.map((d,i)=>{const from=oldDigits[oldDigits.length-newDigits.length+i]??d;return{from,to:d,start:now};});
+  s.targetString=target;
+ }
+ let digitIndex=0,out="";
+ for(const ch of target){
+  if(/\d/.test(ch)){
+   const t=s.transitions[digitIndex];
+   if(t&&t.from!==t.to){
+    const p=Math.max(0,Math.min(1,(now-t.start)/650));
+    if(p<1){
+     out+=`<span class="roll-window"><span class="roll-strip" style="transform:translateY(-${p.toFixed(3)}em)"><span>${t.from}</span><span>${t.to}</span></span></span>`;
+    }else out+=`<span class="roll-window"><span class="roll-strip"><span>${ch}</span></span></span>`;
+   }else out+=`<span class="roll-window"><span class="roll-strip"><span>${ch}</span></span></span>`;
+   digitIndex++;
+  }else out+=`<span class="roll-mark">${esc(ch)}</span>`;
+ }
+ return`<span class="odometer" data-odometer="${esc(id)}">${out}</span>`;
+}
 function setRolling(html,id,v,decimals=0,suffix=""){return setInner(html,id,rollingMarkup(id,v,decimals,suffix));}
 function svgIcon(type){const paths={arrow:'<path d="M7 17 17 7M7 7h10v10"/>',bolt:'<path d="m13 2-9 12h7l-1 8 10-12h-7z"/>',flag:'<path d="M5 3v18M5 4h13l-3 5 3 5H5"/>',grid:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>',refresh:'<path d="M20 7v5h-5M4 17v-5h5M5.6 9a7 7 0 0 1 11.8-2L20 12M4 12l2.6 5a7 7 0 0 0 11.8-2"/>',circle:'<circle cx="12" cy="12" r="5" fill="#ff4267" stroke="none"/>'};return`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="#27a9ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${paths[type]||paths.grid}</svg>`;}
 function replaceIcon(html,old,type){return html.replace(`<span class="stat-icon">${old}</span>`,`<span class="stat-icon">${svgIcon(type)}</span>`);}
