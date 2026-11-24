@@ -4,122 +4,135 @@ const fs=require("fs");
 const path=require("path");
 
 const W=1280,H=720,FPS=15,FRAME_MS=1000/FPS;
-const C={bg:"#050713",panel:"#111a35ed",panel2:"#070b19f5",border:"#273a68",blue:"#27a9ff",purple:"#8b36ff",teal:"#25e5c0",white:"#f5f7ff",muted:"#aab8df",red:"#ff4267"};
+const C={bg:"#050713",blue:"#27a9ff",purple:"#8b36ff",teal:"#25e5c0",white:"#f5f7ff",muted:"#aab8df",border:"#273a68",red:"#ff4267"};
 const FONT_DIR="/tmp/inter-static";
-const FONT_NAMES=["Regular","Medium","SemiBold","Bold","ExtraBold","Black"];
-const FONT_FILES=FONT_NAMES.map(n=>path.join(FONT_DIR,`Inter-${n}.ttf`));
+const WEIGHTS=["Regular","Medium","SemiBold","Bold","ExtraBold","Black"];
+const FONT_FILES=WEIGHTS.map(n=>path.join(FONT_DIR,`Inter-${n}.ttf`));
 const FONT={loadSystemFonts:false,fontFiles:FONT_FILES,defaultFontFamily:"Inter"};
 
 const nf=new Intl.NumberFormat("en-US");
-const avatars=new Map(),digits=new Map(),history={subs:[],rates:[],previous:null,last:0};
+const avatars=new Map(),numberState=new Map();
+const history={subs:[],rates:[],previous:null,last:0};
 let queue=Promise.resolve(),benchmarkActive=false,lastTiming={};
 
 const ms=t=>Number(process.hrtime.bigint()-t)/1e6;
 const esc=s=>String(s??"—").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&apos;"}[c]));
 const fmt=v=>v==null||!Number.isFinite(Number(v))?"—":nf.format(Math.round(Number(v)));
-const num=(o,...keys)=>{for(const k of keys)if(o?.[k]!=null&&o[k]!==""&&Number.isFinite(Number(o[k])))return Number(o[k]);return null;};
+const num=(o,...keys)=>{
+ for(const k of keys)if(o?.[k]!=null&&o[k]!==""&&Number.isFinite(Number(o[k])))return Number(o[k]);
+ return null;
+};
 
 async function ensureFont(){
  await fs.promises.mkdir(FONT_DIR,{recursive:true});
- for(const name of FONT_NAMES){
+ for(const name of WEIGHTS){
   const file=path.join(FONT_DIR,`Inter-${name}.ttf`);
   try{
-   const stat=await fs.promises.stat(file);
-   if(stat.size>100000)continue;
+   const st=await fs.promises.stat(file);
+   if(st.size>100000)continue;
   }catch{}
   const url=`https://unpkg.com/inter-font@3.19.0/ttf/Inter-${name}.ttf`;
   const r=await fetch(url,{signal:AbortSignal.timeout(30000)});
   if(!r.ok)throw Error(`Inter ${name} download failed: HTTP ${r.status}`);
   const b=Buffer.from(await r.arrayBuffer());
-  if(b.length<100000)throw Error(`Invalid Inter ${name} font`);
+  if(b.length<100000)throw Error(`Invalid Inter ${name} font file`);
   await fs.promises.writeFile(file,b);
  }
 }
 
-const getStats=d=>{
- const s=d.sctools||{},f=d.freewebtools||{},e=f.estimation||{};
+function getStats(d={}){
+ const s=d.sctools||{},f=d.freewebtools||{},e=f.estimation||{},api=f.api||{};
+ const channel=d.channel||{};
  return{
-  name:d.channel?.name||s.name||"Lucan Pevidor",
-  handle:d.channel?.handle||"@LucanPevidor",
-  avatar:d.channel?.avatar||s.avatar||f.thumbnail||"",
+  name:channel.name||s.name||f.name||"Lucan Pevidor",
+  handle:channel.handle||"@LucanPevidor",
+  avatar:channel.avatar||s.avatar||f.avatar||f.thumbnail||"",
   linear:num(s,"linearSubscribers","linearCount","estSubscribers","estCount"),
   est:num(s,"estSubscribers","estCount"),
   api:num(s,"apiSubscribers","apiCount"),
-  views:num(s,"estViews","viewCount"),
-  apiViews:num(s,"apiViews"),
-  videos:num(s,"estVideos"),
-  apiVideos:num(s,"apiVideos","videoCount"),
-  hourly:num(s,"hourly")??num(s.averages,"hourly")??num(f,"hourly"),
-  daily:num(s,"daily")??num(s.averages,"daily")??num(f,"daily"),
-  freeEst:num(f,"estimatedSubscribers")??num(e,"estimated_count"),
-  freeApi:num(f,"apiSubscribers","subscriberCount"),
-  freeEstViews:num(f,"estimatedViews"),
-  freeApiViews:num(f,"viewCount"),
-  freeEstVideos:num(f,"estimatedVideos"),
-  freeApiVideos:num(f,"videoCount")
+  views:num(s,"estViews","estimatedViews","viewCount"),
+  apiViews:num(s,"apiViews","apiViewCount"),
+  videos:num(s,"estVideos","estimatedVideos"),
+  apiVideos:num(s,"apiVideos","apiVideoCount","videoCount"),
+  hourly:num(s,"hourly")??num(s.averages,"hourly"),
+  daily:num(s,"daily")??num(s.averages,"daily"),
+  freeEst:num(f,"estimatedSubscribers","estimatedCount","estSubscribers","estCount")??num(e,"estimated_count","estimatedCount","subscribers"),
+  freeApi:num(f,"apiSubscribers","apiCount","subscriberCount")??num(api,"subscribers","subscriberCount"),
+  freeEstViews:num(f,"estimatedViews","estViews","viewCount")??num(e,"views","viewCount"),
+  freeApiViews:num(f,"apiViews","apiViewCount")??num(api,"views","viewCount"),
+  freeEstVideos:num(f,"estimatedVideos","estVideos")??num(e,"videos","videoCount"),
+  freeApiVideos:num(f,"apiVideos","apiVideoCount","videoCount")??num(api,"videos","videoCount")
  };
-};
+}
 
-const rect=(x,y,w,h,r=12,fill=C.panel,stroke=C.border,sw=1)=>
+const rect=(x,y,w,h,r=12,fill="#111a35",stroke=C.border,sw=1)=>
  `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${fill}"${stroke?` stroke="${stroke}" stroke-width="${sw}"`:""}/>`;
 const line=(x,y,x2,y2,color="#ffffff20",width=1)=>
  `<path d="M${x} ${y}L${x2} ${y2}" fill="none" stroke="${color}" stroke-width="${width}"/>`;
 
 function txt(v,x,y,size=16,color=C.white,weight=700,max=Infinity,anchor="start",extra=""){
- const s=esc(v),n=String(v??"—").length;
- const fit=max===Infinity?size:Math.min(size,max/Math.max(1,n*.55));
+ const s=esc(v);
+ const chars=[...String(v??"—")].length;
+ // Reduce font size when necessary; never stretch individual glyphs.
+ const fit=max===Infinity?size:Math.min(size,max/Math.max(1,chars*.57));
  return `<text x="${x}" y="${y}" fill="${color}" font-family="Inter" font-size="${Math.max(8,fit)}" font-weight="${weight}" text-anchor="${anchor}" dominant-baseline="middle" ${extra}>${s}</text>`;
 }
 
-function wheel(v,x,y,size=20,color=C.white,max=Infinity,anchor="start",key=""){
- const chars=[...String(v??"—")];
- const widths=chars.map(ch=>/\d/.test(ch)?.535:ch===","?.25:ch==="."?.27:.55);
- const unit=widths.reduce((a,b)=>a+b,0);
- const fs=size*(max===Infinity?1:Math.min(1,max/(unit*size)));
- const cw=widths.map(n=>n*fs),total=cw.reduce((a,b)=>a+b,0);
- let px=anchor==="center"?x-total/2:anchor==="right"?x-total:x;
- let out="",now=Date.now();
+// Whole-string number animation: no guessed digit widths or textLength distortion.
+function wheel(value,x,y,size=20,color=C.white,max=Infinity,anchor="start",key=""){
+ const valueText=String(value??"—");
+ const chars=[...valueText].length;
+ const fit=max===Infinity?size:Math.min(size,max/Math.max(1,chars*.57));
+ const now=Date.now();
+ let old=numberState.get(key);
 
- chars.forEach((ch,i)=>{
-  const w=cw[i],id=`${key}-${i}`;
-  if(!/\d/.test(ch)){
-   out+=txt(ch,px+w/2,y,fs,color,900,w,"middle",`textLength="${w}" lengthAdjust="spacingAndGlyphs"`);
-   px+=w;return;
-  }
-  let old=digits.get(id);
-  if(!old||old.value!==ch){
-   old={value:ch,previous:old?.value,time:now};
-   digits.set(id,old);
-  }
-  const p=Math.min(1,(now-old.time)/550),ease=1-Math.pow(1-p,3);
-
-  if(old.previous!==undefined&&p<1){
-   const clip=`clip-${String(key).replace(/[^a-z0-9]/gi,"")}-${i}`;
-   out+=`<svg x="${px}" y="${y-fs*.8}" width="${w}" height="${fs*1.6}" viewBox="0 0 ${w} ${fs*1.6}"><defs><clipPath id="${clip}"><rect width="${w}" height="${fs*1.6}"/></clipPath></defs><g clip-path="url(#${clip})">`;
-   out+=`<text x="${w/2}" y="${fs*.8+ease*fs}" fill="${color}" font-family="Inter" font-size="${fs}" font-weight="900" text-anchor="middle" dominant-baseline="middle" textLength="${w}" lengthAdjust="spacingAndGlyphs">${old.previous}</text>`;
-   out+=`<text x="${w/2}" y="${fs*.8-(1-ease)*fs}" fill="${color}" font-family="Inter" font-size="${fs}" font-weight="900" text-anchor="middle" dominant-baseline="middle" textLength="${w}" lengthAdjust="spacingAndGlyphs">${ch}</text></g></svg>`;
-  }else{
-   out+=txt(ch,px+w/2,y,fs,color,900,w,"middle",`textLength="${w}" lengthAdjust="spacingAndGlyphs"`);
-  }
-  px+=w;
- });
- return out;
+ if(!old||old.value!==valueText){
+  old={value:valueText,previous:old?.value,time:now};
+  numberState.set(key,old);
+ }
+ const p=Math.min(1,(now-old.time)/260);
+ const ease=1-Math.pow(1-p,3);
+ const offset=(1-ease)*fit*.65;
+ const clipId=`numclip-${String(key).replace(/[^a-z0-9]/gi,"")}`;
+ const clipWidth=max===Infinity?1800:max;
+ const clipX=anchor==="center"?x-clipWidth/2:anchor==="right"?x-clipWidth:x;
+ let out=`<defs><clipPath id="${clipId}"><rect x="${clipX}" y="${y-fit*1.15}" width="${clipWidth}" height="${fit*2.3}"/></clipPath></defs>`;
+ out+=`<g clip-path="url(#${clipId})">`;
+ if(old.previous!==undefined&&p<1){
+  out+=txt(old.previous,x,y-fit*.65+offset,fit,color,900,max,anchor,`opacity="${1-ease}"`);
+ }
+ out+=txt(valueText,x,y+offset,fit,color,900,max,anchor,`opacity="${p<1?.35+ease*.65:1}"`);
+ return out+"</g>";
 }
 
 async function avatar(url){
  if(!url)return"";
  if(avatars.has(url))return avatars.get(url);
- const p=(async()=>{
+ const task=(async()=>{
   try{
-   const r=await fetch(url,{signal:AbortSignal.timeout(6000)});
-   if(!r.ok)throw Error("Avatar HTTP "+r.status);
+   const r=await fetch(url,{signal:AbortSignal.timeout(7000)});
+   if(!r.ok)throw Error(`HTTP ${r.status}`);
    const b=Buffer.from(await r.arrayBuffer());
-   if(b.length>2e6)throw Error("Avatar too large");
+   if(b.length>2e6)throw Error("Image too large");
    return `data:${r.headers.get("content-type")||"image/jpeg"};base64,${b.toString("base64")}`;
-  }catch(e){console.error("Avatar load:",e.message);return"";}
+  }catch(e){
+   console.error("Avatar:",e.message);
+   return"";
+  }
  })();
- avatars.set(url,p);
- return p;
+ avatars.set(url,task);
+ return task;
+}
+
+function icon(type,x,y,color=C.blue,size=22){
+ const s=size;
+ const common=`fill="${color}"`;
+ if(type==="arrow")return `<path d="M${x-s*.4} ${y+s*.35}L${x+s*.35} ${y-s*.4}M${x-s*.35} ${y-s*.4}H${x+s*.35}V${y+s*.3}" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+ if(type==="bolt")return `<path d="M${x+s*.1} ${y-s*.5}L${x-s*.3} ${y+s*.05}H${x}L${x-s*.12} ${y+s*.5}L${x+s*.35} ${y-s*.12}H${x+s*.08}Z" ${common}/>`;
+ if(type==="flag")return `<path d="M${x-s*.32} ${y-s*.48}V${y+s*.5}" stroke="${color}" stroke-width="3"/><path d="M${x-s*.28} ${y-s*.43}L${x+s*.4} ${y-s*.3}L${x-s*.28} ${y+s*.02}Z" ${common}/>`;
+ if(type==="bars")return [0,1,2,3].map(i=>`<rect x="${x-s*.45}" y="${y-s*.4+i*s*.24}" width="${s*.9}" height="${s*.13}" rx="1" ${common}/>`).join("");
+ if(type==="table")return `<rect x="${x-s*.42}" y="${y-s*.42}" width="${s*.84}" height="${s*.84}" rx="1" fill="none" stroke="${color}" stroke-width="2"/><path d="M${x-s*.2} ${y-s*.25}H${x+s*.25}M${x-s*.2} ${y}H${x+s*.25}M${x-s*.2} ${y+s*.25}H${x+s*.25}" stroke="${color}" stroke-width="2"/>`;
+ return"";
 }
 
 function defs(){
@@ -135,13 +148,13 @@ function defs(){
  </linearGradient>
  <linearGradient id="cardGlow" x1="0" y1="0" x2="1" y2="1">
   <stop offset="0%" stop-color="#873aff" stop-opacity=".07"/>
-  <stop offset=".42" stop-color="#873aff" stop-opacity="0"/>
+  <stop offset=".45" stop-color="#873aff" stop-opacity="0"/>
   <stop offset="1" stop-color="#148bff" stop-opacity=".045"/>
  </linearGradient>
  <linearGradient id="progress">
   <stop offset="0%" stop-color="#8b36ff"/>
   <stop offset=".55" stop-color="#267bff"/>
-  <stop offset="1" stop-color="#20dfd0"/>
+  <stop offset="1%" stop-color="#20dfd0"/>
  </linearGradient>
  <linearGradient id="bar" x1="0" y1="1" x2="0" y2="0">
   <stop offset="0%" stop-color="#5420c7"/>
@@ -165,23 +178,21 @@ function panel(x,y,w,h,r=19,border=C.border){
 }
 
 function profile(d){
- const x=6.4,y=66,w=420,h=136;
- let o=panel(x,y,w,h,19,"#743dff");
+ let o=panel(6.4,66,420,136,19,"#743dff");
  o+=`<circle cx="79.4" cy="134" r="62" fill="#168fff" opacity=".2" filter="url(#shadow)"/>`;
  if(d.avatar)o+=`<image href="${d.avatar}" x="19.4" y="74" width="120" height="120" preserveAspectRatio="xMidYMid slice" clip-path="url(#lucanClip)"/>`;
  o+=`<circle cx="79.4" cy="134" r="58.5" fill="none" stroke="${C.blue}" stroke-width="3"/>`;
  o+=txt(d.name,153.4,96,22,C.white,900,245);
  o+=txt(d.handle,153.4,119,11,C.muted,800,245);
- o+=txt("Jesus loves you! I hope every",153.4,143,13,"#dce5ff",800,225);
- o+=txt("video makes you smile!",153.4,159,13,"#dce5ff",800,225);
+ o+=txt("Jesus loves you! I hope every",153.4,143,13,"#dce5ff",700,245);
+ o+=txt("video makes you smile!",153.4,159,13,"#dce5ff",700,245);
  o+=rect(153.4,174,102,24,8,"url(#progress)",null);
  o+=txt("ROAD TO 60M",204.4,186,10,C.white,900,95,"middle");
  return o;
 }
 
 function miniStats(d){
- const x=6.4,y=214,w=420;
- let o=panel(x,y,w,240,19,"#245caa");
+ let o=panel(6.4,214,420,240,19,"#245caa");
  o+=txt("MY CHANNEL",20.4,238,16,"#d7e5ff",900,140);
  if(d.avatar)o+=`<image href="${d.avatar}" x="246.4" y="228" width="66" height="66" preserveAspectRatio="xMidYMid slice" clip-path="url(#mineClip)"/>`;
  o+=`<circle cx="279.4" cy="261" r="32" fill="none" stroke="${C.blue}" stroke-width="2"/>`;
@@ -233,40 +244,45 @@ function mainStats(a){
  const x=[440.4,722.8,1005.2],w=268.4,y=66,h=388;
  let o="";
 
+ // Subscriber card.
  o+=panel(x[0],y,w,h,19,"#287bff");
- o+=txt("↗",x[0]+43,117,27,C.blue,900,32,"middle");
+ o+=icon("arrow",x[0]+43,117,C.blue,23);
  o+=txt("LUCAN · LIVE SUBSCRIBERS",x[0]+w/2+8,108,14,"#d7e3ff",900,240,"middle");
  o+=txt("(LINEAR ESTIMATE)",x[0]+w/2+8,128,14,"#d7e3ff",900,220,"middle");
- o+=wheel(fmt(current),x[0]+w/2,194,55,C.white,w-30,"center","lucan-count");
+ o+=wheel(fmt(current),x[0]+w/2,194,52,C.white,w-28,"center","lucan-count");
  o+=chart(history.subs.slice(-18),x[0]+15,228,w-30,75);
  o+=line(x[0]+15,322,x[0]+w-15,322);
  o+=line(x[0]+w*.55,334,x[0]+w*.55,438);
  o+=line(x[0]+w*.78,334,x[0]+w*.78,438);
- o+=txt("LINEAR ESTIMATE",x[0]+w*.275,348,10,"#b9caff",900,130,"middle");
- o+=txt("HOURLY GAIN",x[0]+w*.665,348,10,"#b9caff",900,90,"middle");
- o+=txt("DAILY GAIN",x[0]+w*.89,348,10,"#b9caff",900,75,"middle");
- o+=wheel(fmt(current),x[0]+w*.275,390,19,C.teal,130,"center","linear-stat");
- o+=wheel(fmt(a.hourly),x[0]+w*.665,390,19,C.teal,90,"center","hourly-stat");
- o+=wheel(fmt(a.daily),x[0]+w*.89,390,19,C.teal,75,"center","daily-stat");
+ o+=txt("LINEAR ESTIMATE",x[0]+w*.275,348,10,"#b9caff",800,130,"middle");
+ o+=txt("HOURLY GAIN",x[0]+w*.665,348,10,"#b9caff",800,90,"middle");
+ o+=txt("DAILY GAIN",x[0]+w*.89,348,10,"#b9caff",800,75,"middle");
+ o+=wheel(fmt(current),x[0]+w*.275,390,17,C.teal,125,"center","linear-stat");
+ o+=wheel(fmt(a.hourly),x[0]+w*.665,390,17,C.teal,85,"center","hourly-stat");
+ o+=wheel(fmt(a.daily),x[0]+w*.89,390,17,C.teal,70,"center","daily-stat");
 
+ // Rate card.
  o+=panel(x[1],y,w,h,19,"#2869c9");
- o+=txt("ϟ",x[1]+48,117,29,C.blue,900,30,"middle");
+ o+=icon("bolt",x[1]+48,117,C.blue,24);
  o+=txt("SUBS GAINED PER SEC",x[1]+w/2+8,117,15,"#d7e3ff",900,235,"middle");
- o+=txt(rate<0?"−":"+",x[1]+78,226,61,C.white,900,55,"middle");
- o+=wheel(Math.abs(rate).toFixed(2),x[1]+184,226,61,C.white,150,"center","rate-value");
+ o+=txt(rate<0?"−":"+",x[1]+76,226,57,C.white,900,45,"middle");
+ o+=wheel(Math.abs(rate).toFixed(2),x[1]+180,226,57,C.white,145,"center","rate-value");
  o+=bars(history.rates,x[1]+18,290,w-36,55);
- o+=txt("◉ LIVE AVERAGE",x[1]+w/2,416,12,C.teal,900,210,"middle");
+ o+=icon("bars",x[1]+88,416,C.teal,13);
+ o+=txt("LIVE AVERAGE",x[1]+w/2+8,416,12,C.teal,900,150,"middle");
 
+ // Goal card.
  o+=panel(x[2],y,w,h,19,"#793dff");
- o+=txt("⚑",x[2]+43,117,27,C.blue,900,30,"middle");
+ o+=icon("flag",x[2]+43,117,C.blue,25);
  o+=txt("SUBSCRIBERS REMAINING",x[2]+w/2+8,108,14,"#d7e3ff",900,240,"middle");
  o+=txt("TO 60,000,000",x[2]+w/2+8,128,14,"#d7e3ff",900,220,"middle");
- o+=wheel(fmt(remaining),x[2]+w/2,194,55,C.white,w-30,"center","remaining");
+ o+=wheel(fmt(remaining),x[2]+w/2,194,52,C.white,w-28,"center","remaining");
  o+=rect(x[2]+15,275,w-30,15,9,"#111f43",null);
  o+=rect(x[2]+15,275,(w-30)*progress,15,9,"url(#progress)",null);
  o+=txt("ROAD TO 60M",x[2]+15,306,10,"#b9caff",900,110);
- o+=wheel((progress*100).toFixed(1)+"%",x[2]+w-15,306,10,"#b9caff",70,"right","goal-percent");
- o+=txt("◎ SUBSCRIBERS LEFT",x[2]+w/2,416,12,C.teal,900,220,"middle");
+ o+=wheel((progress*100).toFixed(1)+"%",x[2]+w-15,306,10,"#b9caff",65,"right","goal-percent");
+ o+=icon("bars",x[2]+85,416,C.teal,13);
+ o+=txt("SUBSCRIBERS LEFT",x[2]+w/2+8,416,12,C.teal,900,175,"middle");
  return o;
 }
 
@@ -275,13 +291,13 @@ function sources(a,b){
  const colW=(1239.2-labelW-gap*4)/4;
  const xs=Array.from({length:4},(_,i)=>left+labelW+gap*(i+1)+colW*i);
  let o=panel(6.4,464,1267.2,210,19,"#4268a8");
- o+=txt("▤  DATA SOURCES",20.4,488,16,"#d6e3ff",900,260);
+ o+=icon("table",29,488,"#d6e3ff",14);
+ o+=txt("DATA SOURCES",42,488,16,"#d6e3ff",900,240);
  o+=txt("● LIVE · BOTH PROVIDERS",1259.6,488,11,C.teal,900,180,"end");
  o+=line(20.4,504,1259.6,504);
  ["SCTools Est.","SCTools API","FreeWebTools Est.","FreeWebTools API"].forEach((v,i)=>
   o+=txt(v,xs[i]+colW/2,524,13,"#d6e3ff",900,colW,"middle")
  );
-
  const rows=[
   ["SUBSCRIBERS",a.est,a.api,b.freeEst,b.freeApi],
   ["TOTAL VIEWS",a.views,a.apiViews,b.freeEstViews,b.freeApiViews],
@@ -292,7 +308,7 @@ function sources(a,b){
   o+=txt(r[0],left,yy+19,10,"#799bff",900,labelW);
   for(let j=0;j<4;j++){
    o+=rect(xs[j],yy,colW,38,8,"#080d1b","#26375b");
-   o+=wheel(fmt(r[j+1]),xs[j]+10,yy+19,20,j%2?"#c4d1ff":C.teal,colW-20,"start",`source-${i}-${j}`);
+   o+=wheel(fmt(r[j+1]),xs[j]+10,yy+19,19,j%2?"#c4d1ff":C.teal,colW-20,"start",`source-${i}-${j}`);
   }
  });
  return o;
@@ -319,15 +335,20 @@ async function buildSVG(data={}){
  let s=`<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
  s+=defs();
  s+=`<rect width="${W}" height="${H}" fill="url(#pageBackground)"/>`;
- s+=txt("LUCAN PEVIDOR",18.4,32,23,C.white,900,175);
- s+=txt("| ROAD TO 60M",194,32,23,C.purple,900,250);
+
+ // Header: separate title, divider and subtitle to prevent overlap.
+ s+=txt("LUCAN PEVIDOR",18.4,32,23,C.white,900,180);
+ s+=txt("|",199,32,23,C.purple,900,12);
+ s+=txt("ROAD TO 60M",214,32,23,C.purple,900,220);
  s+=txt("● LIVE",1259.6,32,17,C.red,900,100,"end");
+
  s+=profile({...a,avatar:aa});
  s+=miniStats({...b,avatar:bb});
  s+=mainStats(a);
  s+=sources(a,b);
+
  s+=line(6.4,684,1273.6,684,"#ffffff18");
- s+=txt("↻ UPDATED "+new Date().toLocaleTimeString(),18.4,698,12,"#b9caff",900,300);
+ s+=txt("↻ UPDATED "+new Date().toLocaleTimeString(),18.4,698,12,"#b9caff",800,300);
  s+=txt("● CONNECTED",1259.6,698,12,C.teal,900,120,"end");
  return s+"</svg>";
 }
@@ -389,18 +410,12 @@ async function freshBenchmark(getData){
  const after=process.memoryUsage(),cpuUsed=process.cpuUsage(cpu),elapsed=ms(start);
  const mib=n=>+(n/1048576).toFixed(2);
  return{
-  renderer:"@resvg/resvg-js",
-  mode:"fresh-render-each-frame",
-  resolution:`${W}x${H}`,
-  fpsTarget:FPS,
-  frameIntervalMs:+FRAME_MS.toFixed(3),
-  durationMs:+elapsed.toFixed(2),
-  frames,
-  frameSizeBytes:firstSize,
-  frameSizeMiB:mib(firstSize),
+  renderer:"@resvg/resvg-js",mode:"fresh-render-each-frame",
+  resolution:`${W}x${H}`,fpsTarget:FPS,
+  frameIntervalMs:+FRAME_MS.toFixed(3),durationMs:+elapsed.toFixed(2),
+  frames,frameSizeBytes:firstSize,frameSizeMiB:mib(firstSize),
   freshRenderFPS:+(frames/(elapsed/1000)).toFixed(2),
-  renderTime:stats(times),
-  missedDeadlines:missed,
+  renderTime:stats(times),missedDeadlines:missed,
   missedDeadlinePercent:+(missed/Math.max(1,frames+missed)*100).toFixed(2),
   maxLatenessMs:+maxLate.toFixed(2),
   cpu:{userMs:+(cpuUsed.user/1000).toFixed(2),systemMs:+(cpuUsed.system/1000).toFixed(2)},
@@ -408,8 +423,7 @@ async function freshBenchmark(getData){
    heapBeforeMiB:mib(before.heapUsed),heapAfterMiB:mib(after.heapUsed),
    externalBeforeMiB:mib(before.external),externalAfterMiB:mib(after.external),
    rssBeforeMiB:mib(before.rss),rssAfterMiB:mib(after.rss)
-  },
-  checksum
+  },checksum
  };
 }
 
