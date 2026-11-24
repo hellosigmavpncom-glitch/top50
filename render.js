@@ -5,12 +5,13 @@ const path=require("path");
 
 const W=1280,H=720,FPS=15,FRAME_MS=1000/FPS;
 const C={bg:"#050713",panel:"#111a35ed",panel2:"#070b19f5",border:"#273a68",blue:"#27a9ff",purple:"#8b36ff",teal:"#25e5c0",white:"#f5f7ff",muted:"#aab8df",red:"#ff4267"};
-const FONT_FILE=path.join("/tmp","inter-variable.ttf");
-const FONT_URL="https://raw.githubusercontent.com/google/fonts/main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf";
-const FONT={loadSystemFonts:false,fontFiles:[FONT_FILE],defaultFontFamily:"Inter"};
+const FONT_DIR="/tmp/inter-static";
+const FONT_NAMES=["Regular","Medium","SemiBold","Bold","ExtraBold","Black"];
+const FONT_FILES=FONT_NAMES.map(n=>path.join(FONT_DIR,`Inter-${n}.ttf`));
+const FONT={loadSystemFonts:false,fontFiles:FONT_FILES,defaultFontFamily:"Inter"};
+
 const nf=new Intl.NumberFormat("en-US");
-const avatars=new Map(),digits=new Map();
-const history={subs:[],rates:[],previous:null,last:0};
+const avatars=new Map(),digits=new Map(),history={subs:[],rates:[],previous:null,last:0};
 let queue=Promise.resolve(),benchmarkActive=false,lastTiming={};
 
 const ms=t=>Number(process.hrtime.bigint()-t)/1e6;
@@ -19,12 +20,20 @@ const fmt=v=>v==null||!Number.isFinite(Number(v))?"—":nf.format(Math.round(Num
 const num=(o,...keys)=>{for(const k of keys)if(o?.[k]!=null&&o[k]!==""&&Number.isFinite(Number(o[k])))return Number(o[k]);return null;};
 
 async function ensureFont(){
- try{await fs.promises.access(FONT_FILE);return;}catch{}
- const r=await fetch(FONT_URL,{signal:AbortSignal.timeout(20000)});
- if(!r.ok)throw Error("Inter font download failed: HTTP "+r.status);
- const b=Buffer.from(await r.arrayBuffer());
- if(b.length<10000)throw Error("Inter font file is invalid");
- await fs.promises.writeFile(FONT_FILE,b);
+ await fs.promises.mkdir(FONT_DIR,{recursive:true});
+ for(const name of FONT_NAMES){
+  const file=path.join(FONT_DIR,`Inter-${name}.ttf`);
+  try{
+   const stat=await fs.promises.stat(file);
+   if(stat.size>100000)continue;
+  }catch{}
+  const url=`https://unpkg.com/inter-font@3.19.0/ttf/Inter-${name}.ttf`;
+  const r=await fetch(url,{signal:AbortSignal.timeout(30000)});
+  if(!r.ok)throw Error(`Inter ${name} download failed: HTTP ${r.status}`);
+  const b=Buffer.from(await r.arrayBuffer());
+  if(b.length<100000)throw Error(`Invalid Inter ${name} font`);
+  await fs.promises.writeFile(file,b);
+ }
 }
 
 const getStats=d=>{
@@ -59,8 +68,7 @@ const line=(x,y,x2,y2,color="#ffffff20",width=1)=>
 function txt(v,x,y,size=16,color=C.white,weight=700,max=Infinity,anchor="start",extra=""){
  const s=esc(v),n=String(v??"—").length;
  const fit=max===Infinity?size:Math.min(size,max/Math.max(1,n*.55));
- const bold=weight>=800?Math.max(.35,fit*.025):0;
- return `<text x="${x}" y="${y}" fill="${color}" stroke="${color}" stroke-width="${bold}" stroke-linejoin="round" paint-order="stroke" font-family="Inter" font-size="${Math.max(8,fit)}" font-weight="${weight}" text-anchor="${anchor}" dominant-baseline="middle" ${extra}>${s}</text>`;
+ return `<text x="${x}" y="${y}" fill="${color}" font-family="Inter" font-size="${Math.max(8,fit)}" font-weight="${weight}" text-anchor="${anchor}" dominant-baseline="middle" ${extra}>${s}</text>`;
 }
 
 function wheel(v,x,y,size=20,color=C.white,max=Infinity,anchor="start",key=""){
@@ -84,13 +92,12 @@ function wheel(v,x,y,size=20,color=C.white,max=Infinity,anchor="start",key=""){
    digits.set(id,old);
   }
   const p=Math.min(1,(now-old.time)/550),ease=1-Math.pow(1-p,3);
-  const stroke=Math.max(.4,fs*.025);
 
   if(old.previous!==undefined&&p<1){
    const clip=`clip-${String(key).replace(/[^a-z0-9]/gi,"")}-${i}`;
    out+=`<svg x="${px}" y="${y-fs*.8}" width="${w}" height="${fs*1.6}" viewBox="0 0 ${w} ${fs*1.6}"><defs><clipPath id="${clip}"><rect width="${w}" height="${fs*1.6}"/></clipPath></defs><g clip-path="url(#${clip})">`;
-   out+=`<text x="${w/2}" y="${fs*.8+ease*fs}" fill="${color}" stroke="${color}" stroke-width="${stroke}" paint-order="stroke" font-family="Inter" font-size="${fs}" font-weight="900" text-anchor="middle" dominant-baseline="middle" textLength="${w}" lengthAdjust="spacingAndGlyphs">${old.previous}</text>`;
-   out+=`<text x="${w/2}" y="${fs*.8-(1-ease)*fs}" fill="${color}" stroke="${color}" stroke-width="${stroke}" paint-order="stroke" font-family="Inter" font-size="${fs}" font-weight="900" text-anchor="middle" dominant-baseline="middle" textLength="${w}" lengthAdjust="spacingAndGlyphs">${ch}</text></g></svg>`;
+   out+=`<text x="${w/2}" y="${fs*.8+ease*fs}" fill="${color}" font-family="Inter" font-size="${fs}" font-weight="900" text-anchor="middle" dominant-baseline="middle" textLength="${w}" lengthAdjust="spacingAndGlyphs">${old.previous}</text>`;
+   out+=`<text x="${w/2}" y="${fs*.8-(1-ease)*fs}" fill="${color}" font-family="Inter" font-size="${fs}" font-weight="900" text-anchor="middle" dominant-baseline="middle" textLength="${w}" lengthAdjust="spacingAndGlyphs">${ch}</text></g></svg>`;
   }else{
    out+=txt(ch,px+w/2,y,fs,color,900,w,"middle",`textLength="${w}" lengthAdjust="spacingAndGlyphs"`);
   }
@@ -176,11 +183,8 @@ function miniStats(d){
  const x=6.4,y=214,w=420;
  let o=panel(x,y,w,240,19,"#245caa");
  o+=txt("MY CHANNEL",20.4,238,16,"#d7e5ff",900,140);
-
- // Real channel avatar from the API, not a fabricated logo.
  if(d.avatar)o+=`<image href="${d.avatar}" x="246.4" y="228" width="66" height="66" preserveAspectRatio="xMidYMid slice" clip-path="url(#mineClip)"/>`;
  o+=`<circle cx="279.4" cy="261" r="32" fill="none" stroke="${C.blue}" stroke-width="2"/>`;
-
  o+=txt(d.name||"VYStats",322.4,249,16,C.white,900,90);
  o+=txt(d.handle||"@vystatsyt",322.4,270,11,C.muted,800,90);
  o+=line(20.4,304,412.4,304);
@@ -191,8 +195,7 @@ function miniStats(d){
   ["VIDEOS",d.freeEstVideos,d.freeApiVideos]
  ];
  groups.forEach((g,i)=>{
-  const left=20.4+i*130.67;
-  const center=left+65.33;
+  const left=20.4+i*130.67,center=left+65.33;
   if(i)o+=line(left,315,left,440);
   o+=txt(g[0],center,327,11,"#b8caff",900,120,"middle");
   o+=txt("EST.",left+2,362,10,C.muted,900,35);
@@ -227,12 +230,9 @@ function mainStats(a){
  const remaining=current==null?null:Math.max(0,goal-current);
  const progress=current==null?0:Math.min(1,current/goal);
  const rate=history.rates.at(-1)||0;
-
- // Exact 1280px geometry from the original CSS grid.
  const x=[440.4,722.8,1005.2],w=268.4,y=66,h=388;
  let o="";
 
- // Subscriber card.
  o+=panel(x[0],y,w,h,19,"#287bff");
  o+=txt("↗",x[0]+43,117,27,C.blue,900,32,"middle");
  o+=txt("LUCAN · LIVE SUBSCRIBERS",x[0]+w/2+8,108,14,"#d7e3ff",900,240,"middle");
@@ -249,7 +249,6 @@ function mainStats(a){
  o+=wheel(fmt(a.hourly),x[0]+w*.665,390,19,C.teal,90,"center","hourly-stat");
  o+=wheel(fmt(a.daily),x[0]+w*.89,390,19,C.teal,75,"center","daily-stat");
 
- // Rate card.
  o+=panel(x[1],y,w,h,19,"#2869c9");
  o+=txt("ϟ",x[1]+48,117,29,C.blue,900,30,"middle");
  o+=txt("SUBS GAINED PER SEC",x[1]+w/2+8,117,15,"#d7e3ff",900,235,"middle");
@@ -258,7 +257,6 @@ function mainStats(a){
  o+=bars(history.rates,x[1]+18,290,w-36,55);
  o+=txt("◉ LIVE AVERAGE",x[1]+w/2,416,12,C.teal,900,210,"middle");
 
- // Remaining card.
  o+=panel(x[2],y,w,h,19,"#793dff");
  o+=txt("⚑",x[2]+43,117,27,C.blue,900,30,"middle");
  o+=txt("SUBSCRIBERS REMAINING",x[2]+w/2+8,108,14,"#d7e3ff",900,240,"middle");
@@ -280,7 +278,6 @@ function sources(a,b){
  o+=txt("▤  DATA SOURCES",20.4,488,16,"#d6e3ff",900,260);
  o+=txt("● LIVE · BOTH PROVIDERS",1259.6,488,11,C.teal,900,180,"end");
  o+=line(20.4,504,1259.6,504);
-
  ["SCTools Est.","SCTools API","FreeWebTools Est.","FreeWebTools API"].forEach((v,i)=>
   o+=txt(v,xs[i]+colW/2,524,13,"#d6e3ff",900,colW,"middle")
  );
@@ -322,18 +319,13 @@ async function buildSVG(data={}){
  let s=`<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
  s+=defs();
  s+=`<rect width="${W}" height="${H}" fill="url(#pageBackground)"/>`;
-
- // Header: original page padding and vertical alignment.
  s+=txt("LUCAN PEVIDOR",18.4,32,23,C.white,900,175);
  s+=txt("| ROAD TO 60M",194,32,23,C.purple,900,250);
  s+=txt("● LIVE",1259.6,32,17,C.red,900,100,"end");
-
  s+=profile({...a,avatar:aa});
  s+=miniStats({...b,avatar:bb});
  s+=mainStats(a);
  s+=sources(a,b);
-
- // Footer.
  s+=line(6.4,684,1273.6,684,"#ffffff18");
  s+=txt("↻ UPDATED "+new Date().toLocaleTimeString(),18.4,698,12,"#b9caff",900,300);
  s+=txt("● CONNECTED",1259.6,698,12,C.teal,900,120,"end");
