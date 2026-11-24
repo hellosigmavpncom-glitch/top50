@@ -9,40 +9,24 @@ const ffmpeg=require("ffmpeg-static");
 const pidusage=require("pidusage");
 
 const W=1280,H=720,FPS=15,SECONDS=60,TOTAL=FPS*SECONDS,BYTES=W*H*4;
-const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-const elapsed=start=>Number(process.hrtime.bigint()-start)/1e6;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const elapsed=t=>Number(process.hrtime.bigint()-t)/1e6;
 const mib=n=>+(n/1048576).toFixed(2);
-const stats=values=>{
- if(!values.length)return{averageMs:0,p95Ms:0,maxMs:0};
- const a=[...values].sort((x,y)=>x-y);
- return{
-  averageMs:+(values.reduce((s,n)=>s+n,0)/values.length).toFixed(2),
-  p95Ms:+a[Math.min(a.length-1,Math.ceil(a.length*.95)-1)].toFixed(2),
-  maxMs:+a[a.length-1].toFixed(2)
- };
+const stats=v=>{
+ if(!v.length)return{averageMs:0,p95Ms:0,maxMs:0};
+ const a=[...v].sort((x,y)=>x-y);
+ return{averageMs:+(v.reduce((s,n)=>s+n,0)/v.length).toFixed(2),p95Ms:+a[Math.min(a.length-1,Math.ceil(a.length*.95)-1)].toFixed(2),maxMs:+a.at(-1).toFixed(2)};
 };
 
-let state={
- running:false,status:"idle",id:null,startedAt:null,finishedAt:null,
- frames:0,targetFrames:TOTAL,progress:0,error:null,result:null,videoPath:null
-};
-
-const publicState=()=>({
- running:state.running,status:state.status,id:state.id,
- startedAt:state.startedAt,finishedAt:state.finishedAt,
- frames:state.frames,targetFrames:state.targetFrames,
- progress:+state.progress.toFixed(1),error:state.error,result:state.result
-});
+let state={running:false,status:"idle",id:null,startedAt:null,finishedAt:null,frames:0,targetFrames:TOTAL,progress:0,error:null,result:null,videoPath:null};
+const publicState=()=>({running:state.running,status:state.status,id:state.id,startedAt:state.startedAt,finishedAt:state.finishedAt,frames:state.frames,targetFrames:state.targetFrames,progress:+state.progress.toFixed(1),error:state.error,result:state.result});
 
 async function run(getData){
  const output=path.join(os.tmpdir(),`encode-test-${state.id}.mp4`);
- let child=null,timer=null,spawnError=null,stderr="",closed;
+ let child=null,timer=null,spawnError=null,stderr="",closed,sampling=false;
  const renderTimes=[],writeTimes=[];
- let cpuTotal=0,cpuSamples=0,cpuMax=0,ffmpegMemoryMax=0;
- let ffmpegSpeed=null,ffmpegFps=null,backpressure=0,lateFrames=0,missed=0;
- let sampling=false;
- const start=process.hrtime.bigint();
- const nodeMemoryStart=process.memoryUsage();
+ let cpuTotal=0,cpuSamples=0,cpuMax=0,ffmpegMemoryMax=0,ffmpegSpeed=null,ffmpegFps=null,backpressure=0,lateFrames=0;
+ const start=process.hrtime.bigint(),nodeMemoryStart=process.memoryUsage();
 
  try{
   if(!ffmpeg)throw Error("FFmpeg binary not found");
@@ -50,11 +34,10 @@ async function run(getData){
 
   child=spawn(ffmpeg,[
    "-hide_banner","-loglevel","info","-stats_period","1",
-   "-f","rawvideo","-pixel_format","rgba",
-   "-video_size",`${W}x${H}`,"-framerate",String(FPS),"-i","pipe:0",
-   "-an","-c:v","libx264","-preset","ultrafast",
-   "-tune","zerolatency","-pix_fmt","yuv420p",
-   "-movflags","+faststart","-y",output
+   "-f","rawvideo","-pixel_format","rgba","-video_size",`${W}x${H}`,
+   "-framerate",String(FPS),"-i","pipe:0",
+   "-an","-c:v","libx264","-preset","ultrafast","-tune","zerolatency",
+   "-pix_fmt","yuv420p","-movflags","+faststart","-y",output
   ],{stdio:["pipe","ignore","pipe"]});
 
   child.on("error",e=>{spawnError=e;});
@@ -81,18 +64,15 @@ async function run(getData){
    }catch{}finally{sampling=false;}
   },1000);
 
-  const scheduleStart=process.hrtime.bigint();
-  const interval=1e9/FPS;
+  const scheduleStart=process.hrtime.bigint(),interval=1e9/FPS;
 
   for(let i=0;i<TOTAL;i++){
    const deadline=scheduleStart+BigInt(Math.round(i*interval));
-   let remaining=Number(deadline-process.hrtime.bigint())/1e6;
+   const remaining=Number(deadline-process.hrtime.bigint())/1e6;
    if(remaining>1)await sleep(remaining-0.5);
 
    const frameStart=process.hrtime.bigint();
-   const late=Math.max(0,Number(frameStart-deadline)/1e6);
-   if(late>2)lateFrames++;
-   if(late>=1000/FPS)missed++;
+   if(Number(frameStart-deadline)/1e6>2)lateFrames++;
 
    const frame=await renderer.renderRawFrame(getData());
    renderTimes.push(elapsed(frameStart));
@@ -116,43 +96,25 @@ async function run(getData){
   if(spawnError)throw spawnError;
   if(code!==0)throw Error(`FFmpeg exited with code ${code}${signal?` (${signal})`:""}: ${stderr.slice(-1800)}`);
 
-  const file=await fs.promises.stat(output);
-  const duration=elapsed(start);
-  const nodeMemoryEnd=process.memoryUsage();
-
+  const file=await fs.promises.stat(output),duration=elapsed(start),nodeMemoryEnd=process.memoryUsage();
   state.videoPath=output;
   state.result={
    resolution:`${W}x${H}`,fpsTarget:FPS,durationTargetSeconds:SECONDS,
    framesSent:state.frames,framesExpected:TOTAL,
    achievedFPS:+(state.frames/(duration/1000)).toFixed(3),
-   elapsedMs:+duration.toFixed(2),
-   ffmpegSpeed,ffmpegReportedFPS:ffmpegFps,
+   elapsedMs:+duration.toFixed(2),ffmpegSpeed,ffmpegReportedFPS:ffmpegFps,
    outputSizeBytes:file.size,outputSizeMiB:mib(file.size),
    render:stats(renderTimes),inputWrite:stats(writeTimes),
-   backpressureCount:backpressure,lateFrames,missedDeadlines:missed,
-   ffmpegProcess:{
-    averageCpuPercent:cpuSamples?+(cpuTotal/cpuSamples).toFixed(1):null,
-    maxCpuPercent:+cpuMax.toFixed(1),
-    maxMemoryMiB:mib(ffmpegMemoryMax)
-   },
-   nodeMemory:{
-    heapUsedMiB:mib(nodeMemoryEnd.heapUsed),
-    rssMiB:mib(nodeMemoryEnd.rss),
-    externalMiB:mib(nodeMemoryEnd.external),
-    startRssMiB:mib(nodeMemoryStart.rss)
-   },
+   backpressureCount:backpressure,lateFrames,
+   ffmpegProcess:{averageCpuPercent:cpuSamples?+(cpuTotal/cpuSamples).toFixed(1):null,maxCpuPercent:+cpuMax.toFixed(1),maxMemoryMiB:mib(ffmpegMemoryMax)},
+   nodeMemory:{heapUsedMiB:mib(nodeMemoryEnd.heapUsed),rssMiB:mib(nodeMemoryEnd.rss),externalMiB:mib(nodeMemoryEnd.external),startRssMiB:mib(nodeMemoryStart.rss)},
    ffmpegExitCode:code
   };
-
-  state.status="completed";
-  state.progress=100;
-  state.finishedAt=new Date().toISOString();
+  state.status="completed";state.progress=100;state.finishedAt=new Date().toISOString();
   console.log("[ENCODE TEST] Completed",JSON.stringify(state.result));
  }catch(e){
   if(child&&!child.killed)child.kill("SIGKILL");
-  state.status="failed";
-  state.error=e.message;
-  state.finishedAt=new Date().toISOString();
+  state.status="failed";state.error=e.message;state.finishedAt=new Date().toISOString();
   console.error("[ENCODE TEST]",e.stack||e.message);
  }finally{
   if(timer)clearInterval(timer);
@@ -163,16 +125,9 @@ async function run(getData){
 function attach(app,getData){
  app.get("/api/encode-test",(req,res)=>{
   const token=process.env.ENCODE_TEST_TOKEN;
-  if(token&&req.get("x-encode-test-token")!==token)
-   return res.status(401).json({error:"Unauthorized"});
-  if(state.running)
-   return res.status(409).json({error:"Benchmark already running",status:publicState()});
-
-  state={
-   running:true,status:"running",id:Date.now(),
-   startedAt:new Date().toISOString(),finishedAt:null,
-   frames:0,targetFrames:TOTAL,progress:0,error:null,result:null,videoPath:null
-  };
+  if(token&&req.get("x-encode-test-token")!==token)return res.status(401).json({error:"Unauthorized"});
+  if(state.running)return res.status(409).json({error:"Benchmark already running",status:publicState()});
+  state={running:true,status:"running",id:Date.now(),startedAt:new Date().toISOString(),finishedAt:null,frames:0,targetFrames:TOTAL,progress:0,error:null,result:null,videoPath:null};
   run(getData);
   res.set("Cache-Control","no-store");
   res.status(202).json({started:true,status:publicState()});
@@ -190,11 +145,20 @@ function attach(app,getData){
   res.json(state.result);
  });
 
+ // Browser playback: displays the MP4 instead of forcing a download.
  app.get("/api/encode-test/video",(req,res)=>{
   if(state.running)return res.status(409).send("Benchmark still running");
   if(state.status!=="completed"||!state.videoPath||!fs.existsSync(state.videoPath))
    return res.status(404).send("No completed video available");
-  res.set("Cache-Control","no-store");
+  res.set({"Cache-Control":"no-store","Content-Type":"video/mp4","Content-Disposition":'inline; filename="encode-test.mp4"',"Accept-Ranges":"bytes"});
+  res.sendFile(state.videoPath);
+ });
+
+ // Separate endpoint for downloading the MP4.
+ app.get("/api/encode-test/download",(req,res)=>{
+  if(state.running)return res.status(409).send("Benchmark still running");
+  if(state.status!=="completed"||!state.videoPath||!fs.existsSync(state.videoPath))
+   return res.status(404).send("No completed video available");
   res.download(state.videoPath,"encode-test.mp4");
  });
 }
