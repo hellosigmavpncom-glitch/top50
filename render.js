@@ -1,5 +1,5 @@
 
-const fs=require("fs"),path=require("path"),{createCanvas,loadImage,GlobalFonts}=require("@napi-rs/canvas");
+const fs=require("fs"),path=require("path"),{createCanvas,loadImage,GlobalFonts}=require("@napi-rs/canvas"),{monitorEventLoopDelay}=require("perf_hooks");
 const W=1280,H=720,FPS=10,FRAME_MS=1000/FPS,FRAME_NS=BigInt(Math.round(FRAME_MS*1e6)),FRAME_BYTES=W*H*4,nf=new Intl.NumberFormat("en-US"),MAX_RSS=440*1048576;
 const images=new Map(),rollStates=new Map(),measureCache=new Map(),history={subs:[],rates:[],samples:[],lastSample:0},timing={dataFetchMs:0,avatarWaitMs:0,queueWaitMs:0,buildMs:0,renderMs:0,bufferMs:0,rawBufferMs:0,pipelineTotalMs:0,totalMs:0};
 let benchmarkActive=false,latestMain=null,sampleTimer=null,staticCanvas=null,staticReady=false,mainCanvas=null,mainContext=null,chartCanvas=null,chartContext=null,chartCacheKey="",chartX=null,chartY=null,chartMin=0,chartRange=1,renderQueue=Promise.resolve(),rawPixelMethod="canvas.data()";
@@ -27,8 +27,8 @@ function makeDigits(value){let out="";for(let i=0;i<value.length;i++){const q=va
 function drawRolling(c,id,value,x,y,maxW,size=50,color=C.white,decimals=0,align="center"){
  const n=numeric(value),target=n===null?"—":decimals?Number(n).toFixed(decimals):nf.format(Math.round(n)),now=Date.now();
  let s=rollStates.get(id);
- if(!s){s={target,previous:target,previousDigits:makeDigits(target),changed:now,layoutKey:"",widths:null};rollStates.set(id,s);if(rollStates.size>128)rollStates.delete(rollStates.keys().next().value);}
- else if(s.target!==target){s.previous=s.target;s.previousDigits=makeDigits(s.previous);s.target=target;s.changed=now;s.layoutKey="";}
+ if(!s){s={target,previous:target,previousDigits:makeDigits(target),targetDigits:makeDigits(target),changed:now,layoutKey:"",widths:null};rollStates.set(id,s);if(rollStates.size>128)rollStates.delete(rollStates.keys().next().value);}
+ else if(s.target!==target){s.previous=s.target;s.previousDigits=s.targetDigits||makeDigits(s.previous);s.target=target;s.targetDigits=makeDigits(target);s.changed=now;s.layoutKey="";}
  const layoutKey=size+":"+maxW;
  if(s.layoutKey!==layoutKey){
   let fontSize=size;c.font=`900 ${fontSize}px "${FONT}"`;
@@ -40,7 +40,7 @@ function drawRolling(c,id,value,x,y,maxW,size=50,color=C.white,decimals=0,align=
  }
  const progress=Math.max(0,Math.min(1,(now-s.changed)/450)),fontSize=s.fontSize,width=s.width,scale=Math.min(1,maxW/Math.max(1,width)),drawW=width*scale,start=align==="right"?x+maxW-drawW:align==="left"?x:x+(maxW-drawW)/2;
  c.save();c.font=`900 ${fontSize}px "${FONT}"`;c.translate(start,y);c.scale(scale,1);c.textBaseline="middle";c.textAlign="left";c.fillStyle=color;
- const oldDigits=s.previousDigits,newDigits=makeDigits(s.target),offset=oldDigits.length-newDigits.length;
+ const oldDigits=s.previousDigits,newDigits=s.targetDigits,offset=oldDigits.length-newDigits.length;
  let digit=0,cursor=0;
  for(let i=0;i<target.length;i++){
   const ch=target[i],code=target.charCodeAt(i),isDigit=code>=48&&code<=57,cw=s.widths[i];
@@ -87,26 +87,42 @@ function renderInternal(data={},mode="png"){const requestStart=process.hrtime.bi
 const renderDashboard=data=>renderInternal(data,"png"),renderRawFrame=data=>renderInternal(data,"raw");
 function stats(a){if(!a.length)return{averageMs:0,medianMs:0,p95Ms:0,minMs:0,maxMs:0};const s=[...a].sort((x,y)=>x-y),avg=a.reduce((x,y)=>x+y,0)/a.length,p=q=>s[Math.min(s.length-1,Math.ceil(s.length*q)-1)],r=n=>+n.toFixed(2);return{averageMs:r(avg),medianMs:r(p(.5)),p95Ms:r(p(.95)),minMs:r(s[0]),maxMs:r(s[s.length-1])};}
 function memorySnapshot(){const m=process.memoryUsage();return{rssMiB:mib(m.rss),heapUsedMiB:mib(m.heapUsed),heapTotalMiB:mib(m.heapTotal),externalMiB:mib(m.external),arrayBuffersMiB:mib(m.arrayBuffers||0)};}
+function eventLoopSnapshot(h){const ms=n=>Number(n)/1e6;return{meanMs:Number.isFinite(h.mean)?+ms(h.mean).toFixed(2):0,minMs:+ms(h.min).toFixed(2),maxMs:+ms(h.max).toFixed(2),p50Ms:+ms(h.percentile(50)).toFixed(2),p95Ms:+ms(h.percentile(95)).toFixed(2),p99Ms:+ms(h.percentile(99)).toFixed(2),exceeds10ms:h.exceeds||0};}
 async function freshBenchmark(getData){
- const duration=10000,warmupFrames=8,rawExtractionSamples=40,times=[],fetches=[],queues=[],avatars=[],renders=[],buffers=[],pipelines=[],extractionTimes=[];
- let frames=0,missed=0,maxLate=0,maxRss=0,stopReason=null;
- // Warm up fonts, avatar loading, chart creation, rolling states, canvas rendering and raw extraction.
- for(let i=0;i<warmupFrames;i++){const data=await getData();const frame=await renderRawFrame(data);if(!frame||frame.length!==FRAME_BYTES)throw Error("Invalid warm-up RGBA frame");}
- // Measure raw-buffer extraction separately on the already initialized canvas.
- if(!mainCanvas)throw Error("Canvas was not initialized during warm-up");
- for(let i=0;i<rawExtractionSamples;i++){const t=process.hrtime.bigint(),frame=extractRawFrame(mainCanvas),ms=elapsed(t);if(!frame||frame.length!==FRAME_BYTES)throw Error("Invalid independent raw-buffer sample");extractionTimes.push(ms);}
- const start=process.hrtime.bigint(),cpu=process.cpuUsage(),mem=process.memoryUsage();let next=start;
- while(elapsed(start)<duration){
-  if(process.memoryUsage().rss>MAX_RSS){stopReason="Memory safety limit reached";break;}
-  const frameStart=process.hrtime.bigint(),data=await getData(),dataDone=process.hrtime.bigint();timing.dataFetchMs=elapsed(frameStart,dataDone);
-  const frame=await renderRawFrame(data),done=process.hrtime.bigint();if(!frame||frame.length!==FRAME_BYTES)throw Error("Invalid RGBA frame");
-  times.push(elapsed(frameStart,done));fetches.push(timing.dataFetchMs);queues.push(timing.queueWaitMs);avatars.push(timing.avatarWaitMs);renders.push(timing.renderMs);buffers.push(timing.rawBufferMs);pipelines.push(timing.pipelineTotalMs);
-  frames++;maxRss=Math.max(maxRss,process.memoryUsage().rss);next+=FRAME_NS;
-  if(done>next){const late=done-next,slots=late/FRAME_NS+1n;missed+=Number(slots);maxLate=Math.max(maxLate,Number(late)/1e6);next+=slots*FRAME_NS;}
-  else{const wait=Number(next-done)/1e6;if(wait>0&&elapsed(start)+wait<duration)await sleep(wait);else if(elapsed(start)+wait>=duration)break;}
- }
- const total=elapsed(start),used=process.cpuUsage(cpu),after=process.memoryUsage();
- return{renderer:"@napi-rs/canvas",mode:"warmed-canvas-raw-rgba-benchmark",rawPixelMethod,resolution:`${W}x${H}`,targetFPS:FPS,warmupFrames,rawExtractionSamples,durationMs:+total.toFixed(2),frames,frameSizeBytes:FRAME_BYTES,frameSizeMiB:mib(FRAME_BYTES),estimatedFPS:+(frames/Math.max(.001,total/1000)).toFixed(2),frameTime:stats(times),stages:{dataFetch:stats(fetches),avatarWait:stats(avatars),queueWait:stats(queues),canvasRender:stats(renders),rawBuffer:stats(buffers),renderPipeline:stats(pipelines)},independentRawBufferExtraction:stats(extractionTimes),missedDeadlines:missed,missedDeadlinePercent:+(missed/Math.max(1,frames+missed)*100).toFixed(2),maxLatenessMs:+maxLate.toFixed(2),cpu:{userMs:+(used.user/1000).toFixed(2),systemMs:+(used.system/1000).toFixed(2)},memory:{rssBeforeMiB:mib(mem.rss),rssAfterMiB:mib(after.rss),rssPeakMiB:mib(maxRss),heapBeforeMiB:mib(mem.heapUsed),heapAfterMiB:mib(after.heapUsed),externalBeforeMiB:mib(mem.external),externalAfterMiB:mib(after.external),arrayBuffersBeforeMiB:mib(mem.arrayBuffers||0),arrayBuffersAfterMiB:mib(after.arrayBuffers||0)},stopReason};
+ const duration=10000,warmupFrames=8,rawExtractionSamples=40,times=[],fetches=[],queues=[],avatars=[],renders=[],buffers=[],pipelines=[],unchangedExtraction=[],freshRenderTimes=[],freshExtraction=[],slowFrames=[];
+ let frames=0,missed=0,maxLate=0,maxRss=0,stopReason=null,lastWarmData=null,lastWarmPair=[null,null];
+ const loop=monitorEventLoopDelay({resolution:10});loop.enable();
+ try{
+  // Warm up fonts, avatar loading, chart setup, rolling states, canvas rendering and raw extraction.
+  for(let i=0;i<warmupFrames;i++){lastWarmData=await getData();lastWarmPair=await Promise.all([avatar(lastWarmData.lucan?.channel?.avatar),avatar(lastWarmData.mine?.channel?.avatar)]);drawMain.avatar1=lastWarmPair[0];drawMain.avatar2=lastWarmPair[1];const frame=await renderRawFrame(lastWarmData);if(!frame||frame.length!==FRAME_BYTES)throw Error("Invalid warm-up RGBA frame");}
+  if(!mainCanvas)throw Error("Canvas was not initialized during warm-up");
+  // Test A: repeated extraction from the same unchanged canvas.
+  for(let i=0;i<rawExtractionSamples;i++){const t=process.hrtime.bigint(),frame=extractRawFrame(mainCanvas),ms=elapsed(t);if(!frame||frame.length!==FRAME_BYTES)throw Error("Invalid unchanged-canvas raw sample");unchangedExtraction.push(ms);}
+  // Test B: render a fresh frame first, then measure extraction independently.
+  // Drawing time and extraction time are recorded separately for each sample.
+  for(let i=0;i<rawExtractionSamples;i++){
+   drawMain.avatar1=lastWarmPair[0];drawMain.avatar2=lastWarmPair[1];
+   const rt=process.hrtime.bigint(),canvas=drawMain(lastWarmData),renderMs=elapsed(rt);
+   const bt=process.hrtime.bigint(),frame=extractRawFrame(canvas),bufferMs=elapsed(bt);
+   if(!frame||frame.length!==FRAME_BYTES)throw Error("Invalid fresh-canvas raw sample");
+   freshRenderTimes.push(renderMs);freshExtraction.push(bufferMs);
+  }
+  loop.reset();
+  const start=process.hrtime.bigint(),cpu=process.cpuUsage(),mem=process.memoryUsage();let next=start;
+  while(elapsed(start)<duration){
+   if(process.memoryUsage().rss>MAX_RSS){stopReason="Memory safety limit reached";break;}
+   const frameStart=process.hrtime.bigint(),data=await getData(),dataDone=process.hrtime.bigint();timing.dataFetchMs=elapsed(frameStart,dataDone);
+   const frame=await renderRawFrame(data),done=process.hrtime.bigint();if(!frame||frame.length!==FRAME_BYTES)throw Error("Invalid RGBA frame");
+   const frameMs=elapsed(frameStart,done);
+   times.push(frameMs);fetches.push(timing.dataFetchMs);queues.push(timing.queueWaitMs);avatars.push(timing.avatarWaitMs);renders.push(timing.renderMs);buffers.push(timing.rawBufferMs);pipelines.push(timing.pipelineTotalMs);
+   if(frameMs>50){slowFrames.push({frame:frames+1,totalMs:+frameMs.toFixed(2),renderMs:+timing.renderMs.toFixed(2),rawBufferMs:+timing.rawBufferMs.toFixed(2),queueWaitMs:+timing.queueWaitMs.toFixed(2),avatarWaitMs:+timing.avatarWaitMs.toFixed(2)});if(slowFrames.length>20)slowFrames.shift();}
+   frames++;maxRss=Math.max(maxRss,process.memoryUsage().rss);next+=FRAME_NS;
+   if(done>next){const late=done-next,slots=late/FRAME_NS+1n;missed+=Number(slots);maxLate=Math.max(maxLate,Number(late)/1e6);next+=slots*FRAME_NS;}
+   else{const wait=Number(next-done)/1e6;if(wait>0&&elapsed(start)+wait<duration)await sleep(wait);else if(elapsed(start)+wait>=duration)break;}
+  }
+  const total=elapsed(start),used=process.cpuUsage(cpu),after=process.memoryUsage(),eventLoop=eventLoopSnapshot(loop);
+  return{renderer:"@napi-rs/canvas",mode:"warmed-render-event-loop-and-raw-buffer-diagnostics",rawPixelMethod,resolution:`${W}x${H}`,targetFPS:FPS,warmupFrames,rawExtractionSamples,durationMs:+total.toFixed(2),frames,frameSizeBytes:FRAME_BYTES,frameSizeMiB:mib(FRAME_BYTES),estimatedFPS:+(frames/Math.max(.001,total/1000)).toFixed(2),frameTime:stats(times),stages:{dataFetch:stats(fetches),avatarWait:stats(avatars),queueWait:stats(queues),canvasRender:stats(renders),rawBuffer:stats(buffers),renderPipeline:stats(pipelines)},independentRawBufferExtraction:{unchangedCanvas:stats(unchangedExtraction),freshlyRenderedCanvas:stats(freshExtraction),freshCanvasRender:stats(freshRenderTimes)},eventLoopDelay:eventLoop,slowFrames,missedDeadlines:missed,missedDeadlinePercent:+(missed/Math.max(1,frames+missed)*100).toFixed(2),maxLatenessMs:+maxLate.toFixed(2),cpu:{userMs:+(used.user/1000).toFixed(2),systemMs:+(used.system/1000).toFixed(2)},memory:{rssBeforeMiB:mib(mem.rss),rssAfterMiB:mib(after.rss),rssPeakMiB:mib(maxRss),heapBeforeMiB:mib(mem.heapUsed),heapAfterMiB:mib(after.heapUsed),externalBeforeMiB:mib(mem.external),externalAfterMiB:mib(after.external),arrayBuffersBeforeMiB:mib(mem.arrayBuffers||0),arrayBuffersAfterMiB:mib(after.arrayBuffers||0)},stopReason};
+ }finally{loop.disable();}
 }
 function attach(app,getData){
  app.get("/api/renderer/preview.png",async(req,res)=>{if(benchmarkActive)return res.status(503).send("Benchmark running; retry shortly");try{const png=await renderDashboard(await getData());res.set({"Content-Type":"image/png","Cache-Control":"no-store, no-cache, must-revalidate"}).send(png);}catch(e){console.error("[CANVAS PREVIEW]",e.stack||e);if(!res.headersSent)res.status(500).send(e.message);}});
