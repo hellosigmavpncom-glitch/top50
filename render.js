@@ -79,6 +79,7 @@ function noBordersRadius(html){return html.replace(/border-radius\s*:[^;}]+;?/gi
 function noTransforms(html){return html.replace(/transform(?:-origin)?\s*:[^;}]+;?/gi,"");}
 function noChart(html){return html.replace(/<svg\b(?=[^>]*\bclass=["'][^"']*\bchart\b[^"']*["'])[^>]*>[\s\S]*?<\/svg>/i,'<svg class="chart" viewBox="0 0 400 80"></svg>');}
 function noSourcePanel(html){return replaceElementInner(html,"srcCard",'<div style="height:100%;width:100%"></div>');}
+const noSource=html=>noSourcePanel(html);
 function noRateBars(html){return replaceElementInner(html,"rateBars","");}
 function noSvgIcons(html){return html.replace(/<svg\b(?![^>]*\bclass=["'][^"']*\bchart\b[^"']*["'])[^>]*>[\s\S]*?<\/svg>/gi,"");}
 function noAllSvg(html){return html.replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi,"");}
