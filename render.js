@@ -13,7 +13,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,Math.max(1,ms)));
 const C={bg:"#050713",panel:"#0b1024",panel2:"#101832",border:"#273a68",blue:"#27a9ff",purple:"#8b36ff",teal:"#25e5c0",white:"#f5f7ff",muted:"#aab8df",red:"#ff4267"};
 const images=new Map(),rollStates=new Map(),measureCache=new Map();
 const history={subs:[],rates:[],samples:[],lastSample:0};
-const timing={dataFetchMs:0,avatarWaitMs:0,queueWaitMs:0,buildMs:0,renderMs:0,bufferMs:0,rawBufferMs:0,pipelineTotalMs:0,totalMs:0};
+const timing={dataFetchMs:0,avatarWaitMs:0,queueWaitMs:0,buildMs:0,renderMs:0,bufferMs:0,rawBufferMs:0,pipelineTotalMs:0,totalMs:0,transferCopyMs:0,transferPrepareMs:0,roundTripMs:0};
 let benchmarkActive=false,latestMain=null,sampleTimer=null,staticCanvas=null,staticReady=false;
 let mainCanvas=null,mainContext=null,chartCanvas=null,chartContext=null,chartCacheKey="";
 let chartX=null,chartY=null,renderQueue=Promise.resolve(),rawPixelMethod="canvas.data()";
@@ -69,7 +69,8 @@ function fit(c,s,x,y,maxW,size=50,min=9,color=C.white,weight=900,align="center")
 function wrapText(c,value,x,y,maxW,lineH,size,color,weight=800,maxLines=2){
  const words=String(value||"").trim().split(/\s+/),lines=[];
  let current="";c.font=`${weight} ${size}px "${FONT}"`;
- for(const word of words){const test=current?current+" "+word:word;
+ for(const word of words){
+  const test=current?current+" "+word:word;
   if(measured(c,test)>maxW&&current){lines.push(current);current=word;}else current=test;
  }
  if(current)lines.push(current);
@@ -178,8 +179,7 @@ function drawChart(c,x,y,w,h){
  if(!chartX||chartX.length!==a.length){chartX=new Float64Array(a.length);chartY=new Float64Array(a.length);}
  for(let i=0;i<a.length;i++){chartX[i]=i/(a.length-1)*w;chartY[i]=h-5-(a[i]-min)/range*(h-13);}
  d.save();const g=d.createLinearGradient(0,0,0,h);g.addColorStop(0,"#18e9d959");g.addColorStop(1,"#18e9d900");
- d.beginPath();d.moveTo(chartX[0],h);
- for(let i=0;i<chartX.length;i++)d.lineTo(chartX[i],chartY[i]);
+ d.beginPath();d.moveTo(chartX[0],h);for(let i=0;i<chartX.length;i++)d.lineTo(chartX[i],chartY[i]);
  d.lineTo(chartX[chartX.length-1],h);d.closePath();d.fillStyle=g;d.fill();
  d.beginPath();for(let i=0;i<chartX.length;i++){if(i)d.lineTo(chartX[i],chartY[i]);else d.moveTo(chartX[i],chartY[i]);}
  d.lineWidth=8;d.strokeStyle="#168fff29";d.lineCap="round";d.lineJoin="round";d.stroke();
@@ -215,8 +215,7 @@ function drawBars(c,x,y,w,h){
 function drawSources(c,st,fw){
  txt(c,"DATA SOURCES",24,486,15,"#d6e3ff",900);txt(c,"LIVE · BOTH PROVIDERS",1252,486,10,C.teal,900,"right");
  const x=24,y=545,cols=[142,270,270,270,270],heads=["","SCTOOLS EST.","SCTOOLS API","FREEWEBTOOLS EST.","FREEWEBTOOLS API"];
- let xx=x;
- for(let i=0;i<5;i++){txt(c,heads[i],xx+(i?cols[i]/2:0),526,11,"#e1eaff",900,i?"center":"left");xx+=cols[i];}
+ let xx=x;for(let i=0;i<5;i++){txt(c,heads[i],xx+(i?cols[i]/2:0),526,11,"#e1eaff",900,i?"center":"left");xx+=cols[i];}
  const rows=[["SUBSCRIBERS",st.estSubscribers,st.apiSubscribers,fw.estimatedSubscribers,fw.apiSubscribers],["TOTAL VIEWS",st.estViews,st.apiViews,fw.estimatedViews,fw.viewCount],["VIDEOS",st.estVideos,st.apiVideos,fw.estimatedVideos,fw.videoCount]];
  rows.forEach((row,r)=>{
   const yy=y+r*29;txt(c,row[0],x,yy+13,10,"#799bff",900);let xx=x+cols[0];
@@ -239,7 +238,12 @@ function drawMain(data={}){
  const main=st.linearSubscribers??st.estSubscribers??fw.estimatedSubscribers??st.apiSubscribers??fw.apiSubscribers;
  const mainN=numeric(main),remaining=mainN===null?null:Math.max(0,60000000-mainN);
  const progress=mainN===null?0:Math.min(100,mainN/60000000*100),rate=history.rates.at(-1)??null;
- record(main);const c=mainContext;c.drawImage(staticCanvas,0,0);
+ record(main);const c=mainContext;
+
+ // Full-frame clear: prevents retained drawing-command memory from growing.
+ c.clearRect(0,0,W,H);
+ c.drawImage(staticCanvas,0,0);
+
  txt(c,"LUCAN PEVIDOR",14,19,18,C.white,900);txt(c,"| ROAD TO 60M",169,19,17,"#a9c8ff",800);
  dot(c,1190,19,4,C.teal);txt(c,"LIVE",1202,19,11,C.teal,900);line(c,12,37,1268,37,"#ffffff20");
  const left=10,top=48,mainX=352,gap=12,cardW=298;
@@ -253,7 +257,11 @@ function drawMain(data={}){
  txt(c,"MY CHANNEL",22,216,15,"#d7e5ff",900);drawAvatar(c,drawMain.avatar2,left+226,top+164,58);
  txt(c,mc.name||"VYStats",left+14,top+184,14,C.white,900);txt(c,mc.handle||"@vystatsyt",left+14,top+205,10,C.muted,800);
  line(c,left+14,top+226,left+316,top+226,"#ffffff20");
- const mineCols=[{title:"SUBSCRIBERS",a:mst.estSubscribers??mfw.estimatedSubscribers,b:mst.apiSubscribers??mfw.apiSubscribers},{title:"VIEWS",a:mst.estViews??mfw.estimatedViews,b:mst.apiViews??mfw.viewCount},{title:"VIDEOS",a:mst.estVideos??mfw.estimatedVideos,b:mst.apiVideos??mfw.videoCount}];
+ const mineCols=[
+  {title:"SUBSCRIBERS",a:mst.estSubscribers??mfw.estimatedSubscribers,b:mst.apiSubscribers??mfw.apiSubscribers},
+  {title:"VIEWS",a:mst.estViews??mfw.estimatedViews,b:mst.apiViews??mfw.viewCount},
+  {title:"VIDEOS",a:mst.estVideos??mfw.estimatedVideos,b:mst.apiVideos??mfw.videoCount}
+ ];
  mineCols.forEach((v,i)=>{
   const x=left+14+i*101;txt(c,v.title,x+42,top+249,9,"#b8caff",900,"center");
   txt(c,"EST.",x,top+277,8,C.muted,900);drawRolling(c,"mine-est-"+i,v.a,x+2,top+294,94,14,C.white);
@@ -296,18 +304,26 @@ function drawMain(data={}){
  return mainCanvas;
 }
 function extractRawFrame(canvas){
- let result;
+ const start=process.hrtime.bigint();let result;
  if(typeof canvas.data==="function"){rawPixelMethod="canvas.data()";result=canvas.data();}
  else{rawPixelMethod="getImageData fallback";const im=mainContext.getImageData(0,0,W,H);result=Buffer.from(im.data.buffer,im.data.byteOffset,im.data.byteLength);}
+ const extractMs=elapsed(start);
  if(!Buffer.isBuffer(result))throw Error("Raw canvas API did not return a Buffer");
  if(result.length!==FRAME_BYTES)throw Error("Invalid RGBA frame size: "+result.length+" expected "+FRAME_BYTES);
- return result;
+ return{result,extractMs};
 }
 async function renderInternalUnlocked(data={},mode="png",avatarPair,metrics){
  const start=process.hrtime.bigint();drawMain.avatar1=avatarPair[0];drawMain.avatar2=avatarPair[1];
  const canvas=drawMain(data),rendered=process.hrtime.bigint();
- const result=mode==="raw"?extractRawFrame(canvas):canvas.toBuffer("image/png"),done=process.hrtime.bigint();
- Object.assign(timing,{avatarWaitMs:metrics.avatarWaitMs,queueWaitMs:metrics.queueWaitMs,buildMs:0,renderMs:elapsed(start,rendered),bufferMs:elapsed(rendered,done),rawBufferMs:mode==="raw"?elapsed(rendered,done):0,pipelineTotalMs:elapsed(start,done),totalMs:elapsed(metrics.requestStart,done)});
+ let result,extractMs=0;
+ if(mode==="raw"){const raw=extractRawFrame(canvas);result=raw.result;extractMs=raw.extractMs;}
+ else result=canvas.toBuffer("image/png");
+ const done=process.hrtime.bigint();
+ Object.assign(timing,{
+  avatarWaitMs:metrics.avatarWaitMs,queueWaitMs:metrics.queueWaitMs,
+  renderMs:elapsed(start,rendered),bufferMs:elapsed(rendered,done),
+  rawBufferMs:extractMs,pipelineTotalMs:elapsed(start,done),totalMs:elapsed(metrics.requestStart,done)
+ });
  return result;
 }
 function renderInternal(data={},mode="png"){
@@ -315,7 +331,11 @@ function renderInternal(data={},mode="png"){
  const avatarTask=Promise.all([avatar(data.lucan?.channel?.avatar),avatar(data.mine?.channel?.avatar)]);
  return avatarTask.then(pair=>{
   const queueStart=process.hrtime.bigint(),metrics={requestStart,avatarWaitMs:elapsed(avatarStart,queueStart),queueWaitMs:0};
-  const task=renderQueue.then(()=>{metrics.queueWaitMs=elapsed(queueStart);return renderInternalUnlocked(data,mode,pair,metrics);},()=>{metrics.queueWaitMs=elapsed(queueStart);return renderInternalUnlocked(data,mode,pair,metrics);});
+  const task=renderQueue.then(()=>{
+   metrics.queueWaitMs=elapsed(queueStart);return renderInternalUnlocked(data,mode,pair,metrics);
+  },()=>{
+   metrics.queueWaitMs=elapsed(queueStart);return renderInternalUnlocked(data,mode,pair,metrics);
+  });
   renderQueue=task.then(()=>undefined,()=>undefined);return task;
  });
 }
@@ -335,15 +355,31 @@ if(IS_WORKER){
   const{id,mode,data}=msg;
   try{
    const started=process.hrtime.bigint(),result=await renderInternal(data,mode);
-   const workerMs=elapsed(started),length=result.byteLength;
+   const renderedMs=elapsed(started),length=result.byteLength,prepStart=process.hrtime.bigint();
+   let transfer=null,byteOffset=0,transferCopyMs=0,zeroCopy=false;
 
-   // FIX: Always transfer a real standalone ArrayBuffer.
-   // Never put result.buffer or a Buffer in the transfer list.
-   const transfer=new ArrayBuffer(length);
-   new Uint8Array(transfer).set(result);
-
-   const meta={...timing,workerMs,rawPixelMethod,memory:memorySnapshot()};
-   parentPort.postMessage({id,ok:true,buffer:transfer,byteOffset:0,byteLength:length,meta},[transfer]);
+   // Transfer the original backing store only when it is a full, standalone ArrayBuffer.
+   if(result.buffer instanceof ArrayBuffer&&result.byteOffset===0&&result.byteLength===result.buffer.byteLength){
+    transfer=result.buffer;zeroCopy=true;
+   }else{
+    const copyStart=process.hrtime.bigint();
+    transfer=new ArrayBuffer(length);
+    new Uint8Array(transfer).set(new Uint8Array(result.buffer,result.byteOffset,length));
+    transferCopyMs=elapsed(copyStart);
+   }
+   const transferPrepareMs=elapsed(prepStart);
+   const meta={...timing,workerMs:renderedMs,transferCopyMs,transferPrepareMs,zeroCopyTransfer:zeroCopy,rawPixelMethod,memory:memorySnapshot()};
+   try{
+    parentPort.postMessage({id,ok:true,buffer:transfer,byteOffset,byteLength:length,meta},[transfer]);
+   }catch(firstError){
+    // Some Buffer backing stores cannot be transferred; retry using a standalone ArrayBuffer.
+    if(!zeroCopy)throw firstError;
+    const copyStart=process.hrtime.bigint(),fallback=new ArrayBuffer(length);
+    new Uint8Array(fallback).set(result);
+    meta.transferCopyMs=elapsed(copyStart);meta.zeroCopyTransfer=false;
+    meta.transferPrepareMs+=meta.transferCopyMs;
+    parentPort.postMessage({id,ok:true,buffer:fallback,byteOffset:0,byteLength:length,meta},[fallback]);
+   }
   }catch(e){parentPort.postMessage({id,ok:false,error:e.stack||e.message});}
  });
 }else{
@@ -361,8 +397,9 @@ if(IS_WORKER){
   worker.on("message",msg=>{
    const p=pending.get(msg.id);if(!p)return;pending.delete(msg.id);
    if(!msg.ok){p.reject(Error(msg.error));return;}
+   const arrived=process.hrtime.bigint();
    const buffer=Buffer.from(msg.buffer,msg.byteOffset||0,msg.byteLength||msg.buffer.byteLength);
-   p.resolve({buffer,meta:msg.meta});
+   p.resolve({buffer,meta:{...msg.meta,roundTripMs:elapsed(p.started,arrived)}});
   });
   worker.on("error",e=>{failWorker(e);worker=null;});
   worker.on("exit",code=>{
@@ -371,9 +408,9 @@ if(IS_WORKER){
   console.log("[RENDER WORKER] Started embedded canvas worker");
  }
  function workerRequest(data,mode="png"){
-  startWorker();const id=++nextId;
+  startWorker();const id=++nextId,started=process.hrtime.bigint();
   return new Promise((resolve,reject)=>{
-   pending.set(id,{resolve,reject});
+   pending.set(id,{resolve,reject,started});
    try{worker.postMessage({id,data,mode});}
    catch(e){pending.delete(id);reject(e);}
   });
@@ -383,13 +420,10 @@ if(IS_WORKER){
  async function warmWorker(data){for(let i=0;i<8;i++)await renderRawFrame(data);}
 
  async function freshBenchmark(getData){
-  const duration=10000,times=[],fetches=[],queues=[],avatars=[],renders=[],buffers=[],pipelines=[],workerTimes=[],extractSamples=[];
+  const duration=10000,times=[],fetches=[],queues=[],avatars=[],renders=[],buffers=[],raws=[],pipelines=[],workerTimes=[],copies=[],prepares=[],roundTrips=[];
   let frames=0,missed=0,maxLate=0,maxRss=0,stopReason=null,next=process.hrtime.bigint();
   const initial=await getData();await warmWorker(initial);
-  const unchanged=await renderRawFrame(initial);
-  for(let i=0;i<40;i++){const t=process.hrtime.bigint(),copy=Buffer.from(unchanged);if(copy.length!==FRAME_BYTES)throw Error("Invalid independent extraction");extractSamples.push(elapsed(t));}
-  const independentExtraction=stats(extractSamples),start=process.hrtime.bigint();
-  const cpu=process.cpuUsage(),mem=process.memoryUsage();next=start;
+  const start=process.hrtime.bigint(),cpu=process.cpuUsage(),mem=process.memoryUsage();next=start;
 
   while(elapsed(start)<duration){
    if(process.memoryUsage().rss>MAX_RSS){stopReason="Main-process memory safety limit reached";break;}
@@ -397,10 +431,13 @@ if(IS_WORKER){
    timing.dataFetchMs=elapsed(frameStart,dataDone);
    const frame=await renderRawFrame(data),done=process.hrtime.bigint();
    if(!frame||frame.length!==FRAME_BYTES)throw Error("Invalid RGBA frame");
-   times.push(elapsed(frameStart,done));fetches.push(timing.dataFetchMs);queues.push(timing.queueWaitMs);
-   avatars.push(timing.avatarWaitMs);renders.push(timing.renderMs);buffers.push(timing.bufferMs);
-   pipelines.push(timing.pipelineTotalMs);workerTimes.push(timing.workerMs||0);frames++;
-   maxRss=Math.max(maxRss,process.memoryUsage().rss);next+=FRAME_NS;
+   times.push(elapsed(frameStart,done));fetches.push(timing.dataFetchMs);
+   queues.push(timing.queueWaitMs);avatars.push(timing.avatarWaitMs);
+   renders.push(timing.renderMs);buffers.push(timing.bufferMs);raws.push(timing.rawBufferMs);
+   pipelines.push(timing.pipelineTotalMs);workerTimes.push(timing.workerMs||0);
+   copies.push(timing.transferCopyMs||0);prepares.push(timing.transferPrepareMs||0);
+   roundTrips.push(timing.roundTripMs||0);frames++;maxRss=Math.max(maxRss,process.memoryUsage().rss);
+   next+=FRAME_NS;
    if(done>next){
     const late=done-next,slots=late/FRAME_NS+1n;
     missed+=Number(slots);maxLate=Math.max(maxLate,Number(late)/1e6);next+=slots*FRAME_NS;
@@ -414,15 +451,25 @@ if(IS_WORKER){
   const delay={meanMs:round(eventLoop.mean/1e6),p95Ms:round(eventLoop.percentile(95)/1e6),p99Ms:round(eventLoop.percentile(99)/1e6),maxMs:round(eventLoop.max/1e6)};
   eventLoop.reset();
   return{
-   renderer:"@napi-rs/canvas",mode:"single-file-worker-paced-raw-rgba-benchmark",worker:"worker_threads",
+   renderer:"@napi-rs/canvas",mode:"worker-raw-rgba-stall-instrumented",worker:"worker_threads",
    resolution:`${W}x${H}`,targetFPS:FPS,durationMs:round(total),frames,frameSizeBytes:FRAME_BYTES,
    frameSizeMiB:mib(FRAME_BYTES),estimatedFPS:round(frames/Math.max(.001,total/1000)),
    frameTime:stats(times),
-   stages:{dataFetch:stats(fetches),queueWait:stats(queues),avatarWait:stats(avatars),canvasRender:stats(renders),rawBuffer:stats(buffers),workerTotal:stats(workerTimes),renderPipeline:stats(pipelines),independentRawBufferExtraction:independentExtraction},
+   stages:{
+    dataFetch:stats(fetches),queueWait:stats(queues),avatarWait:stats(avatars),
+    canvasRender:stats(renders),canvasDataExtraction:stats(raws),rawBufferTotal:stats(buffers),
+    transferCopy:stats(copies),transferPreparation:stats(prepares),
+    workerRender:stats(workerTimes),workerRoundTrip:stats(roundTrips),renderPipeline:stats(pipelines)
+   },
    missedDeadlines:missed,missedDeadlinePercent:round(missed/Math.max(1,frames+missed)*100),
    maxLatenessMs:round(maxLate),mainThreadEventLoopDelay:delay,
    cpu:{userMs:round(used.user/1000),systemMs:round(used.system/1000)},
-   memory:{rssBeforeMiB:mib(mem.rss),rssAfterMiB:mib(after.rss),rssPeakMiB:mib(maxRss),heapBeforeMiB:mib(mem.heapUsed),heapAfterMiB:mib(after.heapUsed),externalBeforeMiB:mib(mem.external),externalAfterMiB:mib(after.external),arrayBuffersBeforeMiB:mib(mem.arrayBuffers||0),arrayBuffersAfterMiB:mib(after.arrayBuffers||0)},
+   memory:{
+    rssBeforeMiB:mib(mem.rss),rssAfterMiB:mib(after.rss),rssPeakMiB:mib(maxRss),
+    heapBeforeMiB:mib(mem.heapUsed),heapAfterMiB:mib(after.heapUsed),
+    externalBeforeMiB:mib(mem.external),externalAfterMiB:mib(after.external),
+    arrayBuffersBeforeMiB:mib(mem.arrayBuffers||0),arrayBuffersAfterMiB:mib(after.arrayBuffers||0)
+   },
    stopReason
   };
  }
@@ -448,8 +495,12 @@ if(IS_WORKER){
     res.set("Cache-Control","no-store").json({
      renderer:"@napi-rs/canvas",worker:"worker_threads",rawPixelMethod:timing.rawPixelMethod,
      resolution:`${W}x${H}`,frameBytes:frame.length,expectedBytes:FRAME_BYTES,
-     valid:frame.length===FRAME_BYTES,fontRegistered:GlobalFonts.has(FONT),timing:{...timing},
-     memory:mem,mainThreadEventLoopDelay:{meanMs:round(eventLoop.mean/1e6),p95Ms:round(eventLoop.percentile(95)/1e6),p99Ms:round(eventLoop.percentile(99)/1e6),maxMs:round(eventLoop.max/1e6)}
+     valid:frame.length===FRAME_BYTES,fontRegistered:GlobalFonts.has(FONT),
+     timing:{...timing},memory:mem,
+     mainThreadEventLoopDelay:{
+      meanMs:round(eventLoop.mean/1e6),p95Ms:round(eventLoop.percentile(95)/1e6),
+      p99Ms:round(eventLoop.percentile(99)/1e6),maxMs:round(eventLoop.max/1e6)
+     }
     });
    }catch(e){console.error("[CANVAS DIAGNOSTICS]",e.stack||e);if(!res.headersSent)res.status(500).json({error:"Canvas diagnostics failed",message:e.message});}
    finally{benchmarkActive=false;eventLoop.reset();}
