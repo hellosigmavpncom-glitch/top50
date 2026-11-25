@@ -42,16 +42,21 @@ function numeric(v){
 function measured(c,s){
  const text=String(s??""),key=c.font+"\0"+text;
  let width=measureCache.get(key);
- if(width===undefined){width=c.measureText(text).width;measureCache.set(key,width);if(measureCache.size>4096)measureCache.delete(measureCache.keys().next().value);}
+ if(width===undefined){
+  width=c.measureText(text).width;measureCache.set(key,width);
+  if(measureCache.size>4096)measureCache.delete(measureCache.keys().next().value);
+ }
  return width;
 }
 function rr(c,x,y,w,h,r,fill,stroke=null,lw=1){
- c.beginPath();c.roundRect(x,y,w,h,r);if(fill){c.fillStyle=fill;c.fill();}
+ c.beginPath();c.roundRect(x,y,w,h,r);
+ if(fill){c.fillStyle=fill;c.fill();}
  if(stroke){c.lineWidth=lw;c.strokeStyle=stroke;c.stroke();}
 }
 function grad(c,x,y,w,h,stops,vertical=true){
  const g=vertical?c.createLinearGradient(x,y,x,y+h):c.createLinearGradient(x,y,x+w,y);
- for(const s of stops)g.addColorStop(s[0],s[1]);return g;
+ for(const s of stops)g.addColorStop(s[0],s[1]);
+ return g;
 }
 function resetShadow(c){c.shadowColor="transparent";c.shadowBlur=0;c.shadowOffsetX=0;c.shadowOffsetY=0;}
 function line(c,x1,y1,x2,y2,color="#ffffff20",width=1){
@@ -109,7 +114,10 @@ function staticLayer(){
  const top=48,left=10,sideW=330,mainX=352,gap=12,cardW=(918-gap*2)/3;
  panel(c,left,top,sideW,138,"#743dff",17,"#6e29ff28");
  panel(c,left,top+150,sideW,256,"#245caa",17,"#167bff20");
- for(let i=0;i<3;i++){const x=mainX+i*(cardW+gap),border=["#287bff","#2869c9","#793dff"][i];panel(c,x,top,cardW,406,border,19,i===2?"#8b36ff25":"#168fff22");}
+ for(let i=0;i<3;i++){
+  const x=mainX+i*(cardW+gap),border=["#287bff","#2869c9","#793dff"][i];
+  panel(c,x,top,cardW,406,border,19,i===2?"#8b36ff25":"#168fff22");
+ }
  panel(c,10,466,1260,214,"#4268a8",17,"#1a6bff20");
  line(c,22,506,1258,506);line(c,22,680,1258,680);staticReady=true;
 }
@@ -118,7 +126,8 @@ function avatarSource(url){
  return /=s\d+[^?]*/i.test(s)?s.replace(/=s\d+[^?]*/i,"=s160-c"):(s.includes("?")?s+"&sz=160":s+"=s160-c");
 }
 async function avatar(url){
- if(!url)return null;const src=avatarSource(url);if(images.has(src))return images.get(src);
+ if(!url)return null;
+ const src=avatarSource(url);if(images.has(src))return images.get(src);
  const task=(async()=>{try{
   const r=await fetch(src,{signal:AbortSignal.timeout(9000)});
   if(!r.ok)throw Error("HTTP "+r.status);
@@ -126,20 +135,32 @@ async function avatar(url){
   const b=Buffer.from(await r.arrayBuffer());if(b.length>2e6)throw Error("Avatar too large");
   return await loadImage(b);
  }catch(e){console.error("[AVATAR]",e.message);return null;}})();
- images.set(src,task);while(images.size>8)images.delete(images.keys().next().value);return task;
+ images.set(src,task);while(images.size>8)images.delete(images.keys().next().value);
+ return task;
 }
 function drawAvatar(c,img,x,y,size,border=C.blue){
  c.save();c.beginPath();c.arc(x+size/2,y+size/2,size/2,0,Math.PI*2);c.clip();
- if(img){const scale=Math.max(size/img.width,size/img.height),w=img.width*scale,h=img.height*scale;c.drawImage(img,x+(size-w)/2,y+(size-h)/2,w,h);}
- else{c.fillStyle="#182544";c.fillRect(x,y,size,size);txt(c,"?",x+size/2,y+size/2,size*.48,"#9cb9ee",900,"center");}
- c.restore();c.save();c.shadowColor="#168fff77";c.shadowBlur=13;c.beginPath();c.arc(x+size/2,y+size/2,size/2-1.5,0,Math.PI*2);c.lineWidth=2.5;c.strokeStyle=border;c.stroke();resetShadow(c);c.restore();
+ if(img){
+  const scale=Math.max(size/img.width,size/img.height),w=img.width*scale,h=img.height*scale;
+  c.drawImage(img,x+(size-w)/2,y+(size-h)/2,w,h);
+ }else{c.fillStyle="#182544";c.fillRect(x,y,size,size);txt(c,"?",x+size/2,y+size/2,size*.48,"#9cb9ee",900,"center");}
+ c.restore();c.save();c.shadowColor="#168fff77";c.shadowBlur=13;
+ c.beginPath();c.arc(x+size/2,y+size/2,size/2-1.5,0,Math.PI*2);
+ c.lineWidth=2.5;c.strokeStyle=border;c.stroke();resetShadow(c);c.restore();
 }
-function digits(v){let out="";for(let i=0;i<v.length;i++){const q=v.charCodeAt(i);if(q>=48&&q<=57)out+=v[i];}return out;}
+function digits(v){
+ let out="";for(let i=0;i<v.length;i++){const q=v.charCodeAt(i);if(q>=48&&q<=57)out+=v[i];}
+ return out;
+}
 function drawRolling(c,id,value,x,y,maxW,size=50,color=C.white,decimals=0,align="center"){
  const n=numeric(value),target=n===null?"—":decimals?Number(n).toFixed(decimals):nf.format(Math.round(n)),now=Date.now();
  let s=rollStates.get(id);
- if(!s){s={target,previous:target,previousDigits:digits(target),targetDigits:digits(target),changed:now,layoutKey:""};rollStates.set(id,s);if(rollStates.size>128)rollStates.delete(rollStates.keys().next().value);}
- else if(s.target!==target){s.previous=s.target;s.previousDigits=s.targetDigits;s.target=target;s.targetDigits=digits(target);s.changed=now;s.layoutKey="";}
+ if(!s){
+  s={target,previous:target,previousDigits:digits(target),targetDigits:digits(target),changed:now,layoutKey:""};
+  rollStates.set(id,s);if(rollStates.size>128)rollStates.delete(rollStates.keys().next().value);
+ }else if(s.target!==target){
+  s.previous=s.target;s.previousDigits=s.targetDigits;s.target=target;s.targetDigits=digits(target);s.changed=now;s.layoutKey="";
+ }
  const layoutKey=size+":"+maxW;
  if(s.layoutKey!==layoutKey){
   let fs=size;c.font=`900 ${fs}px "${FONT}"`;
@@ -160,8 +181,10 @@ function drawRolling(c,id,value,x,y,maxW,size=50,color=C.white,decimals=0,align=
   const ch=target[i],code=target.charCodeAt(i),isDigit=code>=48&&code<=57,cw=s.widths[i];
   if(isDigit){
    const oi=digit+offset,from=oi>=0&&oi<old.length?old[oi]:ch,changed=from!==ch&&progress<1;digit++;
-   if(changed){c.save();c.beginPath();c.rect(cursor,-fs*.58,cw,fs*1.16);c.clip();c.fillText(from,cursor,-fs*progress);c.fillText(ch,cursor,fs*(1-progress));c.restore();}
-   else c.fillText(ch,cursor,0);
+   if(changed){
+    c.save();c.beginPath();c.rect(cursor,-fs*.58,cw,fs*1.16);c.clip();
+    c.fillText(from,cursor,-fs*progress);c.fillText(ch,cursor,fs*(1-progress));c.restore();
+   }else c.fillText(ch,cursor,0);
   }else c.fillText(ch,cursor,0);
   cursor+=cw;
  }
@@ -173,13 +196,16 @@ function drawChart(c,x,y,w,h){
  if(chartCanvas&&chartCacheKey===key){c.drawImage(chartCanvas,x,y,w,h);return;}
  if(!chartCanvas){chartCanvas=createCanvas(Math.ceil(w),Math.ceil(h));chartContext=chartCanvas.getContext("2d");}
  else if(chartCanvas.width!==Math.ceil(w)||chartCanvas.height!==Math.ceil(h)){chartCanvas.width=Math.ceil(w);chartCanvas.height=Math.ceil(h);}
- chartCacheKey=key;const d=chartContext;d.clearRect(0,0,chartCanvas.width,chartCanvas.height);
- let min=Infinity,max=-Infinity;for(let i=0;i<a.length;i++){if(a[i]<min)min=a[i];if(a[i]>max)max=a[i];}
+ chartCacheKey=key;const d=chartContext;
+ d.clearRect(0,0,chartCanvas.width,chartCanvas.height);
+ let min=Infinity,max=-Infinity;
+ for(let i=0;i<a.length;i++){if(a[i]<min)min=a[i];if(a[i]>max)max=a[i];}
  const range=Math.max(1,max-min);
  if(!chartX||chartX.length!==a.length){chartX=new Float64Array(a.length);chartY=new Float64Array(a.length);}
  for(let i=0;i<a.length;i++){chartX[i]=i/(a.length-1)*w;chartY[i]=h-5-(a[i]-min)/range*(h-13);}
  d.save();const g=d.createLinearGradient(0,0,0,h);g.addColorStop(0,"#18e9d959");g.addColorStop(1,"#18e9d900");
- d.beginPath();d.moveTo(chartX[0],h);for(let i=0;i<chartX.length;i++)d.lineTo(chartX[i],chartY[i]);
+ d.beginPath();d.moveTo(chartX[0],h);
+ for(let i=0;i<chartX.length;i++)d.lineTo(chartX[i],chartY[i]);
  d.lineTo(chartX[chartX.length-1],h);d.closePath();d.fillStyle=g;d.fill();
  d.beginPath();for(let i=0;i<chartX.length;i++){if(i)d.lineTo(chartX[i],chartY[i]);else d.moveTo(chartX[i],chartY[i]);}
  d.lineWidth=8;d.strokeStyle="#168fff29";d.lineCap="round";d.lineJoin="round";d.stroke();
@@ -208,31 +234,42 @@ function drawBars(c,x,y,w,h){
  c.save();c.shadowColor="#8b36ff88";c.shadowBlur=10;
  for(let i=0;i<len;i++){
   const v=a[start+i],bh=14+Math.min(1,Math.abs(v)/max)*Math.max(0,h-18),xx=x+i*(bw+gap),yy=y+h-bh;
-  c.globalAlpha=.65+i/Math.max(1,len)*.35;rr(c,xx,yy,bw,bh,4,grad(c,xx,yy,bw,bh,[[0,"#b34cff"],[1,"#5420c7"]]));
+  c.globalAlpha=.65+i/Math.max(1,len)*.35;
+  rr(c,xx,yy,bw,bh,4,grad(c,xx,yy,bw,bh,[[0,"#b34cff"],[1,"#5420c7"]]));
  }
  resetShadow(c);c.restore();
 }
 function drawSources(c,st,fw){
  txt(c,"DATA SOURCES",24,486,15,"#d6e3ff",900);txt(c,"LIVE · BOTH PROVIDERS",1252,486,10,C.teal,900,"right");
  const x=24,y=545,cols=[142,270,270,270,270],heads=["","SCTOOLS EST.","SCTOOLS API","FREEWEBTOOLS EST.","FREEWEBTOOLS API"];
- let xx=x;for(let i=0;i<5;i++){txt(c,heads[i],xx+(i?cols[i]/2:0),526,11,"#e1eaff",900,i?"center":"left");xx+=cols[i];}
- const rows=[["SUBSCRIBERS",st.estSubscribers,st.apiSubscribers,fw.estimatedSubscribers,fw.apiSubscribers],["TOTAL VIEWS",st.estViews,st.apiViews,fw.estimatedViews,fw.viewCount],["VIDEOS",st.estVideos,st.apiVideos,fw.estimatedVideos,fw.videoCount]];
+ let xx=x;
+ for(let i=0;i<5;i++){txt(c,heads[i],xx+(i?cols[i]/2:0),526,11,"#e1eaff",900,i?"center":"left");xx+=cols[i];}
+ const rows=[
+  ["SUBSCRIBERS",st.estSubscribers,st.apiSubscribers,fw.estimatedSubscribers,fw.apiSubscribers],
+  ["TOTAL VIEWS",st.estViews,st.apiViews,fw.estimatedViews,fw.viewCount],
+  ["VIDEOS",st.estVideos,st.apiVideos,fw.estimatedVideos,fw.videoCount]
+ ];
  rows.forEach((row,r)=>{
   const yy=y+r*29;txt(c,row[0],x,yy+13,10,"#799bff",900);let xx=x+cols[0];
-  for(let j=1;j<5;j++){rr(c,xx+3,yy,cols[j]-7,25,6,"#080d1b","#26375b");drawRolling(c,"source-"+r+"-"+j,row[j],xx+8,yy+13,cols[j]-18,14,j%2?C.teal:"#c4d1ff");xx+=cols[j];}
+  for(let j=1;j<5;j++){
+   rr(c,xx+3,yy,cols[j]-7,25,6,"#080d1b","#26375b");
+   drawRolling(c,"source-"+r+"-"+j,row[j],xx+8,yy+13,cols[j]-18,14,j%2?C.teal:"#c4d1ff");xx+=cols[j];
+  }
  });
  const display=fw.displayCount??fw.estimation?.display_count??null;
  const hourly=fw.hourly??fw.estimation?.growth_rate_per_hour,daily=fw.daily??fw.estimation?.growth_rate_per_day;
  const confidence=String(fw.confidence||"—").toUpperCase();
  const items=[["DISPLAY COUNT",display],["HOURLY GROWTH",hourly],["DAILY GROWTH",daily],["CONFIDENCE",confidence]];
  items.forEach((v,i)=>{
-  const xx=24+i*310;line(c,xx,644,xx+292,644,"#26375b");txt(c,v[0],xx+146,654,8,"#c4d2f3",900,"center");
+  const xx=24+i*310;line(c,xx,644,xx+292,644,"#26375b");
+  txt(c,v[0],xx+146,654,8,"#c4d2f3",900,"center");
   if(i===3)fit(c,v[1],xx+146,670,280,13,9,C.teal,900);
   else drawRolling(c,"source-meta-"+i,v[1],xx+5,670,282,13,C.teal);
  });
 }
 function drawMain(data={}){
- staticLayer();if(!mainCanvas){mainCanvas=createCanvas(W,H);mainContext=mainCanvas.getContext("2d");}
+ staticLayer();
+ if(!mainCanvas){mainCanvas=createCanvas(W,H);mainContext=mainCanvas.getContext("2d");}
  const l=data.lucan||{},m=data.mine||{},st=l.sctools||{},fw=l.freewebtools||{};
  const mst=m.sctools||{},mfw=m.freewebtools||{},lc=l.channel||{},mc=m.channel||{};
  const main=st.linearSubscribers??st.estSubscribers??fw.estimatedSubscribers??st.apiSubscribers??fw.apiSubscribers;
@@ -240,8 +277,7 @@ function drawMain(data={}){
  const progress=mainN===null?0:Math.min(100,mainN/60000000*100),rate=history.rates.at(-1)??null;
  record(main);const c=mainContext;
 
- // Full-frame clear: prevents retained drawing-command memory from growing.
- c.clearRect(0,0,W,H);
+ // Static background is opaque, so clearing the full frame first is unnecessary.
  c.drawImage(staticCanvas,0,0);
 
  txt(c,"LUCAN PEVIDOR",14,19,18,C.white,900);txt(c,"| ROAD TO 60M",169,19,17,"#a9c8ff",800);
@@ -277,9 +313,13 @@ function drawMain(data={}){
    drawRolling(c,"lucanCount",main,x+12,top+169,cardW-24,47,C.white);
    drawChart(c,x+18,top+211,cardW-36,88);
    const values=[["LINEAR ESTIMATE",st.linearSubscribers??st.estSubscribers],["HOURLY GAIN",st.hourly??fw.hourly],["DAILY GAIN",st.daily??fw.daily]];
-   values.forEach((v,j)=>{const xx=x+cardW*(j+.5)/3;txt(c,v[0],xx,top+337,8,"#b9caff",900,"center");drawRolling(c,"lucan-metric-"+j,v[1],xx-cardW/6+2,top+365,cardW/3-4,15,C.teal);});
+   values.forEach((v,j)=>{
+    const xx=x+cardW*(j+.5)/3;txt(c,v[0],xx,top+337,8,"#b9caff",900,"center");
+    drawRolling(c,"lucan-metric-"+j,v[1],xx-cardW/6+2,top+365,cardW/3-4,15,C.teal);
+   });
   }else if(i===1){
-   icon(c,"bolt",x+cardW/2-103,top+28,21,C.blue);txt(c,"SUBS GAINED PER SEC",center+8,top+40,13,"#d7e3ff",900,"center");
+   icon(c,"bolt",x+cardW/2-103,top+28,21,C.blue);
+   txt(c,"SUBS GAINED PER SEC",center+8,top+40,13,"#d7e3ff",900,"center");
    txt(c,rate!==null&&rate<0?"−":"+",center-57,top+165,48,C.white,900,"right");
    drawRolling(c,"lucanRate",rate===null?null:Math.abs(rate),center-50,top+165,cardW/2+54,43,C.white,2,"left");
    drawBars(c,x+22,top+250,cardW-44,82);txt(c,"LIVE AVERAGE",center,top+365,11,C.teal,900,"center");
@@ -306,14 +346,19 @@ function drawMain(data={}){
 function extractRawFrame(canvas){
  const start=process.hrtime.bigint();let result;
  if(typeof canvas.data==="function"){rawPixelMethod="canvas.data()";result=canvas.data();}
- else{rawPixelMethod="getImageData fallback";const im=mainContext.getImageData(0,0,W,H);result=Buffer.from(im.data.buffer,im.data.byteOffset,im.data.byteLength);}
+ else{
+  rawPixelMethod="getImageData fallback";
+  const im=mainContext.getImageData(0,0,W,H);
+  result=Buffer.from(im.data.buffer,im.data.byteOffset,im.data.byteLength);
+ }
  const extractMs=elapsed(start);
  if(!Buffer.isBuffer(result))throw Error("Raw canvas API did not return a Buffer");
  if(result.length!==FRAME_BYTES)throw Error("Invalid RGBA frame size: "+result.length+" expected "+FRAME_BYTES);
  return{result,extractMs};
 }
 async function renderInternalUnlocked(data={},mode="png",avatarPair,metrics){
- const start=process.hrtime.bigint();drawMain.avatar1=avatarPair[0];drawMain.avatar2=avatarPair[1];
+ const start=process.hrtime.bigint();
+ drawMain.avatar1=avatarPair[0];drawMain.avatar2=avatarPair[1];
  const canvas=drawMain(data),rendered=process.hrtime.bigint();
  let result,extractMs=0;
  if(mode==="raw"){const raw=extractRawFrame(canvas);result=raw.result;extractMs=raw.extractMs;}
@@ -358,7 +403,7 @@ if(IS_WORKER){
    const renderedMs=elapsed(started),length=result.byteLength,prepStart=process.hrtime.bigint();
    let transfer=null,byteOffset=0,transferCopyMs=0,zeroCopy=false;
 
-   // Transfer the original backing store only when it is a full, standalone ArrayBuffer.
+   // Preserve zero-copy transfer when the Buffer owns its entire ArrayBuffer.
    if(result.buffer instanceof ArrayBuffer&&result.byteOffset===0&&result.byteLength===result.buffer.byteLength){
     transfer=result.buffer;zeroCopy=true;
    }else{
@@ -372,7 +417,6 @@ if(IS_WORKER){
    try{
     parentPort.postMessage({id,ok:true,buffer:transfer,byteOffset,byteLength:length,meta},[transfer]);
    }catch(firstError){
-    // Some Buffer backing stores cannot be transferred; retry using a standalone ArrayBuffer.
     if(!zeroCopy)throw firstError;
     const copyStart=process.hrtime.bigint(),fallback=new ArrayBuffer(length);
     new Uint8Array(fallback).set(result);
@@ -428,15 +472,17 @@ if(IS_WORKER){
   while(elapsed(start)<duration){
    if(process.memoryUsage().rss>MAX_RSS){stopReason="Main-process memory safety limit reached";break;}
    const frameStart=process.hrtime.bigint(),data=await getData(),dataDone=process.hrtime.bigint();
-   timing.dataFetchMs=elapsed(frameStart,dataDone);
+   const fetchMs=elapsed(frameStart,dataDone);
+   timing.dataFetchMs=fetchMs;
    const frame=await renderRawFrame(data),done=process.hrtime.bigint();
    if(!frame||frame.length!==FRAME_BYTES)throw Error("Invalid RGBA frame");
-   times.push(elapsed(frameStart,done));fetches.push(timing.dataFetchMs);
+   times.push(elapsed(frameStart,done));fetches.push(fetchMs);
    queues.push(timing.queueWaitMs);avatars.push(timing.avatarWaitMs);
    renders.push(timing.renderMs);buffers.push(timing.bufferMs);raws.push(timing.rawBufferMs);
    pipelines.push(timing.pipelineTotalMs);workerTimes.push(timing.workerMs||0);
    copies.push(timing.transferCopyMs||0);prepares.push(timing.transferPrepareMs||0);
-   roundTrips.push(timing.roundTripMs||0);frames++;maxRss=Math.max(maxRss,process.memoryUsage().rss);
+   roundTrips.push(timing.roundTripMs||0);frames++;
+   maxRss=Math.max(maxRss,process.memoryUsage().rss);
    next+=FRAME_NS;
    if(done>next){
     const late=done-next,slots=late/FRAME_NS+1n;
@@ -457,7 +503,8 @@ if(IS_WORKER){
    frameTime:stats(times),
    stages:{
     dataFetch:stats(fetches),queueWait:stats(queues),avatarWait:stats(avatars),
-    canvasRender:stats(renders),canvasDataExtraction:stats(raws),rawBufferTotal:stats(buffers),
+    canvasRender:stats(renders),canvasDataExtraction:stats(raws),
+    postRenderToBuffer:stats(buffers),rawBufferTotal:stats(raws),
     transferCopy:stats(copies),transferPreparation:stats(prepares),
     workerRender:stats(workerTimes),workerRoundTrip:stats(roundTrips),renderPipeline:stats(pipelines)
    },
@@ -477,8 +524,10 @@ if(IS_WORKER){
  function attach(app,getData){
   app.get("/api/renderer/preview.png",async(req,res)=>{
    if(benchmarkActive)return res.status(503).send("Benchmark running; retry shortly");
-   try{const png=await renderDashboard(await getData());res.set({"Content-Type":"image/png","Cache-Control":"no-store, no-cache, must-revalidate"}).send(png);}
-   catch(e){console.error("[CANVAS PREVIEW]",e.stack||e);if(!res.headersSent)res.status(500).send(e.message);}
+   try{
+    const png=await renderDashboard(await getData());
+    res.set({"Content-Type":"image/png","Cache-Control":"no-store, no-cache, must-revalidate"}).send(png);
+   }catch(e){console.error("[CANVAS PREVIEW]",e.stack||e);if(!res.headersSent)res.status(500).send(e.message);}
   });
   app.get("/api/renderer/benchmark",async(req,res)=>{
    if(benchmarkActive)return res.status(409).json({error:"Benchmark already running"});
