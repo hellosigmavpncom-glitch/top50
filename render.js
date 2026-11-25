@@ -18,8 +18,8 @@ function text(c,str,x,y,size=14,color=COLORS.white,weight=900,align="left",basel
 function fitText(c,str,x,y,maxW,size=50,min=10,color=COLORS.white,weight=900,align="center"){let s=size;c.font=`${weight} ${s}px ${font}`;while(c.measureText(String(str)).width>maxW&&s>min){s-=1;c.font=`${weight} ${s}px ${font}`;}c.fillStyle=color;c.textAlign=align;c.textBaseline="middle";c.fillText(String(str),x,y);return s;}
 function line(c,x1,y1,x2,y2,color="#ffffff20",width=1){c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.strokeStyle=color;c.lineWidth=width;c.stroke();}
 function dot(c,x,y,r,color){c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fillStyle=color;c.fill();}
-function panel(c,x,y,w,h,border=COLORS.border,r=19,glow=null){c.save();shadow(c,"#0008",24,8);rr(c,x,y,w,h, r,gradient(c,x,y,w,h,[[0,"#111a35ed"],[1,"#070b19f5"]]),border,1);resetShadow(c);if(glow){c.shadowColor=glow;c.shadowBlur=18;rr(c,x+1,y+1,w-2,h-2,r,null,glow,1);resetShadow(c);}c.restore();}
-function staticLayer(){if(staticReady)return;staticCanvas=createCanvas(W,H);staticCtx=staticCanvas.getContext("2d");const c=staticCtx;
+function panel(c,x,y,w,h,border=COLORS.border,r=19,glow=null){c.save();shadow(c,"#0008",24,8);rr(c,x,y,w,h,r,gradient(c,x,y,w,h,[[0,"#111a35ed"],[1,"#070b19f5"]]),border,1);resetShadow(c);if(glow){c.shadowColor=glow;c.shadowBlur=18;rr(c,x+1,y+1,w-2,h-2,r,null,glow,1);resetShadow(c);}c.restore();}
+function staticLayer(){if(staticReady&&staticCanvas)return;staticCanvas=createCanvas(W,H);staticCtx=staticCanvas.getContext("2d");const c=staticCtx;
 c.fillStyle=gradient(c,0,0,W,H,[[0,"#19265a"],[.48,"#080b1b"],[1,"#040610"]]);c.fillRect(0,0,W,H);
 const left=6,top=66,heroH=388,sideW=420,gap=14,mainX=left+sideW+gap,mainW=W-6-mainX,cardGap=14,cardW=(mainW-cardGap*2)/3;
 panel(c,left,top,sideW,136,"#743dff",19,"#6e29ff28");
@@ -44,8 +44,8 @@ text(c,"LIVE AVERAGE",mx+cardW+cardGap+cardW/2,ly+360,12,COLORS.teal,900,"center
 text(c,"SUBSCRIBERS LEFT",mx+2*(cardW+cardGap)+cardW/2,ly+360,12,COLORS.teal,900,"center");
 text(c,"DATA SOURCES",20,486,16,"#d6e3ff",900);
 text(c,"LIVE · BOTH PROVIDERS",1255,486,11,COLORS.teal,900,"right");
-const sx=20,sy=520,sw=1240,cols=[130,277.5,277.5,277.5,277.5],heads=["","SCTOOLS EST.","SCTOOLS API","FREEWEBTOOLS EST.","FREEWEBTOOLS API"];
-let xx=sx;for(let i=0;i<5;i++){text(c,heads[i],xx+(i?cols[i]/2:0),sy, i?13:11,"#e1eaff",900,i?"center":"left");xx+=cols[i];}
+const sx=20,sy=520,cols=[130,277.5,277.5,277.5,277.5],heads=["","SCTOOLS EST.","SCTOOLS API","FREEWEBTOOLS EST.","FREEWEBTOOLS API"];
+let xx=sx;for(let i=0;i<5;i++){text(c,heads[i],xx+(i?cols[i]/2:0),sy,i?13:11,"#e1eaff",900,i?"center":"left");xx+=cols[i];}
 staticReady=true;}
 function avatarSource(url){const s=String(url||"");if(!/googleusercontent\.com|ggpht\.com/i.test(s))return s;return /=s\d+[^?]*/i.test(s)?s.replace(/=s\d+[^?]*/i,"=s160-c"):(s.includes("?")?s+"&sz=160":s+"=s160-c");}
 async function avatar(url){if(!url)return null;const src=avatarSource(url);if(images.has(src))return images.get(src);const task=(async()=>{try{const r=await fetch(src,{signal:AbortSignal.timeout(9000)});if(!r.ok)throw Error("HTTP "+r.status);const b=Buffer.from(await r.arrayBuffer());if(b.length>2e6)throw Error("Avatar too large");return await loadImage(b);}catch(e){console.error("[CANVAS AVATAR]",e.message);return null;}})();images.set(src,task);if(images.size>32)images.delete(images.keys().next().value);return task;}
@@ -55,14 +55,14 @@ const progress=Math.max(0,Math.min(1,(now-s.changed)/650)),fontSize=fitFont(c,ta
 const chars=[...target],old=[...s.previous];let digit=0,oldDigit=old.length-1;
 for(let i=chars.length-1;i>=0;i--)if(/\d/.test(chars[i])){while(oldDigit>=0&&!/\d/.test(old[oldDigit]))oldDigit--;oldDigit--;}
 let cursor=0,oldDigits=old.filter(ch=>/\d/.test(ch)),newDigits=chars.filter(ch=>/\d/.test(ch)),offset=oldDigits.length-newDigits.length;
-for(let i=0;i<chars.length;i++){const ch=chars[i],cw=c.measureText(ch).width;if(/\d/.test(ch)){const di=digit++,oi=di+offset,from=oldDigits[oi]??ch,changed=from!==ch&&progress<1;if(changed){c.save();c.beginPath();c.rect(cursor,y-fontSize*.58,cw,fontSize*1.2);c.clip();c.fillText(from,cursor,y-fontSize*progress);c.fillText(ch,cursor,y+fontSize*(1-progress));c.restore();}else c.fillText(ch,cursor,y); }else c.fillText(ch,cursor,y);cursor+=cw;}
+for(let i=0;i<chars.length;i++){const ch=chars[i],cw=c.measureText(ch).width;if(/\d/.test(ch)){const di=digit++,oi=di+offset,from=oldDigits[oi]??ch,changed=from!==ch&&progress<1;if(changed){c.save();c.beginPath();c.rect(cursor,-fontSize*.58,cw,fontSize*1.2);c.clip();c.fillText(from,cursor,-fontSize*progress);c.fillText(ch,cursor,fontSize*(1-progress));c.restore();}else c.fillText(ch,cursor,0);}else c.fillText(ch,cursor,0);cursor+=cw;}
 c.restore();if(progress>=1)s.previous=s.target;}
 function fitFont(c,str,maxW,size,min){let z=size;c.font=`900 ${z}px ${font}`;while(c.measureText(String(str)).width>maxW&&z>min){z-=1;c.font=`900 ${z}px ${font}`;}return z;}
 function drawChart(c,x,y,w,h){const a=history.subs;if(a.length<2)return;const min=Math.min(...a),max=Math.max(...a),range=Math.max(1,max-min),pts=a.map((v,i)=>({x:x+i/(a.length-1)*w,y:y+h-5-(v-min)/range*(h-13)}));c.save();const g=c.createLinearGradient(0,y,0,y+h);g.addColorStop(0,"#18e9d959");g.addColorStop(1,"#18e9d900");c.beginPath();c.moveTo(pts[0].x,y+h);for(const p of pts)c.lineTo(p.x,p.y);c.lineTo(pts.at(-1).x,y+h);c.closePath();c.fillStyle=g;c.fill();c.beginPath();pts.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));c.lineWidth=10;c.strokeStyle="#168fff29";c.lineCap="round";c.lineJoin="round";c.stroke();c.beginPath();pts.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));c.lineWidth=3;c.strokeStyle=COLORS.teal;c.shadowColor="#18e9d9";c.shadowBlur=5;c.stroke();resetShadow(c);c.restore();}
 function takeSample(){if(latestMain==null||!Number.isFinite(latestMain))return;const now=Date.now(),n=latestMain;history.subs.push(n);if(history.subs.length>18)history.subs.shift();history.samples.push({t:now,n});if(history.samples.length>6)history.samples.shift();if(history.samples.length>1){const a=history.samples[0],b=history.samples.at(-1),sec=(b.t-a.t)/1000;if(sec>0){history.rates.push((b.n-a.n)/sec);if(history.rates.length>14)history.rates.shift();}}history.lastSample=now;}
 function record(v){const n=numeric(v);if(n!==null)latestMain=n;if(!sampleTimer&&latestMain!==null){takeSample();sampleTimer=setInterval(takeSample,2000);sampleTimer.unref?.();}}
 function drawBars(c,x,y,w,h){const a=history.rates.slice(-14);if(!a.length)return;const gap=6,bw=Math.min(20,(w-gap*(a.length-1))/a.length);a.forEach((v,i)=>{const n=Math.min(12,Math.max(1,Math.round(Math.abs(v)*4))),bh=Math.max(12,n*7),xx=x+i*(bw+gap),yy=y+h-bh;c.save();c.globalAlpha=.55+i/Math.max(1,a.length)*.45;rr(c,xx,yy,bw,bh,5,gradient(c,xx,yy,bw,bh,[[0,"#a63cff"],[1,"#5420c7"]]));c.shadowColor="#8b36ff55";c.shadowBlur=8;c.restore();});}
-function drawMain(data={}){const l=data.lucan||{},m=data.mine||{},st=l.sctools||{},fw=l.freewebtools||{},mst=m.sctools||{},mfw=m.freewebtools||{},lc=l.channel||{},mc=m.channel||{};
+function drawMain(data={}){staticLayer();const l=data.lucan||{},m=data.mine||{},st=l.sctools||{},fw=l.freewebtools||{},mst=m.sctools||{},mfw=m.freewebtools||{},lc=l.channel||{},mc=m.channel||{};
 const main=st.linearSubscribers??st.estSubscribers??fw.estimatedSubscribers??st.apiSubscribers??fw.apiSubscribers,mainN=numeric(main),remaining=mainN===null?null:Math.max(0,60000000-mainN),progress=mainN===null?0:Math.min(100,mainN/60000000*100),rate=history.rates.at(-1)??null;
 record(main);const c=createCanvas(W,H).getContext("2d");c.drawImage(staticCanvas,0,0);
 const left=6,top=66,sideW=420,mainX=440,mainW=834,gap=14,cardW=(mainW-gap*2)/3;
