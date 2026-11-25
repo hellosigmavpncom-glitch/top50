@@ -67,7 +67,7 @@ function staticLayer(){
  c.fillStyle=grad(c,0,0,W,H,[[0,"#172451"],[.25,"#0b1022"],[.7,"#070a17"],[1,"#040610"]]);c.fillRect(0,0,W,H);
  const bg=c.createRadialGradient(640,100,20,640,100,800);bg.addColorStop(0,"#15285a44");bg.addColorStop(1,"#05071300");c.fillStyle=bg;c.fillRect(0,0,W,H);
  const top=48,left=10,sideW=330,mainX=352,gap=12,cardW=(918-gap*2)/3;
- panel(c,left,top,sideW,138,"#743dff",17,"#6e29ff28");panel(c,left,top+150,sideW,256,"
+panel(c,left,top,sideW,138,"#743dff",17,"#6e29ff28");panel(c,left,top+150,sideW,256,"#245caa",17,"#167bff20");
  panel(c,left,top+150,sideW,256,"#245caa",17,"#167bff20");
  for(let i=0;i<3;i++){const x=mainX+i*(cardW+gap),border=["#287bff","#2869c9","#793dff"][i];panel(c,x,top,cardW,406,border,19,i===2?"#8b36ff25":"#168fff22");}
  panel(c,10,466,1260,214,"#4268a8",17,"#1a6bff20");line(c,22,506,1258,506);line(c,22,680,1258,680);staticReady=true;
