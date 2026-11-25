@@ -1,5 +1,6 @@
 "use strict";
 const fs=require("fs"),path=require("path"),{Worker,isMainThread,parentPort}=require("worker_threads");
+console.log("[CANVAS VERSION]",require("@napi-rs/canvas/package.json").version);
 const {createCanvas,loadImage,GlobalFonts}=require("@napi-rs/canvas"),{monitorEventLoopDelay}=require("perf_hooks");
 const W=1280,H=720,FPS=10,FRAME_MS=1000/FPS,FRAME_NS=BigInt(Math.round(FRAME_MS*1e6)),FRAME_BYTES=W*H*4;
 const nf=new Intl.NumberFormat("en-US"),MAX_RSS=440*1048576,IS_WORKER=!isMainThread,FONT="Inter";
