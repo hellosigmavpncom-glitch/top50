@@ -64,9 +64,11 @@ if(IS_WORKER){
   try{
    const renderMode=mode==="delivery-benchmark"?"raw":mode;
    const result=await renderInternal(data,renderMode),frameReadyNs=process.hrtime.bigint(),workerRenderMs=elapsed(workerStarted,frameReadyNs),length=result.byteLength;
-   const copied=Buffer.from(result),postedNs=process.hrtime.bigint();
-   const meta={...timing,workerExecutionMs:workerRenderMs,workerStartDelayMs:dispatchNs?elapsed(BigInt(dispatchNs),workerStarted):0,workerRenderMs,frameReadyToPostMs:elapsed(frameReadyNs,postedNs),zeroCopyTransfer:false,rawPixelMethod,workerEventLoopDelay:eventLoopSnapshot(workerEventLoop)};
-   parentPort.postMessage({id,ok:true,buffer:copied,byteOffset:0,byteLength:length,meta,postedNs:String(postedNs)});
+   const copyStart=process.hrtime.bigint(),output=new Uint8Array(length);
+   output.set(result);
+   const transferCopyMs=elapsed(copyStart),postedNs=process.hrtime.bigint();
+   const meta={...timing,workerExecutionMs:workerRenderMs,workerStartDelayMs:dispatchNs?elapsed(BigInt(dispatchNs),workerStarted):0,workerRenderMs,frameReadyToPostMs:elapsed(frameReadyNs,postedNs),transferCopyMs,zeroCopyTransfer:true,rawPixelMethod,workerEventLoopDelay:eventLoopSnapshot(workerEventLoop)};
+   parentPort.postMessage({id,ok:true,buffer:output.buffer,byteOffset:0,byteLength:length,meta,postedNs:String(postedNs)},[output.buffer]);
   }catch(e){parentPort.postMessage({id,ok:false,error:e.stack||e.message});}
  });
 }else{
@@ -109,7 +111,6 @@ if(IS_WORKER){
   });
  }
 
- /* Benchmark is passed workerRequest explicitly to avoid the scope error. */
  async function runDeliveryBenchmark(data,request){
   const duration=10000,warmup=4,loop=monitorEventLoopDelay({resolution:10});
   const samples={queueWait:[],workerStartDelay:[],workerRender:[],frameReadyToPost:[],workerToMainDelivery:[],mainMessageHandling:[],endToEnd:[],roundTrip:[],canvasDataCpu:[],canvasDataWait:[],drawCpu:[],drawWait:[]};
@@ -142,31 +143,17 @@ if(IS_WORKER){
   const totalMs=elapsed(start),cpu=process.cpuUsage(),memAfter=memorySnapshot(),eventLoop=eventLoopSnapshot(loop);
   const estimatedFPS=totalMs>0?round(frames/(totalMs/1000)):0;
   return {
-   estimatedFPS,
-   targetFPS:FPS,
-   fpsGoal:10,
-   meetsFPSGoal:estimatedFPS>=10,
-   renderer:"@napi-rs/canvas",
-   test:"Frame delivery and scheduling",
+   estimatedFPS,targetFPS:FPS,fpsGoal:10,meetsFPSGoal:estimatedFPS>=10,
+   renderer:"@napi-rs/canvas",test:"Frame delivery and scheduling",
    purpose:"Measures end-to-end frame delivery through the worker queue; does not compare extraction methods.",
-   resolution:`${W}x${H}`,
-   extractionMethod:"canvas.data()",
-   durationMs:round(totalMs),
-   measuredFrames:frames,
-   warmupFrames:warmup,
+   resolution:`${W}x${H}`,extractionMethod:"canvas.data()",durationMs:round(totalMs),measuredFrames:frames,warmupFrames:warmup,
    frameTimings:{
-    queueWaitMs:stats(samples.queueWait),
-    workerStartDelayMs:stats(samples.workerStartDelay),
-    workerRenderMs:stats(samples.workerRender),
-    frameReadyToPostMs:stats(samples.frameReadyToPost),
-    workerToMainDeliveryMs:stats(samples.workerToMainDelivery),
-    mainMessageHandlingMs:stats(samples.mainMessageHandling),
-    endToEndMs:stats(samples.endToEnd),
-    roundTripMs:stats(samples.roundTrip),
-    canvasDataCpuMs:numericStats(samples.canvasDataCpu),
-    canvasDataNonCpuWaitMs:numericStats(samples.canvasDataWait),
-    drawCpuMs:numericStats(samples.drawCpu),
-    drawNonCpuWaitMs:numericStats(samples.drawWait)
+    queueWaitMs:stats(samples.queueWait),workerStartDelayMs:stats(samples.workerStartDelay),
+    workerRenderMs:stats(samples.workerRender),frameReadyToPostMs:stats(samples.frameReadyToPost),
+    workerToMainDeliveryMs:stats(samples.workerToMainDelivery),mainMessageHandlingMs:stats(samples.mainMessageHandling),
+    endToEndMs:stats(samples.endToEnd),roundTripMs:stats(samples.roundTrip),
+    canvasDataCpuMs:numericStats(samples.canvasDataCpu),canvasDataNonCpuWaitMs:numericStats(samples.canvasDataWait),
+    drawCpuMs:numericStats(samples.drawCpu),drawNonCpuWaitMs:numericStats(samples.drawWait)
    },
    eventLoopDelay:{main:eventLoop,worker:lastWorkerEventLoop},
    memory:{before:memBefore,after:memAfter,rssPeakMiB:mib(maxRss),rssIncreaseMiB:round(mib(Math.max(0,maxRss-rssBefore))),safetyLimitMiB:mib(maxAllowedRss)},
