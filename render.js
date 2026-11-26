@@ -12,7 +12,7 @@ const images=new Map(),rollStates=new Map(),measureCache=new Map(),fontCache=new
 const history={subs:[],rates:[],samples:[],lastSample:0};
 const timing={dataFetchMs:0,avatarWaitMs:0,queueWaitMs:0,buildMs:0,renderMs:0,bufferMs:0,rawBufferMs:0,pipelineTotalMs:0,totalMs:0,transferCopyMs:0,transferPrepareMs:0,canvasDataCpuMs:0,canvasDataNonCpuWaitMs:0,drawCpuMs:0,drawNonCpuWaitMs:0,transferPreparationCpuMs:0,transferPreparationWallMs:0};
 let benchmarkActive=false,latestMain=null,sampleTimer=null,staticCanvas=null,staticReady=false,mainCanvas=null,mainContext=null;
-let chartCanvas=null,chartContext=null,chartCacheKey="",chartX=null,chartY=null,barSprite=null,barsCanvas=null,barsContext=null,barsKey="",goalGradient=null,profileGradient=null,lastUpdated=-1,lastUpdatedText="",renderQueue=Promise.resolve(),rawPixelMethod="canvas.data()",lastDrawMetrics=null;
+let chartCanvas=null,chartContext=null,chartCacheKey="",chartX=null,chartY=null,barSprite=null,barsCanvas=null,barsContext=null,barsKey="",goalGradient=null,profileGradient=null,lastUpdated=-1,lastUpdatedText="",rawPixelMethod="canvas.data()",lastDrawMetrics=null;
 
 function cpuSnapshot(){
  try{return typeof process.threadCpuUsage==="function"?process.threadCpuUsage():null;}
@@ -281,10 +281,13 @@ function renderInternalUnlocked(data={},mode="png",avatarPair,metrics){
  });
  return result;
 }
+
+/* Direct synchronous render: no extra Promise-chain queue. */
 function renderInternal(data={},mode="png"){
- const requestStart=process.hrtime.bigint(),pair=[avatar(data.lucan?.channel?.avatar),avatar(data.mine?.channel?.avatar)],queueStart=process.hrtime.bigint();
- const metrics={requestStart,avatarWaitMs:0,queueWaitMs:0},run=()=>{metrics.queueWaitMs=elapsed(queueStart);return renderInternalUnlocked(data,mode,pair,metrics);};
- const task=renderQueue.then(run,run);renderQueue=task.then(()=>undefined,()=>undefined);return task;
+ const requestStart=process.hrtime.bigint();
+ const pair=[avatar(data.lucan?.channel?.avatar),avatar(data.mine?.channel?.avatar)];
+ const metrics={requestStart,avatarWaitMs:0,queueWaitMs:0};
+ return renderInternalUnlocked(data,mode,pair,metrics);
 }
 function stats(a){
  if(!a.length)return{averageMs:0,medianMs:0,p95Ms:0,minMs:0,maxMs:0};
@@ -294,16 +297,16 @@ function stats(a){
 function memorySnapshot(){const m=process.memoryUsage();return{rssMiB:mib(m.rss),heapUsedMiB:mib(m.heapUsed),heapTotalMiB:mib(m.heapTotal),externalMiB:mib(m.external),arrayBuffersMiB:mib(m.arrayBuffers||0)};}
 
 if(IS_WORKER){
- parentPort.on("message",async msg=>{
+ parentPort.on("message",msg=>{
   if(msg.type==="resetEventLoop"){workerEventLoop.reset();return;}
   const{id,mode,data,sentNs}=msg,workerStarted=process.hrtime.bigint();
   try{
-   const result=await renderInternal(data,mode),renderDone=process.hrtime.bigint(),workerExecutionMs=elapsed(workerStarted,renderDone),length=result.byteLength;
+   const result=renderInternal(data,mode),renderDone=process.hrtime.bigint(),workerExecutionMs=elapsed(workerStarted,renderDone),length=result.byteLength;
    const prepStart=process.hrtime.bigint(),prepCpuStart=cpuSnapshot();
    let transfer=null,transferCopyMs=0,zeroCopy=false;
    if(result.buffer instanceof ArrayBuffer&&result.byteOffset===0&&result.byteLength===result.buffer.byteLength){transfer=result.buffer;zeroCopy=true;}
    else{
-    const copyStart=process.hrtime.bigint(),copyCpuStart=cpuSnapshot();
+    const copyStart=process.hrtime.bigint();
     transfer=new ArrayBuffer(length);new Uint8Array(transfer).set(new Uint8Array(result.buffer,result.byteOffset,length));
     transferCopyMs=elapsed(copyStart);
    }
