@@ -5,7 +5,8 @@
   "private": true,
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "keepalive": "node keepalive.js"
   },
   "dependencies": {
     "@napi-rs/canvas": "1.2.0",
