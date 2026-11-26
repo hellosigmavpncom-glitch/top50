@@ -73,7 +73,152 @@ function resetWorkerEventLoop(){if(worker)worker.postMessage({type:"resetEventLo
 function percentileSummary(a){return stats(a);}
 function countSlowFrames(a,limit){return a.filter(v=>v>limit).length;}
 function fpsBucketSummary(buckets,totalMs){const count=Math.max(0,Math.ceil(totalMs/1000)),perSecond=[],fullSecondRates=[];let totalFrames=0;for(let i=0;i<count;i++){const durationMs=Math.max(0,Math.min(1000,totalMs-i*1000)),frames=buckets.get(i)||0,fps=durationMs>0?round(frames/(durationMs/1000)):0;totalFrames+=frames;perSecond.push({second:i+1,frames,durationMs:round(durationMs),fps,partial:durationMs<999.999});if(durationMs>=999.999)fullSecondRates.push(fps);}return {bucketDurationMs:1000,buckets:perSecond.length,perSecond,completeSecondStats:numericStats(fullSecondRates),minimumCompleteSecondFPS:fullSecondRates.length?Math.min(...fullSecondRates):null,maximumCompleteSecondFPS:fullSecondRates.length?Math.max(...fullSecondRates):null,averageFPS:totalMs>0?round(totalFrames/(totalMs/1000)):0,totalBucketFrames:totalFrames};}
-async function runDeliveryBenchmark(data,request){const duration=10000,warmup=4,loop=monitorEventLoopDelay({resolution:10}),samples={queueWait:[],workerStartDelay:[],workerRender:[],frameReadyToPost:[],workerToMainDelivery:[],mainMessageHandling:[],endToEnd:[],roundTrip:[],frameGap:[],canvasDataWall:[],canvasDataCpu:[],canvasDataWait:[],drawWall:[],drawCpu:[],drawWait:[],transferPrepare:[],transferPrepareCpu:[],transferCopy:[],transferBytes:[]},buckets=new Map(),memBefore=memorySnapshot(),rssBefore=process.memoryUsage().rss,maxAllowedRss=Math.max(MAX_RSS,rssBefore+250*1048576);let frames=0,maxRss=rssBefore,stopReason=null,lastWorkerEventLoop=null,lastCompletedNs=null,directTransferFrames=0,copiedFrames=0,transferCandidateFrames=0;for(let i=0;i<warmup;i++)await request(data,"delivery-benchmark");resetWorkerEventLoop();const workerTimeoutsBefore=watchdogTimeouts,workerRestartsBefore=workerRestarts,workerExitBefore=lastWorkerExitCode,start=process.hrtime.bigint();loop.reset();loop.enable();try{while(elapsed(start)<duration){if(process.memoryUsage().rss>maxAllowedRss){stopReason="Memory safety limit reached";break;}const result=await request(data,"delivery-benchmark"),receivedNs=process.hrtime.bigint(),m=result.meta,frameElapsedMs=elapsed(start,receivedNs),bucket=Math.floor(frameElapsedMs/1000);buckets.set(bucket,(buckets.get(bucket)||0)+1);samples.queueWait.push(m.queueWaitMs||0);samples.workerStartDelay.push(m.workerStartDelayMs||0);samples.workerRender.push(m.workerRenderMs||0);samples.frameReadyToPost.push(m.frameReadyToPostMs||0);samples.workerToMainDelivery.push(m.workerToMainDeliveryMs||0);samples.mainMessageHandling.push(m.mainMessageHandlingMs||0);samples.endToEnd.push(m.endToEndMs||0);samples.roundTrip.push(m.roundTripMs||0);if(lastCompletedNs!==null)samples.frameGap.push(elapsed(lastCompletedNs,receivedNs));lastCompletedNs=receivedNs;if(typeof m.canvasDataWallMs==="number")samples.canvasDataWall.push(m.canvasDataWallMs);else if(typeof m.rawBufferMs==="number")samples.canvasDataWall.push(m.rawBufferMs);if(typeof m.canvasDataCpuMs==="number")samples.canvasDataCpu.push(m.canvasDataCpuMs);if(typeof m.canvasDataNonCpuWaitMs==="number")samples.canvasDataWait.push(m.canvasDataNonCpuWaitMs);if(typeof m.drawMainMs==="number")samples.drawWall.push(m.drawMainMs);if(typeof m.drawCpuMs==="number")samples.drawCpu.push(m.drawCpuMs);if(typeof m.drawNonCpuWaitMs==="number")samples.drawWait.push(m.drawNonCpuWaitMs);if(typeof m.transferPrepareMs==="number")samples.transferPrepare.push(m.transferPrepareMs);if(typeof m.transferPrepareCpuMs==="number")samples.transferPrepareCpu.push(m.transferPrepareCpuMs);if(typeof m.transferCopyMs==="number")samples.transferCopy.push(m.transferCopyMs);if(typeof m.transferBufferBytes==="number")samples.transferBytes.push(m.transferBufferBytes);if(m.zeroCopyTransferCandidate)transferCandidateFrames++;if(m.directBufferEligible)directTransferFrames++;if((m.frameCopyCount||0)>0)copiedFrames+=m.frameCopyCount;lastWorkerEventLoop=m.workerEventLoopDelay||lastWorkerEventLoop;frames++;const rss=process.memoryUsage().rss;if(rss>maxRss)maxRss=rss;}}finally{loop.disable();}const totalMs=elapsed(start),cpu=process.cpuUsage(),memAfter=memorySnapshot(),eventLoop=eventLoopSnapshot(loop),estimatedFPS=totalMs>0?round(frames/(totalMs/1000)):0,frameGaps=samples.frameGap,slowFrames={over33ms:countSlowFrames(frameGaps,33),over50ms:countSlowFrames(frameGaps,50),over100ms:countSlowFrames(frameGaps,100),over150ms:countSlowFrames(frameGaps,150),over200ms:countSlowFrames(frameGaps,200)},fpsBuckets=fpsBucketSummary(buckets,totalMs);return {estimatedFPS,targetFPS:FPS,fpsGoal:10,meetsFPSGoal:estimatedFPS>=10,renderer:"@napi-rs/canvas",test:"Frame delivery and scheduling",purpose:"Measures end-to-end frame delivery, transfer preparation, canvas readback, drawing CPU/wait time, worker scheduling, and frame-gap consistency.",resolution:`${W}x${H}`,extractionMethod:"canvas.data()",durationMs:round(totalMs),measuredFrames:frames,warmupFrames:warmup,frameTimings:{queueWaitMs:stats(samples.queueWait),workerStartDelayMs:stats(samples.workerStartDelay),workerRenderMs:stats(samples.workerRender),frameReadyToPostMs:stats(samples.frameReadyToPost),workerToMainDeliveryMs:stats(samples.workerToMainDelivery),mainMessageHandlingMs:stats(samples.mainMessageHandling),endToEndMs:stats(samples.endToEnd),roundTripMs:stats(samples.roundTrip),frameCompletionGapMs:stats(frameGaps),canvasDataWallMs:numericStats(samples.canvasDataWall),canvasDataCpuMs:numericStats(samples.canvasDataCpu),canvasDataNonCpuWaitMs:numericStats(samples.canvasDataWait),drawMainWallMs:numericStats(samples.drawWall),drawCpuMs:numericStats(samples.drawCpu),drawNonCpuWaitMs:numericStats(samples.drawWait)},transfer:{frames:frames,directTransferFrames,copiedFrames,zeroCopyCandidateFrames:transferCandidateFrames,directTransferPercent:frames?round(directTransferFrames/frames*100):0,copiedFramePercent:frames?round(copiedFrames/frames*100):0,bufferBytes:numericStats(samples.transferBytes),prepareWallMs:numericStats(samples.transferPrepare),prepareCpuMs:numericStats(samples.transferPrepareCpu),copyWallMs:numericStats(samples.transferCopy),expectedRawFrameBytes:FRAME_BYTES},consistency:{slowFrameCounts:slowFrames,perSecondFPS:fpsBuckets,frameGapSamples:frameGaps.length},workerRecovery:{watchdogTimeouts:watchdogTimeouts-workerTimeoutsBefore,workerRestarts:workerRestarts-workerRestartsBefore,lastWorkerExitCode,workerExitCodeBefore:workerExitBefore},eventLoopDelay:{main:eventLoop,worker:lastWorkerEventLoop},memory:{before:memBefore,after:memAfter,rssPeakMiB:mib(maxRss),rssIncreaseMiB:round(mib(Math.max(0,maxRss-rssBefore))),safetyLimitMiB:mib(maxAllowedRss)},cpuUsageMs:{user:round(cpu.user/1000),system:round(cpu.system/1000),total:round((cpu.user+cpu.system)/1000)},stopReason};}
+
+async function runDeliveryBenchmark(data,request){
+const duration=10000,warmup=4,loop=monitorEventLoopDelay({resolution:10}),samples={queueWait:[],workerStartDelay:[],workerRender:[],frameReadyToPost:[],workerToMainDelivery:[],mainMessageHandling:[],endToEnd:[],roundTrip:[],frameGap:[],canvasDataWall:[],canvasDataCpu:[],canvasDataWait:[],drawWall:[],drawCpu:[],drawWait:[],transferPrepare:[],transferPrepareCpu:[],transferCopy:[],transferBytes:[]},buckets=new Map(),slowestFrames=[],memBefore=memorySnapshot(),rssBefore=process.memoryUsage().rss,maxAllowedRss=Math.max(MAX_RSS,rssBefore+250*1048576);
+let frames=0,maxRss=rssBefore,stopReason=null,lastWorkerEventLoop=null,lastCompletedNs=null,directTransferFrames=0,copiedFrames=0,transferCandidateFrames=0;
+for(let i=0;i<warmup;i++)await request(data,"delivery-benchmark");
+resetWorkerEventLoop();
+const workerTimeoutsBefore=watchdogTimeouts,workerRestartsBefore=workerRestarts,workerExitBefore=lastWorkerExitCode,start=process.hrtime.bigint();
+loop.reset();
+loop.enable();
+try{
+while(elapsed(start)<duration){
+if(process.memoryUsage().rss>maxAllowedRss){stopReason="Memory safety limit reached";break;}
+const result=await request(data,"delivery-benchmark"),receivedNs=process.hrtime.bigint(),m=result.meta,frameElapsedMs=elapsed(start,receivedNs),bucket=Math.floor(frameElapsedMs/1000);
+buckets.set(bucket,(buckets.get(bucket)||0)+1);
+samples.queueWait.push(m.queueWaitMs||0);
+samples.workerStartDelay.push(m.workerStartDelayMs||0);
+samples.workerRender.push(m.workerRenderMs||0);
+samples.frameReadyToPost.push(m.frameReadyToPostMs||0);
+samples.workerToMainDelivery.push(m.workerToMainDeliveryMs||0);
+samples.mainMessageHandling.push(m.mainMessageHandlingMs||0);
+samples.endToEnd.push(m.endToEndMs||0);
+samples.roundTrip.push(m.roundTripMs||0);
+const frameGapMs=lastCompletedNs!==null?elapsed(lastCompletedNs,receivedNs):null;
+if(frameGapMs!==null)samples.frameGap.push(frameGapMs);
+lastCompletedNs=receivedNs;
+if(typeof m.canvasDataWallMs==="number")samples.canvasDataWall.push(m.canvasDataWallMs);
+else if(typeof m.rawBufferMs==="number")samples.canvasDataWall.push(m.rawBufferMs);
+if(typeof m.canvasDataCpuMs==="number")samples.canvasDataCpu.push(m.canvasDataCpuMs);
+if(typeof m.canvasDataNonCpuWaitMs==="number")samples.canvasDataWait.push(m.canvasDataNonCpuWaitMs);
+if(typeof m.drawMainMs==="number")samples.drawWall.push(m.drawMainMs);
+if(typeof m.drawCpuMs==="number")samples.drawCpu.push(m.drawCpuMs);
+if(typeof m.drawNonCpuWaitMs==="number")samples.drawWait.push(m.drawNonCpuWaitMs);
+if(typeof m.transferPrepareMs==="number")samples.transferPrepare.push(m.transferPrepareMs);
+if(typeof m.transferPrepareCpuMs==="number")samples.transferPrepareCpu.push(m.transferPrepareCpuMs);
+if(typeof m.transferCopyMs==="number")samples.transferCopy.push(m.transferCopyMs);
+if(typeof m.transferBufferBytes==="number")samples.transferBytes.push(m.transferBufferBytes);
+if(m.zeroCopyTransferCandidate)transferCandidateFrames++;
+if(m.directBufferEligible)directTransferFrames++;
+if((m.frameCopyCount||0)>0)copiedFrames+=m.frameCopyCount;
+lastWorkerEventLoop=m.workerEventLoopDelay||lastWorkerEventLoop;
+const endToEndMs=round(m.endToEndMs||0),severityMs=round(Math.max(endToEndMs,frameGapMs||0));
+slowestFrames.push({
+frame:frames+1,
+elapsedMs:round(frameElapsedMs),
+frameGapMs:frameGapMs===null?null:round(frameGapMs),
+endToEndMs,
+severityMs,
+queueWaitMs:round(m.queueWaitMs),
+workerStartDelayMs:round(m.workerStartDelayMs),
+workerRenderMs:round(m.workerRenderMs),
+frameReadyToPostMs:round(m.frameReadyToPostMs),
+workerToMainDeliveryMs:round(m.workerToMainDeliveryMs),
+mainMessageHandlingMs:round(m.mainMessageHandlingMs),
+canvasDataWallMs:round(m.canvasDataWallMs??m.rawBufferMs),
+canvasDataCpuMs:round(m.canvasDataCpuMs),
+canvasDataNonCpuWaitMs:round(m.canvasDataNonCpuWaitMs),
+drawMainWallMs:round(m.drawMainMs??m.renderMs),
+drawCpuMs:round(m.drawCpuMs),
+drawNonCpuWaitMs:round(m.drawNonCpuWaitMs),
+transferPrepareMs:round(m.transferPrepareMs),
+transferPrepareCpuMs:round(m.transferPrepareCpuMs),
+transferCopyMs:round(m.transferCopyMs),
+workerEventLoopDelay:m.workerEventLoopDelay||null,
+drawParts:m.drawParts||null
+});
+frames++;
+const rss=process.memoryUsage().rss;
+if(rss>maxRss)maxRss=rss;
+}
+}finally{loop.disable();}
+const totalMs=elapsed(start),cpu=process.cpuUsage(),memAfter=memorySnapshot(),eventLoop=eventLoopSnapshot(loop),estimatedFPS=totalMs>0?round(frames/(totalMs/1000)):0,frameGaps=samples.frameGap,slowFrames={over33ms:countSlowFrames(frameGaps,33),over50ms:countSlowFrames(frameGaps,50),over100ms:countSlowFrames(frameGaps,100),over150ms:countSlowFrames(frameGaps,150),over200ms:countSlowFrames(frameGaps,200)},fpsBuckets=fpsBucketSummary(buckets,totalMs);
+slowestFrames.sort((a,b)=>b.severityMs-a.severityMs);
+return {
+estimatedFPS,
+targetFPS:FPS,
+fpsGoal:10,
+meetsFPSGoal:estimatedFPS>=10,
+renderer:"@napi-rs/canvas",
+test:"Frame delivery and scheduling",
+purpose:"Measures end-to-end frame delivery, transfer preparation, canvas readback, drawing CPU/wait time, worker scheduling, frame-gap consistency, and per-frame slow-frame correlation.",
+resolution:`${W}x${H}`,
+extractionMethod:"canvas.data()",
+durationMs:round(totalMs),
+measuredFrames:frames,
+warmupFrames:warmup,
+frameTimings:{
+queueWaitMs:stats(samples.queueWait),
+workerStartDelayMs:stats(samples.workerStartDelay),
+workerRenderMs:stats(samples.workerRender),
+frameReadyToPostMs:stats(samples.frameReadyToPost),
+workerToMainDeliveryMs:stats(samples.workerToMainDelivery),
+mainMessageHandlingMs:stats(samples.mainMessageHandling),
+endToEndMs:stats(samples.endToEnd),
+roundTripMs:stats(samples.roundTrip),
+frameCompletionGapMs:stats(frameGaps),
+canvasDataWallMs:numericStats(samples.canvasDataWall),
+canvasDataCpuMs:numericStats(samples.canvasDataCpu),
+canvasDataNonCpuWaitMs:numericStats(samples.canvasDataWait),
+drawMainWallMs:numericStats(samples.drawWall),
+drawCpuMs:numericStats(samples.drawCpu),
+drawNonCpuWaitMs:numericStats(samples.drawWait)
+},
+transfer:{
+frames:frames,
+directTransferFrames,
+copiedFrames,
+zeroCopyCandidateFrames:transferCandidateFrames,
+directTransferPercent:frames?round(directTransferFrames/frames*100):0,
+copiedFramePercent:frames?round(copiedFrames/frames*100):0,
+bufferBytes:numericStats(samples.transferBytes),
+prepareWallMs:numericStats(samples.transferPrepare),
+prepareCpuMs:numericStats(samples.transferPrepareCpu),
+copyWallMs:numericStats(samples.transferCopy),
+expectedRawFrameBytes:FRAME_BYTES
+},
+consistency:{
+slowFrameCounts:slowFrames,
+perSecondFPS:fpsBuckets,
+frameGapSamples:frameGaps.length,
+slowestFrames:slowestFrames.slice(0,10)
+},
+workerRecovery:{
+watchdogTimeouts:watchdogTimeouts-workerTimeoutsBefore,
+workerRestarts:workerRestarts-workerRestartsBefore,
+lastWorkerExitCode,
+workerExitCodeBefore:workerExitBefore
+},
+eventLoopDelay:{
+main:eventLoop,
+worker:lastWorkerEventLoop
+},
+memory:{
+before:memBefore,
+after:memAfter,
+rssPeakMiB:mib(maxRss),
+rssIncreaseMiB:round(mib(Math.max(0,maxRss-rssBefore))),
+safetyLimitMiB:mib(maxAllowedRss)
+},
+cpuUsageMs:{
+user:round(cpu.user/1000),
+system:round(cpu.system/1000),
+total:round((cpu.user+cpu.system)/1000)
+},
+stopReason
+};
+}
 async function renderDashboard(data){const r=await workerRequest(data,"png-async");Object.assign(timing,r.meta);return r.buffer;}
 async function renderRawFrame(data){const r=await workerRequest(data,"raw");Object.assign(timing,r.meta);return r.buffer;}
 async function warmWorker(data){for(let i=0;i<4;i++)await renderRawFrame(data);}
