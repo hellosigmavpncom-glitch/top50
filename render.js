@@ -53,74 +53,56 @@ function extractRawFrame(canvas){const start=process.hrtime.bigint(),cpuStart=cp
 async function renderInternalUnlocked(data={},mode="png-async",avatarPair,metrics){const start=process.hrtime.bigint();drawMain.avatar1=avatarPair[0];drawMain.avatar2=avatarPair[1];const drawCpuStart=cpuSnapshot(),drawStart=process.hrtime.bigint(),canvas=drawMain(data),drawDone=process.hrtime.bigint(),drawWallMs=elapsed(drawStart,drawDone),drawCpuMs=cpuDeltaMs(drawCpuStart);let result,extractMs=0,bufferInfo=null,extractCpuMs=null,extractNonCpuWaitMs=null,pngEncodingWallMs=0;if(mode==="raw"){const raw=extractRawFrame(canvas);result=raw.result;extractMs=raw.extractMs;bufferInfo=raw.bufferInfo;extractCpuMs=raw.extractCpuMs;extractNonCpuWaitMs=raw.extractNonCpuWaitMs;}else{if(typeof canvas.encode!=="function")throw Error("canvas.encode() is unavailable");const encodeStart=process.hrtime.bigint();const encoded=await canvas.encode("png");pngEncodingWallMs=elapsed(encodeStart);result=Buffer.isBuffer(encoded)?encoded:Buffer.from(encoded);}const done=process.hrtime.bigint();Object.assign(timing,{avatarWaitMs:metrics.avatarWaitMs,queueWaitMs:metrics.queueWaitMs,renderMs:drawWallMs,drawMainMs:drawWallMs,drawCpuMs,drawNonCpuWaitMs:drawCpuMs===null?null:Math.max(0,drawWallMs-drawCpuMs),bufferMs:elapsed(drawDone,done),rawBufferMs:extractMs,canvasDataCpuMs:extractCpuMs,canvasDataNonCpuWaitMs:extractNonCpuWaitMs,pipelineTotalMs:elapsed(start,done),totalMs:elapsed(metrics.requestStart,done),rawBufferInfo:bufferInfo,drawParts:lastDrawMetrics,pngEncodingWallMs});return result;}
 async function renderInternal(data={},mode="png-async",queueWaitMs=0){const requestStart=process.hrtime.bigint(),pair=[avatar(data.lucan?.channel?.avatar),avatar(data.mine?.channel?.avatar)];return await renderInternalUnlocked(data,mode,pair,{requestStart,avatarWaitMs:0,queueWaitMs});}
 
-/* Updated extraction benchmark */
-function compareBytes(a,b){if(a.length!==b.length)return false;for(let i=0;i<a.length;i++)if(a[i]!==b[i])return false;return true;}
-const yieldEventLoop=()=>new Promise(resolve=>setImmediate(resolve));
-
-async function runExtractionBenchmark(data){
- const duration=10000,warmup=8;
- const methods=["canvas.data()","getImageData().data","canvas.data()+reusable copy"];
- const samples=Object.fromEntries(methods.map(k=>[k,{wall:[],threadCpu:[],processCpu:[],processCpuPercent:[],nonCpuWait:[],copyWall:[],copyCpu:[],sizes:[],matches:0,checks:0}]));
- const reusable=Buffer.allocUnsafe(FRAME_BYTES),ctx=mainContext;
- let frames=0,maxRss=0,stopReason=null,outputs=null;
- for(let i=0;i<warmup;i++){const canvas=drawMain(data);canvas.data();ctx.getImageData(0,0,W,H);await yieldEventLoop();}
- await yieldEventLoop();
- const memBefore=memorySnapshot(),rssBefore=process.memoryUsage().rss;
- const maxAllowedRss=Math.max(MAX_RSS,rssBefore+250*1048576);
- const loop=monitorEventLoopDelay({resolution:10});
- const start=process.hrtime.bigint(),cpuStart=process.cpuUsage();
+/* Frame-delivery benchmark: production extraction remains canvas.data(). */
+async function runDeliveryBenchmark(data){
+ const duration=10000,warmup=4,start=process.hrtime.bigint(),loop=monitorEventLoopDelay({resolution:10});
+ const samples={queueWait:[],workerStartDelay:[],workerRender:[],frameReadyToPost:[],workerToMainDelivery:[],mainMessageHandling:[],endToEnd:[],roundTrip:[]};
+ const memBefore=memorySnapshot(),rssBefore=process.memoryUsage().rss,maxAllowedRss=Math.max(MAX_RSS,rssBefore+250*1048576);
+ let frames=0,maxRss=rssBefore,stopReason=null,lastWorkerEventLoop=null;
  loop.enable();
- while(elapsed(start)<duration){
-  if(process.memoryUsage().rss>maxAllowedRss){stopReason="Memory safety limit reached";break;}
-  const canvas=drawMain(data),order=frames%methods.length,ordered=methods.slice(order).concat(methods.slice(0,order));
-  outputs={};
-  for(const method of ordered){
-   const item=samples[method],processStart=process.cpuUsage(),threadStart=cpuSnapshot(),wallStart=process.hrtime.bigint();
-   let pixels,copyWall=0,copyCpu=0;
-   if(method==="canvas.data()")pixels=canvas.data();
-   else if(method==="getImageData().data")pixels=ctx.getImageData(0,0,W,H).data;
-   else{const source=canvas.data(),copyStart=process.hrtime.bigint(),copyThread=cpuSnapshot();reusable.set(source);copyWall=elapsed(copyStart);const cd=cpuDeltaMs(copyThread);copyCpu=cd===null?0:cd;pixels=reusable;}
-   const wall=elapsed(wallStart),threadCpu=cpuDeltaMs(threadStart),usage=process.cpuUsage(processStart),processCpu=(usage.user+usage.system)/1000;
-   item.wall.push(wall);item.threadCpu.push(threadCpu??0);item.processCpu.push(processCpu);item.processCpuPercent.push(wall>0?processCpu/wall*100:0);item.nonCpuWait.push(threadCpu===null?0:Math.max(0,wall-threadCpu));item.copyWall.push(copyWall);item.copyCpu.push(copyCpu);item.sizes.push(pixels.byteLength);outputs[method]=pixels;
+ try{
+  for(let i=0;i<warmup;i++)await workerRequest(data,"delivery-benchmark");
+  const benchmarkStart=process.hrtime.bigint();
+  while(elapsed(benchmarkStart)<duration){
+   if(process.memoryUsage().rss>maxAllowedRss){stopReason="Memory safety limit reached";break;}
+   const result=await workerRequest(data,"delivery-benchmark"),m=result.meta;
+   samples.queueWait.push(m.queueWaitMs||0);
+   samples.workerStartDelay.push(m.workerStartDelayMs||0);
+   samples.workerRender.push(m.workerRenderMs||0);
+   samples.frameReadyToPost.push(m.frameReadyToPostMs||0);
+   samples.workerToMainDelivery.push(m.workerToMainDeliveryMs||0);
+   samples.mainMessageHandling.push(m.mainMessageHandlingMs||0);
+   samples.endToEnd.push(m.endToEndMs||0);
+   samples.roundTrip.push(m.roundTripMs||0);
+   lastWorkerEventLoop=m.workerEventLoopDelay||lastWorkerEventLoop;
+   frames++;
+   const rss=process.memoryUsage().rss;if(rss>maxRss)maxRss=rss;
   }
-  const base=outputs["canvas.data()"];
-  for(const method of methods){const item=samples[method];item.checks++;if(compareBytes(base,outputs[method]))item.matches++;}
-  outputs=null;
-  frames++;
-  const rss=process.memoryUsage().rss;if(rss>maxRss)maxRss=rss;
-  await yieldEventLoop();
- }
- const total=elapsed(start),cpuUsed=process.cpuUsage(cpuStart),memAfter=memorySnapshot(),eventLoop=eventLoopSnapshot(loop);
- loop.disable();
- const results={};
- for(const method of methods){
-  const a=samples[method];
-  results[method]={
-   wallMs:stats(a.wall),
-   threadCpuMs:numericStats(a.threadCpu),
-   processCpuMs:numericStats(a.processCpu),
-   processCpuPercent:numericStats(a.processCpuPercent),
-   nonCpuWaitMs:numericStats(a.nonCpuWait),
-   copyWallMs:stats(a.copyWall),
-   copyCpuMs:numericStats(a.copyCpu),
-   bufferBytes:{min:a.sizes.length?Math.min(...a.sizes):0,max:a.sizes.length?Math.max(...a.sizes):0},
-   pixelChecks:{passed:a.matches,total:a.checks,allMatch:a.checks>0&&a.matches===a.checks}
-  };
- }
+ }finally{loop.disable();}
+ const totalMs=elapsed(start),cpu=process.cpuUsage(),memAfter=memorySnapshot(),eventLoop=eventLoopSnapshot(loop);
+ const estimatedFPS=totalMs>0?round(frames/(totalMs/1000)):0;
  return {
-  renderer:"@napi-rs/canvas",
-  test:"Raw pixel extraction comparison",
-  resolution:`${W}x${H}`,
+  estimatedFPS,
   targetFPS:FPS,
-  durationMs:round(total),
-  frames,
-  samplesPerMethod:Object.fromEntries(methods.map(k=>[k,samples[k].checks])),
-  methods:results,
-  methodOrder:"Rotating order each frame",
+  fpsGoalMet:estimatedFPS>=FPS,
+  renderer:"@napi-rs/canvas",
+  test:"Frame delivery and scheduling",
+  resolution:`${W}x${H}`,
+  extractionMethod:"canvas.data()",
+  durationMs:round(totalMs),
+  measuredFrames:frames,
   warmupFrames:warmup,
-  comparison:"All methods checked against canvas.data() output from the same frame",
-  cpu:{userMs:round(cpuUsed.user/1000),systemMs:round(cpuUsed.system/1000)},
-  eventLoopDelay:eventLoop,
+  frameTimings:{
+   queueWaitMs:stats(samples.queueWait),
+   workerStartDelayMs:stats(samples.workerStartDelay),
+   workerRenderMs:stats(samples.workerRender),
+   frameReadyToPostMs:stats(samples.frameReadyToPost),
+   workerToMainDeliveryMs:stats(samples.workerToMainDelivery),
+   mainMessageHandlingMs:stats(samples.mainMessageHandling),
+   endToEndMs:stats(samples.endToEnd),
+   roundTripMs:stats(samples.roundTrip)
+  },
+  eventLoopDelay:{main:eventLoop,worker:lastWorkerEventLoop},
   memory:{before:memBefore,after:memAfter,rssPeakMiB:mib(maxRss),rssIncreaseMiB:round(mib(Math.max(0,maxRss-rssBefore))),safetyLimitMiB:mib(maxAllowedRss)},
   stopReason
  };
@@ -132,16 +114,13 @@ if(IS_WORKER)workerEventLoop.enable();
 if(IS_WORKER){
  parentPort.on("message",async msg=>{
   if(msg.type==="resetEventLoop"){workerEventLoop.reset();return;}
-  if(msg.type==="extractBenchmark"){
-   try{const result=await runExtractionBenchmark(msg.data),safe=JSON.parse(JSON.stringify(result,(_,v)=>typeof v==="bigint"?v.toString():v));parentPort.postMessage({id:msg.id,ok:true,benchmark:safe});}
-   catch(e){parentPort.postMessage({id:msg.id,ok:false,error:e.stack||e.message});}
-   return;
-  }
   const {id,mode,data,dispatchNs}=msg,workerStarted=process.hrtime.bigint();
   try{
-   const result=await renderInternal(data,mode),renderDone=process.hrtime.bigint(),workerExecutionMs=elapsed(workerStarted,renderDone),length=result.byteLength;
-   const copied=Buffer.from(result),meta={...timing,workerExecutionMs,workerDispatchMs:dispatchNs?elapsed(BigInt(dispatchNs),workerStarted):0,zeroCopyTransfer:false,rawPixelMethod,workerEventLoopDelay:eventLoopSnapshot(workerEventLoop)};
-   parentPort.postMessage({id,ok:true,buffer:copied,byteOffset:0,byteLength:length,meta,postedNs:String(process.hrtime.bigint())});
+   const renderMode=mode==="delivery-benchmark"?"raw":mode;
+   const result=await renderInternal(data,renderMode),frameReadyNs=process.hrtime.bigint(),workerRenderMs=elapsed(workerStarted,frameReadyNs),length=result.byteLength;
+   const copied=Buffer.from(result),postedNs=process.hrtime.bigint();
+   const meta={...timing,workerExecutionMs:workerRenderMs,workerStartDelayMs:dispatchNs?elapsed(BigInt(dispatchNs),workerStarted):0,workerRenderMs,frameReadyToPostMs:elapsed(frameReadyNs,postedNs),zeroCopyTransfer:false,rawPixelMethod,workerEventLoopDelay:eventLoopSnapshot(workerEventLoop)};
+   parentPort.postMessage({id,ok:true,buffer:copied,byteOffset:0,byteLength:length,meta,postedNs:String(postedNs)});
   }catch(e){parentPort.postMessage({id,ok:false,error:e.stack||e.message});}
  });
 }else{
@@ -156,8 +135,13 @@ if(IS_WORKER){
    if(!active||msg.id!==active.id)return;
    const r=active;active=null;
    if(!msg.ok){rejectRequest(r,Error(msg.error));pump();return;}
-   if(r.mode==="extract-benchmark"){for(const waiter of r.waiters)waiter.resolve(msg.benchmark);pump();return;}
-   const receivedNs=process.hrtime.bigint(),buffer=Buffer.from(msg.buffer,msg.byteOffset||0,msg.byteLength||msg.buffer.byteLength),resolvedNs=process.hrtime.bigint(),result={buffer,meta:{...msg.meta,queueWaitMs:r.queueWaitMs||0,roundTripMs:elapsed(r.dispatchNs,receivedNs),workerToMainDeliveryMs:msg.postedNs?elapsed(BigInt(msg.postedNs),receivedNs):0,mainMessageHandlingMs:elapsed(receivedNs,resolvedNs)}};
+   const receivedNs=process.hrtime.bigint();
+   if(r.mode==="delivery-benchmark"){
+    const resolvedNs=process.hrtime.bigint(),result={buffer:null,meta:{...msg.meta,queueWaitMs:r.queueWaitMs||0,roundTripMs:elapsed(r.dispatchNs,receivedNs),workerToMainDeliveryMs:msg.postedNs?elapsed(BigInt(msg.postedNs),receivedNs):0,mainMessageHandlingMs:elapsed(receivedNs,resolvedNs),endToEndMs:elapsed(r.queuedNs,receivedNs)}};
+    for(const waiter of r.waiters)waiter.resolve(result);
+    pump();return;
+   }
+   const buffer=Buffer.from(msg.buffer,msg.byteOffset||0,msg.byteLength||msg.buffer.byteLength),resolvedNs=process.hrtime.bigint(),result={buffer,meta:{...msg.meta,queueWaitMs:r.queueWaitMs||0,roundTripMs:elapsed(r.dispatchNs,receivedNs),workerToMainDeliveryMs:msg.postedNs?elapsed(BigInt(msg.postedNs),receivedNs):0,mainMessageHandlingMs:elapsed(receivedNs,resolvedNs),endToEndMs:elapsed(r.queuedNs,receivedNs)}};
    for(const waiter of r.waiters)waiter.resolve(result);
    pump();
   });
@@ -170,7 +154,7 @@ if(IS_WORKER){
   const r=latestRaw||pngQueue.shift();if(!r)return;
   if(r===latestRaw)latestRaw=null;
   startWorker();active=r;r.dispatchNs=process.hrtime.bigint();r.queueWaitMs=elapsed(r.queuedNs,r.dispatchNs);
-  try{worker.postMessage({id:r.id,data:r.data,mode:r.mode,dispatchNs:String(r.dispatchNs),type:r.mode==="extract-benchmark"?"extractBenchmark":undefined});}
+  try{worker.postMessage({id:r.id,data:r.data,mode:r.mode,dispatchNs:String(r.dispatchNs)});}
   catch(e){active=null;rejectRequest(r,e);pump();}
  }
  function workerRequest(data,mode="png-async"){
@@ -194,9 +178,16 @@ if(IS_WORKER){
   app.get("/api/renderer/benchmark",async(req,res)=>{
    if(benchmarkActive)return res.status(409).json({error:"Benchmark already running"});
    benchmarkActive=true;
-   try{res.set("Cache-Control","no-store");const data=await getData();await warmWorker(data);const result=await workerRequest(data,"extract-benchmark");res.json(result);}
-   catch(e){console.error("[CANVAS BENCHMARK]",e.stack||e);if(!res.headersSent)res.status(500).json({error:"Extraction benchmark failed",message:e.message});}
-   finally{benchmarkActive=false;}
+   try{
+    res.set("Cache-Control","no-store,no-cache,must-revalidate");
+    const data=await getData();
+    await warmWorker(data);
+    const result=await runDeliveryBenchmark(data);
+    res.json(result);
+   }catch(e){
+    console.error("[CANVAS DELIVERY BENCHMARK]",e.stack||e);
+    if(!res.headersSent)res.status(500).json({error:"Frame-delivery benchmark failed",message:e.message});
+   }finally{benchmarkActive=false;}
   });
  }
  startWorker();
