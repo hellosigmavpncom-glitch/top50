@@ -327,29 +327,72 @@ if(IS_WORKER){
   }catch(e){parentPort.postMessage({id,ok:false,error:e.stack||e.message});}
  });
 }else{
- let worker=null,nextId=0;const pending=new Map(),eventLoop=monitorEventLoopDelay({resolution:20});eventLoop.enable();
- function failWorker(error){for(const [id,p] of pending){p.reject(error);pending.delete(id);}console.error("[RENDER WORKER]",error?.stack||error);}
+ let worker=null,nextId=0,active=null,latestRaw=null;
+ const pngQueue=[],eventLoop=monitorEventLoopDelay({resolution:20});
+ eventLoop.enable();
+
+ function rejectRequest(r,e){if(r)for(const w of r.waiters)w.reject(e);}
+ function failWorker(e){
+  rejectRequest(active,e);active=null;
+  rejectRequest(latestRaw,e);latestRaw=null;
+  for(const r of pngQueue)rejectRequest(r,e);
+  pngQueue.length=0;console.error("[RENDER WORKER]",e?.stack||e);
+ }
  function startWorker(){
-  if(worker)return;worker=new Worker(__filename);
-  worker.on("message",msg=>{
-   const receivedNs=process.hrtime.bigint(),p=pending.get(msg.id);if(!p)return;pending.delete(msg.id);
-   if(!msg.ok){p.reject(Error(msg.error));return;}
-   const buffer=Buffer.from(msg.buffer,msg.byteOffset||0,msg.byteLength||msg.buffer.byteLength),resolvedNs=process.hrtime.bigint();
-   p.resolve({buffer,meta:{...msg.meta,roundTripMs:elapsed(p.sentNs,receivedNs),workerToMainDeliveryMs:msg.postedNs?elapsed(BigInt(msg.postedNs),receivedNs):0,mainMessageHandlingMs:elapsed(receivedNs,resolvedNs),messageReceivedNs:String(receivedNs)}});
+  if(worker)return;
+  const w=worker=new Worker(__filename);
+  w.on("message",msg=>{
+   if(!active||msg.id!==active.id)return;
+   const r=active;active=null;
+   if(!msg.ok){rejectRequest(r,Error(msg.error));pump();return;}
+   const receivedNs=process.hrtime.bigint();
+   const buffer=Buffer.from(msg.buffer,msg.byteOffset||0,msg.byteLength||msg.buffer.byteLength);
+   const resolvedNs=process.hrtime.bigint();
+   const result={buffer,meta:{
+    ...msg.meta,roundTripMs:elapsed(r.sentNs,receivedNs),
+    workerToMainDeliveryMs:msg.postedNs?elapsed(BigInt(msg.postedNs),receivedNs):0,
+    mainMessageHandlingMs:elapsed(receivedNs,resolvedNs),
+    messageReceivedNs:String(receivedNs)
+   }};
+   for(const w of r.waiters)w.resolve(result);
+   pump();
   });
-  worker.on("error",e=>{failWorker(e);worker=null;});
-  worker.on("exit",code=>{worker=null;if(code!==0)failWorker(Error("Renderer worker exited with code "+code));});
+  w.on("error",e=>{if(worker===w){worker=null;failWorker(e);}});
+  w.on("exit",code=>{if(worker===w){worker=null;if(code!==0)failWorker(Error("Renderer worker exited with code "+code));}});
   console.log("[RENDER WORKER] Started embedded canvas worker");
  }
+ function pump(){
+  if(active)return;
+  const r=pngQueue.shift()||latestRaw;
+  if(!r)return;
+  if(r===latestRaw)latestRaw=null;
+  startWorker();active=r;
+  try{worker.postMessage({id:r.id,data:r.data,mode:r.mode,sentNs:String(r.sentNs)});}
+  catch(e){active=null;rejectRequest(r,e);pump();}
+ }
  function workerRequest(data,mode="png"){
-  startWorker();const id=++nextId,sentNs=process.hrtime.bigint();
-  return new Promise((resolve,reject)=>{pending.set(id,{resolve,reject,sentNs});try{worker.postMessage({id,data,mode,sentNs:String(sentNs)});}catch(e){pending.delete(id);reject(e);}});
+  return new Promise((resolve,reject)=>{
+   const waiter={resolve,reject};
+   if(mode==="raw"&&latestRaw){
+    latestRaw.id=++nextId;latestRaw.data=data;
+    latestRaw.sentNs=process.hrtime.bigint();
+    latestRaw.waiters.push(waiter);
+   }else{
+    const r={id:++nextId,data,mode,sentNs:process.hrtime.bigint(),waiters:[waiter]};
+    if(mode==="raw")latestRaw=r;else pngQueue.push(r);
+   }
+   pump();
+  });
  }
  async function renderDashboard(data){
-  const r=await workerRequest(data,"png"),resumed=process.hrtime.bigint();r.meta.mainResponseDelayMs=r.meta.messageReceivedNs?elapsed(BigInt(r.meta.messageReceivedNs),resumed):0;Object.assign(timing,r.meta);return r.buffer;
+  const r=await workerRequest(data,"png"),resumed=process.hrtime.bigint();
+  r.meta.mainResponseDelayMs=r.meta.messageReceivedNs?elapsed(BigInt(r.meta.messageReceivedNs),resumed):0;
+  Object.assign(timing,r.meta);return r.buffer;
  }
  async function renderRawFrame(data){
-  const r=await workerRequest(data,"raw"),resumed=process.hrtime.bigint();r.meta.mainResponseDelayMs=r.meta.messageReceivedNs?elapsed(BigInt(r.meta.messageReceivedNs),resumed):0;Object.assign(timing,r.meta);return r.buffer;
+  const r=await workerRequest(data,"raw"),resumed=process.hrtime.bigint();
+  r.meta.mainResponseDelayMs=r.meta.messageReceivedNs?elapsed(BigInt(r.meta.messageReceivedNs),resumed):0;
+  Object.assign(timing,r.meta);return r.buffer;
  }
  async function warmWorker(data){for(let i=0;i<8;i++)await renderRawFrame(data);}
  async function freshBenchmark(getData){
