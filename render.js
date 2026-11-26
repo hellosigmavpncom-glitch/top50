@@ -10,9 +10,27 @@ const sleep=ms=>new Promise(r=>setTimeout(r,Math.max(1,ms)));
 const C={bg:"#050713",panel:"#0b1024",panel2:"#101832",border:"#273a68",blue:"#27a9ff",purple:"#8b36ff",teal:"#25e5c0",white:"#f5f7ff",muted:"#aab8df",red:"#ff4267"};
 const images=new Map(),rollStates=new Map(),measureCache=new Map(),fontCache=new Map(),wrapCache=new Map(),avatarSprites=new WeakMap(),fallbackSprites=new Map();
 const history={subs:[],rates:[],samples:[],lastSample:0};
-const timing={dataFetchMs:0,avatarWaitMs:0,queueWaitMs:0,buildMs:0,renderMs:0,bufferMs:0,rawBufferMs:0,pipelineTotalMs:0,totalMs:0,transferCopyMs:0,transferPrepareMs:0};
+const timing={dataFetchMs:0,avatarWaitMs:0,queueWaitMs:0,buildMs:0,renderMs:0,bufferMs:0,rawBufferMs:0,pipelineTotalMs:0,totalMs:0,transferCopyMs:0,transferPrepareMs:0,canvasDataCpuMs:0,canvasDataNonCpuWaitMs:0,drawCpuMs:0,drawNonCpuWaitMs:0,transferPreparationCpuMs:0,transferPreparationWallMs:0};
 let benchmarkActive=false,latestMain=null,sampleTimer=null,staticCanvas=null,staticReady=false,mainCanvas=null,mainContext=null;
 let chartCanvas=null,chartContext=null,chartCacheKey="",chartX=null,chartY=null,barSprite=null,barsCanvas=null,barsContext=null,barsKey="",goalGradient=null,profileGradient=null,lastUpdated=-1,lastUpdatedText="",renderQueue=Promise.resolve(),rawPixelMethod="canvas.data()",lastDrawMetrics=null;
+
+function cpuSnapshot(){
+ try{return typeof process.threadCpuUsage==="function"?process.threadCpuUsage():null;}
+ catch{return null;}
+}
+function cpuDeltaMs(a,b=cpuSnapshot()){
+ if(!a||!b)return null;
+ return Math.max(0,((b.user-a.user)+(b.system-a.system))/1000);
+}
+function cpuMeasurement(wall,cpu){
+ return{wallMs:round(wall),cpuMs:cpu===null?null:round(cpu),nonCpuWaitMs:cpu===null?null:round(Math.max(0,wall-cpu))};
+}
+function eventLoopSnapshot(monitor){
+ return{meanMs:round(monitor.mean/1e6),p95Ms:round(monitor.percentile(95)/1e6),p99Ms:round(monitor.percentile(99)/1e6),maxMs:round(monitor.max/1e6)};
+}
+
+const workerEventLoop=IS_WORKER?monitorEventLoopDelay({resolution:20}):null;
+if(IS_WORKER)workerEventLoop.enable();
 
 function font(size,weight=800){const key=weight+":"+size;let v=fontCache.get(key);if(!v){v=`${weight} ${size}px "${FONT}"`;fontCache.set(key,v);}return v;}
 function registerFonts(){
@@ -218,7 +236,7 @@ function drawMain(data={}){
  if(!profileGradient)profileGradient=grad(c,left+137,top+112,96,18,[[0,"#6423d9"],[1,"#2549bc"]]);rr(c,left+137,top+112,96,18,6,profileGradient);txt(c,"ROAD TO 60M",left+185,top+121,9,C.white,900,"center");
  drawAvatar(c,drawMain.avatar2,left+226,top+164,58);txt(c,mc.name||"VYStats",left+14,top+184,14,C.white,900);txt(c,mc.handle||"@vystatsyt",left+14,top+205,10,C.muted,800);
  for(let i=0;i<3;i++){
-  const x=left+14+i*101,a=i===0?mst.estSubscribers??mfw.estimatedSubscribers:i===1?mst.estViews??mfw.estimatedViews:mst.estVideos??mfw.estimatedVideos,b=i===0?mst.apiSubscribers??mfw.apiSubscribers:i===1?mst.apiViews??mfw.viewCount:mst.apiVideos??mfw.videoCount;
+  const x=left+14+i*101,a=i===0?mst.estSubscribers??mfw.estimatedSubscribers:i===1?mst.estViews??mfw.estimatedViews:mst.estVideos??mfw.estimatedVideos,b=i===0?mst.apiSubscribers??mfw.apiSubscribers:i===1?mst.apiViews??mfw.apiViews??mfw.viewCount:mst.apiVideos??mfw.videoCount;
   drawRolling(c,"mine-est-"+i,a,x+2,top+294,94,14,C.white);drawRolling(c,"mine-api-"+i,b,x+2,top+344,94,14,C.white);
  }
  parts.profileMs=elapsed(t);t=process.hrtime.bigint();
@@ -235,23 +253,32 @@ function drawMain(data={}){
  parts.footerMs=elapsed(t);parts.totalMs=elapsed(drawStart);lastDrawMetrics=parts;return mainCanvas;
 }
 
-/* One pixel extraction per raw frame; retains the zero-copy Buffer path. */
+/* One canvas.data() call per raw frame, with isolated wall and worker-CPU timing. */
 function extractRawFrame(canvas){
- const start=process.hrtime.bigint();let result;
+ const start=process.hrtime.bigint(),cpuStart=cpuSnapshot();let result;
  if(typeof canvas.data==="function"){rawPixelMethod="canvas.data()";result=canvas.data();}
  else{rawPixelMethod="getImageData fallback";const im=mainContext.getImageData(0,0,W,H);result=Buffer.from(im.data.buffer,im.data.byteOffset,im.data.byteLength);}
- const extractMs=elapsed(start);
+ const wallMs=elapsed(start),cpuMs=cpuDeltaMs(cpuStart);
  if(!Buffer.isBuffer(result))throw Error("Raw canvas API did not return a Buffer");
  if(result.length!==FRAME_BYTES)throw Error("Invalid RGBA frame size: "+result.length+" expected "+FRAME_BYTES);
- return{result,extractMs,bufferInfo:{byteLength:result.byteLength,byteOffset:result.byteOffset,backingBytes:result.buffer.byteLength,zeroCopyEligible:result.byteOffset===0&&result.byteLength===result.buffer.byteLength}};
+ return{result,extractMs:wallMs,extractCpuMs:cpuMs,extractNonCpuWaitMs:cpuMs===null?null:Math.max(0,wallMs-cpuMs),bufferInfo:{byteLength:result.byteLength,byteOffset:result.byteOffset,backingBytes:result.buffer.byteLength,zeroCopyEligible:result.byteOffset===0&&result.byteLength===result.buffer.byteLength}};
 }
 function renderInternalUnlocked(data={},mode="png",avatarPair,metrics){
  const start=process.hrtime.bigint();drawMain.avatar1=avatarPair[0];drawMain.avatar2=avatarPair[1];
- const canvas=drawMain(data),rendered=process.hrtime.bigint();let result,extractMs=0,bufferInfo=null;
- if(mode==="raw"){const raw=extractRawFrame(canvas);result=raw.result;extractMs=raw.extractMs;bufferInfo=raw.bufferInfo;}
+ const drawCpuStart=cpuSnapshot(),drawStart=process.hrtime.bigint(),canvas=drawMain(data),drawDone=process.hrtime.bigint();
+ const drawWallMs=elapsed(drawStart,drawDone),drawCpuMs=cpuDeltaMs(drawCpuStart);
+ let result,extractMs=0,bufferInfo=null,extractCpuMs=null,extractNonCpuWaitMs=null;
+ if(mode==="raw"){const raw=extractRawFrame(canvas);result=raw.result;extractMs=raw.extractMs;bufferInfo=raw.bufferInfo;extractCpuMs=raw.extractCpuMs;extractNonCpuWaitMs=raw.extractNonCpuWaitMs;}
  else result=canvas.toBuffer("image/png");
  const done=process.hrtime.bigint();
- Object.assign(timing,{avatarWaitMs:metrics.avatarWaitMs,queueWaitMs:metrics.queueWaitMs,renderMs:elapsed(start,rendered),drawMainMs:lastDrawMetrics?.totalMs||0,drawParts:lastDrawMetrics,bufferMs:elapsed(rendered,done),rawBufferMs:extractMs,pipelineTotalMs:elapsed(start,done),totalMs:elapsed(metrics.requestStart,done),rawBufferInfo:bufferInfo});
+ Object.assign(timing,{
+  avatarWaitMs:metrics.avatarWaitMs,queueWaitMs:metrics.queueWaitMs,
+  renderMs:drawWallMs,drawMainMs:drawWallMs,drawCpuMs,
+  drawNonCpuWaitMs:drawCpuMs===null?null:Math.max(0,drawWallMs-drawCpuMs),
+  bufferMs:elapsed(drawDone,done),rawBufferMs:extractMs,
+  canvasDataCpuMs:extractCpuMs,canvasDataNonCpuWaitMs:extractNonCpuWaitMs,
+  pipelineTotalMs:elapsed(start,done),totalMs:elapsed(metrics.requestStart,done),rawBufferInfo:bufferInfo
+ });
  return result;
 }
 function renderInternal(data={},mode="png"){
@@ -268,18 +295,31 @@ function memorySnapshot(){const m=process.memoryUsage();return{rssMiB:mib(m.rss)
 
 if(IS_WORKER){
  parentPort.on("message",async msg=>{
+  if(msg.type==="resetEventLoop"){workerEventLoop.reset();return;}
   const{id,mode,data,sentNs}=msg,workerStarted=process.hrtime.bigint();
   try{
-   const result=await renderInternal(data,mode),renderDone=process.hrtime.bigint(),workerExecutionMs=elapsed(workerStarted,renderDone),length=result.byteLength,prepStart=process.hrtime.bigint();
+   const result=await renderInternal(data,mode),renderDone=process.hrtime.bigint(),workerExecutionMs=elapsed(workerStarted,renderDone),length=result.byteLength;
+   const prepStart=process.hrtime.bigint(),prepCpuStart=cpuSnapshot();
    let transfer=null,transferCopyMs=0,zeroCopy=false;
    if(result.buffer instanceof ArrayBuffer&&result.byteOffset===0&&result.byteLength===result.buffer.byteLength){transfer=result.buffer;zeroCopy=true;}
-   else{const copyStart=process.hrtime.bigint();transfer=new ArrayBuffer(length);new Uint8Array(transfer).set(new Uint8Array(result.buffer,result.byteOffset,length));transferCopyMs=elapsed(copyStart);}
-   const transferPrepareMs=elapsed(prepStart),meta={...timing,workerExecutionMs,workerDispatchMs:sentNs?elapsed(BigInt(sentNs),workerStarted):0,transferCopyMs,transferPrepareMs,zeroCopyTransfer:zeroCopy,rawPixelMethod};
-   try{const postedNs=process.hrtime.bigint();parentPort.postMessage({id,ok:true,buffer:transfer,byteOffset:0,byteLength:length,meta,postedNs:String(postedNs)},[transfer]);}
-   catch(firstError){
-    if(!zeroCopy)throw firstError;const copyStart=process.hrtime.bigint(),fallback=new ArrayBuffer(length);new Uint8Array(fallback).set(result);
-    meta.transferCopyMs=elapsed(copyStart);meta.zeroCopyTransfer=false;meta.transferPrepareMs+=meta.transferCopyMs;
-    const postedNs=process.hrtime.bigint();parentPort.postMessage({id,ok:true,buffer:fallback,byteOffset:0,byteLength:length,meta,postedNs:String(postedNs)},[fallback]);
+   else{
+    const copyStart=process.hrtime.bigint(),copyCpuStart=cpuSnapshot();
+    transfer=new ArrayBuffer(length);new Uint8Array(transfer).set(new Uint8Array(result.buffer,result.byteOffset,length));
+    transferCopyMs=elapsed(copyStart);
+   }
+   let transferPreparationWallMs=elapsed(prepStart),transferPreparationCpuMs=cpuDeltaMs(prepCpuStart);
+   const meta={...timing,workerExecutionMs,workerDispatchMs:sentNs?elapsed(BigInt(sentNs),workerStarted):0,transferCopyMs,transferPrepareMs:transferPreparationWallMs,transferPreparationWallMs,transferPreparationCpuMs,zeroCopyTransfer:zeroCopy,rawPixelMethod,workerEventLoopDelay:eventLoopSnapshot(workerEventLoop)};
+   try{
+    const postedNs=process.hrtime.bigint();
+    parentPort.postMessage({id,ok:true,buffer:transfer,byteOffset:0,byteLength:length,meta,postedNs:String(postedNs)},[transfer]);
+   }catch(firstError){
+    if(!zeroCopy)throw firstError;
+    const copyStart=process.hrtime.bigint(),fallback=new ArrayBuffer(length);new Uint8Array(fallback).set(result);
+    const fallbackCopyMs=elapsed(copyStart);
+    meta.transferCopyMs=fallbackCopyMs;meta.zeroCopyTransfer=false;
+    meta.transferPreparationWallMs+=fallbackCopyMs;meta.transferPrepareMs=meta.transferPreparationWallMs;
+    const postedNs=process.hrtime.bigint();
+    parentPort.postMessage({id,ok:true,buffer:fallback,byteOffset:0,byteLength:length,meta,postedNs:String(postedNs)},[fallback]);
    }
   }catch(e){parentPort.postMessage({id,ok:false,error:e.stack||e.message});}
  });
@@ -311,39 +351,51 @@ if(IS_WORKER){
  async function warmWorker(data){for(let i=0;i<8;i++)await renderRawFrame(data);}
  async function freshBenchmark(getData){
   const duration=10000,times=[],fetches=[],queues=[],renders=[],buffers=[],raws=[],pipelines=[],workerTimes=[],copies=[],prepares=[],roundTrips=[],dispatches=[],deliveries=[],responses=[],messageHandling=[],frameSamples=[];
+  const canvasCpu=[],canvasWait=[],drawCpu=[],drawWait=[],transferWall=[],transferCpu=[];
   const drawParts={backgroundMs:[],profileMs:[],mainCardsMs:[],sourcesMs:[],footerMs:[]};
-  let frames=0,missed=0,zeroCopyFrames=0,maxLate=0,maxRss=0,stopReason=null,next=process.hrtime.bigint();
-  const initial=await getData();await warmWorker(initial);eventLoop.reset();
+  let frames=0,missed=0,zeroCopyFrames=0,maxLate=0,maxRss=0,stopReason=null,next=process.hrtime.bigint(),lastWorkerEventLoop={meanMs:0,p95Ms:0,p99Ms:0,maxMs:0};
+  const initial=await getData();await warmWorker(initial);
+  eventLoop.reset();worker.postMessage({type:"resetEventLoop"});
   const start=process.hrtime.bigint(),cpu=process.cpuUsage(),mem=memorySnapshot();next=start;
   while(elapsed(start)<duration){
-   /* Sample RSS every 10 frames instead of twice on every frame. */
-   if(frames%10===0){
-    const rss=process.memoryUsage().rss;maxRss=Math.max(maxRss,rss);
-    if(rss>MAX_RSS){stopReason="Main-process memory safety limit reached";break;}
-   }
+   if(process.memoryUsage().rss>MAX_RSS){stopReason="Main-process memory safety limit reached";break;}
    const frameStart=process.hrtime.bigint(),data=await getData(),dataDone=process.hrtime.bigint(),fetchMs=elapsed(frameStart,dataDone);timing.dataFetchMs=fetchMs;
    const frame=await renderRawFrame(data),done=process.hrtime.bigint();
    if(timing.rawBufferInfo?.zeroCopyEligible)zeroCopyFrames++;if(!frame||frame.length!==FRAME_BYTES)throw Error("Invalid RGBA frame");
    const totalFrameMs=elapsed(frameStart,done);times.push(totalFrameMs);fetches.push(fetchMs);queues.push(timing.queueWaitMs);
    renders.push(timing.drawMainMs||timing.renderMs);buffers.push(timing.bufferMs);raws.push(timing.rawBufferMs);
+   canvasCpu.push(timing.canvasDataCpuMs??0);canvasWait.push(timing.canvasDataNonCpuWaitMs??0);
+   drawCpu.push(timing.drawCpuMs??0);drawWait.push(timing.drawNonCpuWaitMs??0);
+   transferWall.push(timing.transferPreparationWallMs??timing.transferPrepareMs??0);
+   transferCpu.push(timing.transferPreparationCpuMs??0);
    for(const k in drawParts)drawParts[k].push(timing.drawParts?.[k]||0);
    pipelines.push(timing.pipelineTotalMs);workerTimes.push(timing.workerExecutionMs||0);copies.push(timing.transferCopyMs||0);prepares.push(timing.transferPrepareMs||0);
    roundTrips.push(timing.roundTripMs||0);dispatches.push(timing.workerDispatchMs||0);deliveries.push(timing.workerToMainDeliveryMs||0);responses.push(timing.mainResponseDelayMs||0);messageHandling.push(timing.mainMessageHandlingMs||0);
-   const sample={frame:frames+1,totalFrameMs:round(totalFrameMs),dataFetchMs:round(fetchMs),mainToWorkerStartMs:round(timing.workerDispatchMs||0),renderQueueWaitMs:round(timing.queueWaitMs||0),workerExecutionMs:round(timing.workerExecutionMs||0),canvasRenderMs:round(timing.drawMainMs||timing.renderMs),rawExtractionMs:round(timing.rawBufferMs),transferPreparationMs:round(timing.transferPrepareMs||0),workerToMainDeliveryMs:round(timing.workerToMainDeliveryMs||0),mainMessageHandlingMs:round(timing.mainMessageHandlingMs||0),mainResponseDelayMs:round(timing.mainResponseDelayMs||0),roundTripMs:round(timing.roundTripMs||0),drawParts:timing.drawParts,over100ms:totalFrameMs>FRAME_MS};
-   frameSamples.push(sample);frames++;next+=FRAME_NS;
+   lastWorkerEventLoop=timing.workerEventLoopDelay||lastWorkerEventLoop;
+   const sample={frame:frames+1,totalFrameMs:round(totalFrameMs),dataFetchMs:round(fetchMs),mainToWorkerStartMs:round(timing.workerDispatchMs||0),renderQueueWaitMs:round(timing.queueWaitMs||0),workerExecutionMs:round(timing.workerExecutionMs||0),canvasRenderMs:round(timing.drawMainMs||timing.renderMs),drawCpuMs:round(timing.drawCpuMs),drawNonCpuWaitMs:round(timing.drawNonCpuWaitMs),rawExtractionMs:round(timing.rawBufferMs),canvasDataCpuMs:round(timing.canvasDataCpuMs),canvasDataNonCpuWaitMs:round(timing.canvasDataNonCpuWaitMs),transferPreparationWallMs:round(timing.transferPreparationWallMs),transferPreparationCpuMs:round(timing.transferPreparationCpuMs),transferCopyMs:round(timing.transferCopyMs),workerToMainDeliveryMs:round(timing.workerToMainDeliveryMs||0),mainMessageHandlingMs:round(timing.mainMessageHandlingMs||0),mainResponseDelayMs:round(timing.mainResponseDelayMs||0),roundTripMs:round(timing.roundTripMs||0),drawParts:timing.drawParts,over100ms:totalFrameMs>FRAME_MS};
+   frameSamples.push(sample);frames++;maxRss=Math.max(maxRss,process.memoryUsage().rss);next+=FRAME_NS;
    if(done>next){const late=done-next,slots=late/FRAME_NS+1n;sample.scheduleLateMs=round(Number(late)/1e6);missed+=Number(slots);maxLate=Math.max(maxLate,Number(late)/1e6);next+=slots*FRAME_NS;}
    else{const wait=Number(next-done)/1e6;if(wait>0&&elapsed(start)+wait<duration)await sleep(wait);else if(elapsed(start)+wait>=duration)break;}
   }
-  const total=elapsed(start),used=process.cpuUsage(cpu),after=memorySnapshot();
-  maxRss=Math.max(maxRss,process.memoryUsage().rss);
-  const delay={meanMs:round(eventLoop.mean/1e6),p95Ms:round(eventLoop.percentile(95)/1e6),maxMs:round(eventLoop.max/1e6)};
+  const total=elapsed(start),used=process.cpuUsage(cpu),after=memorySnapshot(),mainDelay=eventLoopSnapshot(eventLoop);
   eventLoop.reset();const slow=[...frameSamples].sort((a,b)=>b.totalFrameMs-a.totalFrameMs).slice(0,8);
   return{
    renderer:"@napi-rs/canvas",worker:"worker_threads",resolution:`${W}x${H}`,targetFPS:FPS,durationMs:round(total),frames,estimatedFPS:round(frames/Math.max(.001,total/1000)),frameMs:stats(times),missedDeadlines:missed,missedDeadlinePercent:round(missed/Math.max(1,frames+missed)*100),
-   hotspots:{drawMain:stats(renders),canvasData:stats(raws),drawParts:Object.fromEntries(Object.entries(drawParts).map(([k,v])=>[k,stats(v)])),bufferTransfer:stats(copies)},
+   hotspots:{
+    drawMain:stats(renders),canvasData:stats(raws),
+    canvasDataCpu:stats(canvasCpu),canvasDataNonCpuWait:stats(canvasWait),
+    drawCpu:stats(drawCpu),drawNonCpuWait:stats(drawWait),
+    drawParts:Object.fromEntries(Object.entries(drawParts).map(([k,v])=>[k,stats(v)])),
+    bufferTransfer:stats(copies)
+   },
+   transfer:{
+    preparationWall:stats(transferWall),preparationCpu:stats(transferCpu),actualCopyWall:stats(copies),
+    zeroCopyFrames,zeroCopyEligibleFrames:zeroCopyFrames
+   },
    workerScheduling:{mainToWorkerStart:stats(dispatches),renderQueueWait:stats(queues),workerExecution:stats(workerTimes),workerToMainDelivery:stats(deliveries),mainResponseDelay:stats(responses),roundTrip:stats(roundTrips)},
    otherStages:{dataFetch:stats(fetches),mainMessageHandling:stats(messageHandling),bufferPreparation:stats(prepares),pipeline:stats(pipelines)},
-   slowestFrames:slow,frameCountOver100ms:frameSamples.filter(x=>x.over100ms).length,maxLatenessMs:round(maxLate),eventLoopDelay:delay,
+   slowestFrames:slow,frameCountOver100ms:frameSamples.filter(x=>x.over100ms).length,maxLatenessMs:round(maxLate),
+   eventLoopDelay:{main:mainDelay,worker:lastWorkerEventLoop},
    cpu:{userMs:round(used.user/1000),systemMs:round(used.system/1000)},
    memory:{before:mem,after,rssPeakMiB:mib(maxRss)},frameBytes:FRAME_BYTES,rawPixelMethod,zeroCopyEligibleFrames:zeroCopyFrames,rawBufferInfo:timing.rawBufferInfo,stopReason
   };
@@ -364,7 +416,12 @@ if(IS_WORKER){
    if(benchmarkActive)return res.status(409).json({error:"Another benchmark is running"});benchmarkActive=true;
    try{
     const frame=await renderRawFrame(await getData()),mem=memorySnapshot();
-    res.set("Cache-Control","no-store").json({renderer:"@napi-rs/canvas",worker:"worker_threads",rawPixelMethod:timing.rawPixelMethod,resolution:`${W}x${H}`,frameBytes:frame.length,expectedBytes:FRAME_BYTES,valid:frame.length===FRAME_BYTES,fontRegistered:GlobalFonts.has(FONT),timing:{...timing},memory:mem,mainThreadEventLoopDelay:{meanMs:round(eventLoop.mean/1e6),p95Ms:round(eventLoop.percentile(95)/1e6),p99Ms:round(eventLoop.percentile(99)/1e6),maxMs:round(eventLoop.max/1e6)}});
+    res.set("Cache-Control","no-store").json({
+     renderer:"@napi-rs/canvas",worker:"worker_threads",rawPixelMethod:timing.rawPixelMethod,
+     resolution:`${W}x${H}`,frameBytes:frame.length,expectedBytes:FRAME_BYTES,valid:frame.length===FRAME_BYTES,
+     fontRegistered:GlobalFonts.has(FONT),timing:{...timing},memory:mem,
+     mainThreadEventLoopDelay:eventLoopSnapshot(eventLoop),workerEventLoopDelay:timing.workerEventLoopDelay
+    });
    }catch(e){console.error("[CANVAS DIAGNOSTICS]",e.stack||e);if(!res.headersSent)res.status(500).json({error:"Canvas diagnostics failed",message:e.message});}
    finally{benchmarkActive=false;eventLoop.reset();}
   };
