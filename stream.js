@@ -1,139 +1,16 @@
 
 "use strict";
-
-const {spawn}=require("child_process"),{once}=require("events"),{performance}=require("perf_hooks"),renderer=require("./render"),ffmpeg=require("ffmpeg-static");
-
-const W=1280,H=720,FPS=10,FRAME_MS=1000/FPS,BYTES=W*H*4,BITRATE="1500k";
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-
-let active=false,child=null,restartTimer=null,frames=0,dropped=0,intervalFrames=0,lastReport=Date.now();
-
-function launch(){
- if(!active||child)return;
- if(!ffmpeg){console.error("[STREAM] FFmpeg binary unavailable");return;}
-
- const key=process.env.YOUTUBE_STREAM_KEY;
- if(!key){console.error("[STREAM] Missing YOUTUBE_STREAM_KEY");return;}
-
- const url=`rtmps://a.rtmps.youtube.com:443/live2/${key}`;
- const args=[
-  "-hide_banner","-loglevel","warning",
-  "-f","rawvideo","-pixel_format","rgba","-video_size",`${W}x${H}`,
-  "-framerate",String(FPS),"-i","pipe:0",
-  "-an","-c:v","libx264","-preset","ultrafast","-tune","zerolatency",
-  "-pix_fmt","yuv420p","-r",String(FPS),
-  "-g",String(FPS*2),"-keyint_min",String(FPS*2),"-sc_threshold","0",
-  "-b:v",BITRATE,"-minrate",BITRATE,"-maxrate",BITRATE,"-bufsize","3000k",
-  "-f","flv",url
- ];
-
- const p=spawn(ffmpeg,args,{stdio:["pipe","ignore","pipe"]});
- child=p;
-
- p.stderr.setEncoding("utf8");
- p.stderr.on("data",s=>{const t=s.trim();if(t)console.error("[FFMPEG]",t.slice(-700));});
- p.on("error",e=>console.error("[FFMPEG ERROR]",e.message));
- p.on("close",(code,signal)=>{
-  if(child===p)child=null;
-  if(!active)return;
-  console.error(`[STREAM] FFmpeg exited: code=${code} signal=${signal||"none"}`);
-  restartTimer=setTimeout(()=>{if(active&&!child)launch();},5000);
-  restartTimer.unref();
- });
-
- console.log("[STREAM] FFmpeg started | 1280x720 | 10 FPS | H.264");
-}
-
-async function writeFrame(p,frame){
- if(p!==child||p.stdin.destroyed||p.exitCode!==null)throw Error("FFmpeg pipe unavailable");
- if(p.stdin.write(frame))return;
-
- const drain=once(p.stdin,"drain");
- const closed=once(p,"close").then(([code,signal])=>{throw Error(`FFmpeg closed during pipe backpressure: ${code} ${signal||""}`);});
- await Promise.race([drain,closed]);
-}
-
-async function pump(getData){
- let nextAt=performance.now();
-
- while(active){
-  const wait=nextAt-performance.now();
-  if(wait>0)await sleep(wait);
-  if(!active)break;
-
-  const p=child;
-  if(!p||p.stdin.destroyed||p.exitCode!==null){
-   await sleep(250);
-   nextAt=performance.now();
-   continue;
-  }
-
-  try{
-   const data=getData();
-   const frame=await renderer.renderRawFrame(data);
-
-   if(!frame||frame.byteLength!==BYTES)throw Error(`Invalid RGBA frame: ${frame?.byteLength??"none"} bytes`);
-   await writeFrame(p,frame);
-
-   frames++;
-   intervalFrames++;
-  }catch(e){
-   if(active)console.error("[STREAM FRAME]",e.message);
-   await sleep(200);
-  }
-
-  nextAt+=FRAME_MS;
-  const now=performance.now();
-
-  if(now>nextAt){
-   dropped+=Math.floor((now-nextAt)/FRAME_MS)+1;
-   nextAt=now+FRAME_MS;
-  }
-
-  if(Date.now()-lastReport>=30000){
-   console.log(`[STREAM] FPS=${(intervalFrames/((Date.now()-lastReport)/1000)).toFixed(2)} | Total=${frames} | Missed=${dropped} | Encoder=${child?"RUNNING":"RESTARTING"}`);
-   intervalFrames=0;
-   lastReport=Date.now();
-  }
- }
-}
-
-function start(getData){
- if(active)return true;
- if(typeof getData!=="function")throw Error("getData must be a function");
- if(!process.env.YOUTUBE_STREAM_KEY){console.log("[STREAM] Disabled: set YOUTUBE_STREAM_KEY in Render environment");return false;}
- if(!ffmpeg){console.error("[STREAM] ffmpeg-static binary unavailable");return false;}
-
- active=true;
- frames=0;
- dropped=0;
- intervalFrames=0;
- lastReport=Date.now();
-
- launch();
- pump(getData).catch(e=>console.error("[STREAM PUMP]",e.stack||e.message));
-
- return true;
-}
-
-function stop(){
- active=false;
- if(restartTimer)clearTimeout(restartTimer);
- restartTimer=null;
-
- const p=child;
- child=null;
-
- if(p){
-  try{p.stdin.end();}catch{}
-  try{p.kill("SIGTERM");}catch{}
- }
-
- console.log("[STREAM] Stopped");
-}
-
-function status(){
- return{running:active,ffmpegRunning:!!child,frames,dropped};
-}
-
+const {spawn}=require("child_process"),{performance}=require("perf_hooks"),renderer=require("./render"),ffmpeg=require("ffmpeg-static");
+const W=1280,H=720,FPS=10,FRAME_MS=1000/FPS,BYTES=W*H*4,BITRATE="1500k",sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let active=false,child=null,restartTimer=null,frames=0,dropped=0,intervalFrames=0,lastReport=Date.now(),starting=false,ffmpegChecked=false;
+function checkFFmpeg(){return new Promise(resolve=>{if(!ffmpeg)return resolve(false);let p,out="",done=false,timer;const finish=ok=>{if(done)return;done=true;clearTimeout(timer);console.log("[FFMPEG TEST] "+(out.trim().split("\n")[0]||"No version output"));resolve(ok);};try{p=spawn(ffmpeg,["-version"],{stdio:["ignore","pipe","pipe"]});p.stdout.on("data",s=>{out+=s.toString();});p.stderr.on("data",s=>{out+=s.toString();});p.on("error",e=>{console.error("[FFMPEG TEST ERROR]",e.message);finish(false);});p.on("close",(code,signal)=>{if(signal)console.error("[FFMPEG TEST] Crashed with signal "+signal);else if(code!==0)console.error("[FFMPEG TEST] Exit code "+code);finish(code===0&&!signal);});timer=setTimeout(()=>{console.error("[FFMPEG TEST] Version test timed out");try{p.kill("SIGKILL");}catch{}finish(false);},10000);}catch(e){console.error("[FFMPEG TEST ERROR]",e.message);finish(false);}});}
+async function launch(){if(!active||child||starting)return;starting=true;try{if(!ffmpeg){console.error("[STREAM] FFmpeg binary unavailable");active=false;return;}if(!process.env.YOUTUBE_STREAM_KEY){console.error("[STREAM] Missing YOUTUBE_STREAM_KEY");active=false;return;}if(!ffmpegChecked){console.log("[STREAM] Testing FFmpeg binary...");const ok=await checkFFmpeg();if(!ok){console.error("[STREAM] FFmpeg failed its version test. Check ffmpeg-static installation and Render architecture.");active=false;return;}ffmpegChecked=true;}if(!active)return;
+const url="rtmps://a.rtmps.youtube.com:443/live2/"+process.env.YOUTUBE_STREAM_KEY;
+const args=["-hide_banner","-loglevel","info","-threads","1","-filter_threads","1","-f","rawvideo","-pixel_format","rgba","-video_size",W+"x"+H,"-framerate",String(FPS),"-i","pipe:0","-an","-c:v","libx264","-threads","1","-preset","ultrafast","-tune","zerolatency","-pix_fmt","yuv420p","-r",String(FPS),"-g",String(FPS*2),"-keyint_min",String(FPS*2),"-sc_threshold","0","-b:v",BITRATE,"-maxrate",BITRATE,"-bufsize","3000k","-f","flv",url];
+const p=spawn(ffmpeg,args,{stdio:["pipe","ignore","pipe"]});child=p;p.stderr.setEncoding("utf8");p.stderr.on("data",s=>{const t=s.trim();if(t)console.error("[FFMPEG]",t.slice(-1000));});p.on("error",e=>console.error("[FFMPEG PROCESS ERROR]",e.message));p.on("close",(code,signal)=>{if(child===p)child=null;if(!active)return;console.error("[STREAM] FFmpeg exited: code="+code+" signal="+(signal||"none"));if(signal==="SIGSEGV")console.error("[STREAM] Native FFmpeg crash detected; inspect the FFmpeg output above.");if(restartTimer)clearTimeout(restartTimer);restartTimer=setTimeout(()=>{if(active&&!child)launch();},15000);restartTimer.unref();});console.log("[STREAM] FFmpeg started | 1280x720 | 10 FPS | H.264");}catch(e){console.error("[STREAM LAUNCH ERROR]",e.stack||e.message);}finally{starting=false;}}
+function writeFrame(p,frame){return new Promise((resolve,reject)=>{if(p!==child||p.stdin.destroyed||p.exitCode!==null||p.signalCode)return reject(Error("FFmpeg pipe unavailable"));let done=false;const cleanup=()=>{p.stdin.removeListener("drain",onDrain);p.stdin.removeListener("error",onError);p.removeListener("close",onClose);};const finish=(e)=>{if(done)return;done=true;cleanup();e?reject(e):resolve();};const onDrain=()=>finish(),onError=e=>finish(e),onClose=(code,signal)=>finish(Error("FFmpeg closed: code="+code+" signal="+(signal||"none")));p.stdin.once("error",onError);if(!p.stdin.write(frame)){p.stdin.once("drain",onDrain);p.once("close",onClose);}else finish();});}
+async function pump(getData){let nextAt=performance.now();while(active){const wait=nextAt-performance.now();if(wait>0)await sleep(wait);if(!active)break;const p=child;if(!p||p.stdin.destroyed||p.exitCode!==null||p.signalCode){await sleep(250);nextAt=performance.now();continue;}try{const frame=await renderer.renderRawFrame(getData());if(!frame||frame.byteLength!==BYTES)throw Error("Invalid RGBA frame: "+(frame?.byteLength??"none")+" bytes");await writeFrame(p,frame);frames++;intervalFrames++;}catch(e){if(active&&child===p)console.error("[STREAM FRAME]",e.message);await sleep(200);}nextAt+=FRAME_MS;const now=performance.now();if(now>nextAt){dropped+=Math.floor((now-nextAt)/FRAME_MS)+1;nextAt=now+FRAME_MS;}if(Date.now()-lastReport>=30000){console.log("[STREAM] FPS="+(intervalFrames/((Date.now()-lastReport)/1000)).toFixed(2)+" | Total="+frames+" | Missed="+dropped+" | Encoder="+(child?"RUNNING":"RESTARTING"));intervalFrames=0;lastReport=Date.now();}}}
+function start(getData){if(active)return true;if(typeof getData!=="function")throw Error("getData must be a function");if(!process.env.YOUTUBE_STREAM_KEY){console.log("[STREAM] Disabled: set YOUTUBE_STREAM_KEY in Render environment");return false;}if(!ffmpeg){console.error("[STREAM] ffmpeg-static binary unavailable");return false;}active=true;frames=0;dropped=0;intervalFrames=0;lastReport=Date.now();launch();pump(getData).catch(e=>console.error("[STREAM PUMP]",e.stack||e.message));return true;}
+function stop(){active=false;if(restartTimer)clearTimeout(restartTimer);restartTimer=null;const p=child;child=null;if(p){try{p.stdin.destroy();}catch{}try{p.kill("SIGTERM");}catch{}}console.log("[STREAM] Stopped");}
+function status(){return{running:active,ffmpegRunning:!!child,frames,dropped,ffmpegChecked};}
 module.exports={start,stop,status};
