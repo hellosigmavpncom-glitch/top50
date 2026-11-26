@@ -556,10 +556,13 @@ function memorySnapshot(){
 
 if(IS_WORKER){
  parentPort.on("message",async msg=>{
-  const{id,mode,data}=msg;
+  const{id,mode,data,sentNs}=msg;
   try{
-   const started=process.hrtime.bigint(),result=await renderInternal(data,mode);
-   const renderedMs=elapsed(started),length=result.byteLength,prepStart=process.hrtime.bigint();
+   const workerStarted=process.hrtime.bigint();
+   const dispatchMs=sentNs?elapsed(BigInt(sentNs),workerStarted):0;
+   const result=await renderInternal(data,mode);
+   const renderDone=process.hrtime.bigint(),workerExecutionMs=elapsed(workerStarted,renderDone);
+   const length=result.byteLength,prepStart=process.hrtime.bigint();
    let transfer=null,byteOffset=0,transferCopyMs=0,zeroCopy=false;
    if(result.buffer instanceof ArrayBuffer&&result.byteOffset===0&&result.byteLength===result.buffer.byteLength){
     transfer=result.buffer;zeroCopy=true;
@@ -570,16 +573,18 @@ if(IS_WORKER){
     transferCopyMs=elapsed(copyStart);
    }
    const transferPrepareMs=elapsed(prepStart);
-   const meta={...timing,workerMs:renderedMs,transferCopyMs,transferPrepareMs,zeroCopyTransfer:zeroCopy,rawPixelMethod,memory:memorySnapshot()};
+   const meta={...timing,workerMs:workerExecutionMs,workerExecutionMs,workerDispatchMs:dispatchMs,transferCopyMs,transferPrepareMs,zeroCopyTransfer:zeroCopy,rawPixelMethod,memory:memorySnapshot()};
    try{
-    parentPort.postMessage({id,ok:true,buffer:transfer,byteOffset,byteLength:length,meta},[transfer]);
+    const postedNs=process.hrtime.bigint();
+    parentPort.postMessage({id,ok:true,buffer:transfer,byteOffset,byteLength:length,meta,postedNs:String(postedNs)},[transfer]);
    }catch(firstError){
     if(!zeroCopy)throw firstError;
     const copyStart=process.hrtime.bigint(),fallback=new ArrayBuffer(length);
     new Uint8Array(fallback).set(result);
     meta.transferCopyMs=elapsed(copyStart);meta.zeroCopyTransfer=false;
     meta.transferPrepareMs+=meta.transferCopyMs;
-    parentPort.postMessage({id,ok:true,buffer:fallback,byteOffset:0,byteLength:length,meta},[fallback]);
+    const postedNs=process.hrtime.bigint();
+    parentPort.postMessage({id,ok:true,buffer:fallback,byteOffset:0,byteLength:length,meta,postedNs:String(postedNs)},[fallback]);
    }
   }catch(e){parentPort.postMessage({id,ok:false,error:e.stack||e.message});}
  });
@@ -597,12 +602,16 @@ if(IS_WORKER){
   if(worker)return;
   worker=new Worker(__filename);
   worker.on("message",msg=>{
-   const p=pending.get(msg.id);if(!p)return;
+   const receivedNs=process.hrtime.bigint(),p=pending.get(msg.id);if(!p)return;
    pending.delete(msg.id);
    if(!msg.ok){p.reject(Error(msg.error));return;}
-   const arrived=process.hrtime.bigint();
    const buffer=Buffer.from(msg.buffer,msg.byteOffset||0,msg.byteLength||msg.buffer.byteLength);
-   p.resolve({buffer,meta:{...msg.meta,roundTripMs:elapsed(p.started,arrived)}});
+   const resolvedNs=process.hrtime.bigint();
+   p.resolve({buffer,meta:{
+    ...msg.meta,roundTripMs:elapsed(p.sentNs,receivedNs),
+    workerToMainDeliveryMs:msg.postedNs?elapsed(BigInt(msg.postedNs),receivedNs):0,
+    mainMessageHandlingMs:elapsed(receivedNs,resolvedNs),messageReceivedNs:String(receivedNs)
+   }});
   });
   worker.on("error",e=>{failWorker(e);worker=null;});
   worker.on("exit",code=>{
@@ -613,20 +622,24 @@ if(IS_WORKER){
  }
 
  function workerRequest(data,mode="png"){
-  startWorker();const id=++nextId,started=process.hrtime.bigint();
+  startWorker();const id=++nextId,sentNs=process.hrtime.bigint();
   return new Promise((resolve,reject)=>{
-   pending.set(id,{resolve,reject,started});
-   try{worker.postMessage({id,data,mode});}
+   pending.set(id,{resolve,reject,sentNs});
+   try{worker.postMessage({id,data,mode,sentNs:String(sentNs)});}
    catch(e){pending.delete(id);reject(e);}
   });
  }
 
  async function renderDashboard(data){
-  const r=await workerRequest(data,"png");Object.assign(timing,r.meta);return r.buffer;
+  const r=await workerRequest(data,"png"),resumed=process.hrtime.bigint();
+  r.meta.mainResponseDelayMs=r.meta.messageReceivedNs?elapsed(BigInt(r.meta.messageReceivedNs),resumed):0;
+  Object.assign(timing,r.meta);return r.buffer;
  }
 
  async function renderRawFrame(data){
-  const r=await workerRequest(data,"raw");Object.assign(timing,r.meta);return r.buffer;
+  const r=await workerRequest(data,"raw"),resumed=process.hrtime.bigint();
+  r.meta.mainResponseDelayMs=r.meta.messageReceivedNs?elapsed(BigInt(r.meta.messageReceivedNs),resumed):0;
+  Object.assign(timing,r.meta);return r.buffer;
  }
 
  async function warmWorker(data){
@@ -635,8 +648,10 @@ if(IS_WORKER){
 
  async function freshBenchmark(getData){
   const duration=10000,times=[],fetches=[],queues=[],avatars=[],renders=[],buffers=[],raws=[],pipelines=[],workerTimes=[],copies=[],prepares=[],roundTrips=[];
+  const dispatches=[],deliveries=[],responses=[],messageHandling=[],frameSamples=[];
   let frames=0,missed=0,maxLate=0,maxRss=0,stopReason=null,next=process.hrtime.bigint();
   const initial=await getData();await warmWorker(initial);
+  eventLoop.reset();
   const start=process.hrtime.bigint(),cpu=process.cpuUsage(),mem=process.memoryUsage();
   next=start;
 
@@ -647,17 +662,32 @@ if(IS_WORKER){
    timing.dataFetchMs=fetchMs;
    const frame=await renderRawFrame(data),done=process.hrtime.bigint();
    if(!frame||frame.length!==FRAME_BYTES)throw Error("Invalid RGBA frame");
-   times.push(elapsed(frameStart,done));fetches.push(fetchMs);
+   const totalFrameMs=elapsed(frameStart,done);
+   times.push(totalFrameMs);fetches.push(fetchMs);
    queues.push(timing.queueWaitMs);avatars.push(timing.avatarWaitMs);
    renders.push(timing.renderMs);buffers.push(timing.bufferMs);raws.push(timing.rawBufferMs);
-   pipelines.push(timing.pipelineTotalMs);workerTimes.push(timing.workerMs||0);
+   pipelines.push(timing.pipelineTotalMs);workerTimes.push(timing.workerExecutionMs||timing.workerMs||0);
    copies.push(timing.transferCopyMs||0);prepares.push(timing.transferPrepareMs||0);
-   roundTrips.push(timing.roundTripMs||0);frames++;
+   roundTrips.push(timing.roundTripMs||0);dispatches.push(timing.workerDispatchMs||0);
+   deliveries.push(timing.workerToMainDeliveryMs||0);responses.push(timing.mainResponseDelayMs||0);messageHandling.push(timing.mainMessageHandlingMs||0);
+   const sample={
+    frame:frames+1,totalFrameMs:round(totalFrameMs),dataFetchMs:round(fetchMs),
+    workerDispatchMs:round(timing.workerDispatchMs||0),
+    workerExecutionMs:round(timing.workerExecutionMs||timing.workerMs||0),
+    canvasRenderMs:round(timing.renderMs),rawExtractionMs:round(timing.rawBufferMs),
+    transferPreparationMs:round(timing.transferPrepareMs||0),
+    workerToMainDeliveryMs:round(timing.workerToMainDeliveryMs||0),
+    mainMessageHandlingMs:round(timing.mainMessageHandlingMs||0),
+    mainResponseDelayMs:round(timing.mainResponseDelayMs||0),
+    roundTripMs:round(timing.roundTripMs||0),over100ms:totalFrameMs>FRAME_MS
+   };
+   frameSamples.push(sample);frames++;
    maxRss=Math.max(maxRss,process.memoryUsage().rss);
    next+=FRAME_NS;
 
    if(done>next){
     const late=done-next,slots=late/FRAME_NS+1n;
+    sample.scheduleLateMs=round(Number(late)/1e6);
     missed+=Number(slots);maxLate=Math.max(maxLate,Number(late)/1e6);next+=slots*FRAME_NS;
    }else{
     const wait=Number(next-done)/1e6;
@@ -683,9 +713,25 @@ if(IS_WORKER){
     dataFetch:stats(fetches),queueWait:stats(queues),avatarWait:stats(avatars),
     canvasRender:stats(renders),canvasDataExtraction:stats(raws),
     postRenderToBuffer:stats(buffers),rawBufferTotal:stats(raws),
+    workerDispatch:stats(dispatches),workerExecution:stats(workerTimes),
     transferCopy:stats(copies),transferPreparation:stats(prepares),
-    workerRender:stats(workerTimes),workerRoundTrip:stats(roundTrips),
+    workerToMainDelivery:stats(deliveries),mainMessageHandling:stats(messageHandling),
+    mainResponseDelay:stats(responses),workerRoundTrip:stats(roundTrips),
     renderPipeline:stats(pipelines)
+   },
+   frameCorrelation:{
+    deadlineMs:FRAME_MS,over100msFrames:frameSamples.filter(x=>x.over100ms).length,
+    totalFrames:frames,
+    overBudgetStageAverages:(()=>{
+     const slow=frameSamples.filter(x=>x.over100ms),keys=["dataFetchMs","workerDispatchMs","workerExecutionMs","canvasRenderMs","rawExtractionMs","transferPreparationMs","workerToMainDeliveryMs","mainMessageHandlingMs","mainResponseDelayMs"];
+     return Object.fromEntries(keys.map(k=>[k,round(slow.length?slow.reduce((n,x)=>n+x[k],0)/slow.length:0)]));
+    })(),
+    withinBudgetStageAverages:(()=>{
+     const fast=frameSamples.filter(x=>!x.over100ms),keys=["dataFetchMs","workerDispatchMs","workerExecutionMs","canvasRenderMs","rawExtractionMs","transferPreparationMs","workerToMainDeliveryMs","mainMessageHandlingMs","mainResponseDelayMs"];
+     return Object.fromEntries(keys.map(k=>[k,round(fast.length?fast.reduce((n,x)=>n+x[k],0)/fast.length:0)]));
+    })(),
+    slowestFrames:[...frameSamples].sort((a,b)=>b.totalFrameMs-a.totalFrameMs).slice(0,15),
+    samples:frameSamples
    },
    missedDeadlines:missed,
    missedDeadlinePercent:round(missed/Math.max(1,frames+missed)*100),
