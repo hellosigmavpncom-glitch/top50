@@ -2,7 +2,7 @@
 const fs=require("fs"),path=require("path"),{Worker,isMainThread,parentPort}=require("worker_threads");
 console.log("[CANVAS VERSION]",require("@napi-rs/canvas/package.json").version);
 const {createCanvas,loadImage,GlobalFonts}=require("@napi-rs/canvas");
-const {monitorEventLoopDelay,PerformanceObserver}=require("perf_hooks");
+const {monitorEventLoopDelay}=require("perf_hooks");
 const W=1280,H=720,FPS=10,FRAME_MS=1000/FPS,FRAME_NS=BigInt(Math.round(FRAME_MS*1e6)),FRAME_BYTES=W*H*4;
 const nf=new Intl.NumberFormat("en-US"),MAX_RSS=440*1048576,IS_WORKER=!isMainThread,FONT="Inter";
 const elapsed=(a,b=process.hrtime.bigint())=>Number(b-a)/1e6,mib=n=>+(n/1048576).toFixed(2),round=n=>+Number(n||0).toFixed(2);
@@ -10,10 +10,9 @@ const sleep=ms=>new Promise(r=>setTimeout(r,Math.max(1,ms)));
 const C={bg:"#050713",panel:"#0b1024",panel2:"#101832",border:"#273a68",blue:"#27a9ff",purple:"#8b36ff",teal:"#25e5c0",white:"#f5f7ff",muted:"#aab8df",red:"#ff4267"};
 const images=new Map(),rollStates=new Map(),measureCache=new Map(),fontCache=new Map(),wrapCache=new Map(),avatarSprites=new WeakMap(),fallbackSprites=new Map();
 const history={subs:[],rates:[],samples:[],lastSample:0};
-const timing={dataFetchMs:0,avatarWaitMs:0,queueWaitMs:0,buildMs:0,renderMs:0,bufferMs:0,rawBufferMs:0,pipelineTotalMs:0,totalMs:0,transferCopyMs:0,transferPrepareMs:0,roundTripMs:0};
+const timing={dataFetchMs:0,avatarWaitMs:0,queueWaitMs:0,buildMs:0,renderMs:0,bufferMs:0,rawBufferMs:0,pipelineTotalMs:0,totalMs:0,transferCopyMs:0,transferPrepareMs:0};
 let benchmarkActive=false,latestMain=null,sampleTimer=null,staticCanvas=null,staticReady=false,mainCanvas=null,mainContext=null;
 let chartCanvas=null,chartContext=null,chartCacheKey="",chartX=null,chartY=null,barSprite=null,barsCanvas=null,barsContext=null,barsKey="",goalGradient=null,profileGradient=null,lastUpdated=-1,lastUpdatedText="",renderQueue=Promise.resolve(),rawPixelMethod="canvas.data()",lastDrawMetrics=null;
-let extractCount=0,lastExtractProbe=null,gcStats={count:0,durationMs:0},workerLoop=null,gcObserver=null;
 
 function font(size,weight=800){const key=weight+":"+size;let v=fontCache.get(key);if(!v){v=`${weight} ${size}px "${FONT}"`;fontCache.set(key,v);}return v;}
 function registerFonts(){
@@ -236,37 +235,23 @@ function drawMain(data={}){
  parts.footerMs=elapsed(t);parts.totalMs=elapsed(drawStart);lastDrawMetrics=parts;return mainCanvas;
 }
 
-/* Measures native extraction separately from CPU time and memory changes. */
+/* Exactly one pixel extraction per raw frame. No probe, CPU snapshot or memory snapshot. */
 function extractRawFrame(canvas){
- const start=process.hrtime.bigint(),before=process.memoryUsage(),cpuBefore=process.threadCpuUsage?.()||process.cpuUsage();
- let result;
+ const start=process.hrtime.bigint();let result;
  if(typeof canvas.data==="function"){rawPixelMethod="canvas.data()";result=canvas.data();}
  else{rawPixelMethod="getImageData fallback";const im=mainContext.getImageData(0,0,W,H);result=Buffer.from(im.data.buffer,im.data.byteOffset,im.data.byteLength);}
- const end=process.hrtime.bigint(),cpuAfter=process.threadCpuUsage?.()||process.cpuUsage(),after=process.memoryUsage();
- const cpuMs=(cpuAfter.user-cpuBefore.user+cpuAfter.system-cpuBefore.system)/1000,extractMs=elapsed(start,end);
+ const extractMs=elapsed(start);
  if(!Buffer.isBuffer(result))throw Error("Raw canvas API did not return a Buffer");
  if(result.length!==FRAME_BYTES)throw Error("Invalid RGBA frame size: "+result.length+" expected "+FRAME_BYTES);
- const bufferInfo={byteLength:result.byteLength,byteOffset:result.byteOffset,backingBytes:result.buffer.byteLength,zeroCopyEligible:result.byteOffset===0&&result.byteLength===result.buffer.byteLength};
- extractCount++;
- const probe={wallMs:round(extractMs),threadCpuMs:round(cpuMs),cpuWallRatio:round(cpuMs/Math.max(.001,extractMs)),rssDeltaMiB:round(mib(after.rss-before.rss)),externalDeltaMiB:round(mib(after.external-before.external)),arrayBuffersDeltaMiB:round(mib((after.arrayBuffers||0)-(before.arrayBuffers||0))),cpuSource:process.threadCpuUsage?"threadCpuUsage":"processCpuUsageFallback"};
- if(extractCount%10===0){
-  const secondStart=process.hrtime.bigint(),secondCpu=process.threadCpuUsage?.()||process.cpuUsage();
-  const second=canvas.data(),secondEnd=process.hrtime.bigint(),secondCpuEnd=process.threadCpuUsage?.()||process.cpuUsage();
-  if(!Buffer.isBuffer(second)||second.length!==FRAME_BYTES)throw Error("Second canvas.data() probe returned an invalid frame");
-  probe.secondWallMs=round(elapsed(secondStart,secondEnd));
-  probe.secondThreadCpuMs=round((secondCpuEnd.user-secondCpu.user+secondCpuEnd.system-secondCpu.system)/1000);
- }
- lastExtractProbe=probe;
- return{result,extractMs,bufferInfo,probe};
+ return{result,extractMs,bufferInfo:{byteLength:result.byteLength,byteOffset:result.byteOffset,backingBytes:result.buffer.byteLength,zeroCopyEligible:result.byteOffset===0&&result.byteLength===result.buffer.byteLength}};
 }
-/* No async needed here: drawing and extraction are synchronous. */
 function renderInternalUnlocked(data={},mode="png",avatarPair,metrics){
  const start=process.hrtime.bigint();drawMain.avatar1=avatarPair[0];drawMain.avatar2=avatarPair[1];
- const canvas=drawMain(data),rendered=process.hrtime.bigint();let result,extractMs=0;
- if(mode==="raw"){const raw=extractRawFrame(canvas);result=raw.result;extractMs=raw.extractMs;timing.rawBufferInfo=raw.bufferInfo;timing.extractProbe=raw.probe;}
+ const canvas=drawMain(data),rendered=process.hrtime.bigint();let result,extractMs=0,bufferInfo=null;
+ if(mode==="raw"){const raw=extractRawFrame(canvas);result=raw.result;extractMs=raw.extractMs;bufferInfo=raw.bufferInfo;}
  else result=canvas.toBuffer("image/png");
  const done=process.hrtime.bigint();
- Object.assign(timing,{avatarWaitMs:metrics.avatarWaitMs,queueWaitMs:metrics.queueWaitMs,renderMs:elapsed(start,rendered),drawMainMs:lastDrawMetrics?.totalMs||0,drawParts:lastDrawMetrics,bufferMs:elapsed(rendered,done),rawBufferMs:extractMs,pipelineTotalMs:elapsed(start,done),totalMs:elapsed(metrics.requestStart,done)});
+ Object.assign(timing,{avatarWaitMs:metrics.avatarWaitMs,queueWaitMs:metrics.queueWaitMs,renderMs:elapsed(start,rendered),drawMainMs:lastDrawMetrics?.totalMs||0,drawParts:lastDrawMetrics,bufferMs:elapsed(rendered,done),rawBufferMs:extractMs,pipelineTotalMs:elapsed(start,done),totalMs:elapsed(metrics.requestStart,done),rawBufferInfo:bufferInfo});
  return result;
 }
 function renderInternal(data={},mode="png"){
@@ -280,29 +265,17 @@ function stats(a){
  return{averageMs:r(avg),medianMs:r(p(.5)),p95Ms:r(p(.95)),minMs:r(s[0]),maxMs:r(s[s.length-1])};
 }
 function memorySnapshot(){const m=process.memoryUsage();return{rssMiB:mib(m.rss),heapUsedMiB:mib(m.heapUsed),heapTotalMiB:mib(m.heapTotal),externalMiB:mib(m.external),arrayBuffersMiB:mib(m.arrayBuffers||0)};}
-function startWorkerDiagnostics(){
- if(workerLoop)return;
- workerLoop=monitorEventLoopDelay({resolution:10});workerLoop.enable();
- try{gcObserver=new PerformanceObserver(list=>{for(const e of list.getEntries()){gcStats.count++;gcStats.durationMs+=e.duration;}});gcObserver.observe({entryTypes:["gc"]});}
- catch(e){console.warn("[GC DIAGNOSTICS]",e.message);}
-}
-function workerDiagnostics(){
- if(gcObserver)for(const e of gcObserver.takeRecords()){gcStats.count++;gcStats.durationMs+=e.duration;}
- return{extractProbe:lastExtractProbe,extractCount,workerEventLoopDelay:workerLoop?{meanMs:round(workerLoop.mean/1e6),p95Ms:round(workerLoop.percentile(95)/1e6),maxMs:round(workerLoop.max/1e6)}:null,gc:{count:gcStats.count,durationMs:round(gcStats.durationMs)}};
-}
 
 if(IS_WORKER){
- startWorkerDiagnostics();
  parentPort.on("message",async msg=>{
-  const{id,mode,data,sentNs}=msg;
+  const{id,mode,data,sentNs}=msg,workerStarted=process.hrtime.bigint();
   try{
-   const workerStarted=process.hrtime.bigint(),dispatchMs=sentNs?elapsed(BigInt(sentNs),workerStarted):0,result=await renderInternal(data,mode);
-   const renderDone=process.hrtime.bigint(),workerExecutionMs=elapsed(workerStarted,renderDone),length=result.byteLength,prepStart=process.hrtime.bigint();
-   let transfer=null,byteOffset=0,transferCopyMs=0,zeroCopy=false;
+   const result=await renderInternal(data,mode),renderDone=process.hrtime.bigint(),workerExecutionMs=elapsed(workerStarted,renderDone),length=result.byteLength,prepStart=process.hrtime.bigint();
+   let transfer=null,transferCopyMs=0,zeroCopy=false;
    if(result.buffer instanceof ArrayBuffer&&result.byteOffset===0&&result.byteLength===result.buffer.byteLength){transfer=result.buffer;zeroCopy=true;}
    else{const copyStart=process.hrtime.bigint();transfer=new ArrayBuffer(length);new Uint8Array(transfer).set(new Uint8Array(result.buffer,result.byteOffset,length));transferCopyMs=elapsed(copyStart);}
-   const transferPrepareMs=elapsed(prepStart),meta={...timing,workerMs:workerExecutionMs,workerExecutionMs,workerDispatchMs:dispatchMs,transferCopyMs,transferPrepareMs,zeroCopyTransfer:zeroCopy,rawPixelMethod,memory:memorySnapshot(),workerDiagnostics:workerDiagnostics()};
-   try{const postedNs=process.hrtime.bigint();parentPort.postMessage({id,ok:true,buffer:transfer,byteOffset,byteLength:length,meta,postedNs:String(postedNs)},[transfer]);}
+   const transferPrepareMs=elapsed(prepStart),meta={...timing,workerExecutionMs,workerDispatchMs:sentNs?elapsed(BigInt(sentNs),workerStarted):0,transferCopyMs,transferPrepareMs,zeroCopyTransfer:zeroCopy,rawPixelMethod};
+   try{const postedNs=process.hrtime.bigint();parentPort.postMessage({id,ok:true,buffer:transfer,byteOffset:0,byteLength:length,meta,postedNs:String(postedNs)},[transfer]);}
    catch(firstError){
     if(!zeroCopy)throw firstError;const copyStart=process.hrtime.bigint(),fallback=new ArrayBuffer(length);new Uint8Array(fallback).set(result);
     meta.transferCopyMs=elapsed(copyStart);meta.zeroCopyTransfer=false;meta.transferPrepareMs+=meta.transferCopyMs;
@@ -337,39 +310,36 @@ if(IS_WORKER){
  }
  async function warmWorker(data){for(let i=0;i<8;i++)await renderRawFrame(data);}
  async function freshBenchmark(getData){
-  const duration=10000,times=[],fetches=[],queues=[],avatars=[],renders=[],buffers=[],raws=[],pipelines=[],workerTimes=[],copies=[],prepares=[],roundTrips=[],dispatches=[],deliveries=[],responses=[],messageHandling=[],frameSamples=[];
+  const duration=10000,times=[],fetches=[],queues=[],renders=[],buffers=[],raws=[],pipelines=[],workerTimes=[],copies=[],prepares=[],roundTrips=[],dispatches=[],deliveries=[],responses=[],messageHandling=[],frameSamples=[];
   const drawParts={backgroundMs:[],profileMs:[],mainCardsMs:[],sourcesMs:[],footerMs:[]};
   let frames=0,missed=0,zeroCopyFrames=0,maxLate=0,maxRss=0,stopReason=null,next=process.hrtime.bigint();
   const initial=await getData();await warmWorker(initial);eventLoop.reset();
-  const start=process.hrtime.bigint(),cpu=process.cpuUsage(),mem=process.memoryUsage(),gcBase=timing.workerDiagnostics?.gc?.count||0,gcTimeBase=timing.workerDiagnostics?.gc?.durationMs||0;
-  next=start;
+  const start=process.hrtime.bigint(),cpu=process.cpuUsage(),mem=memorySnapshot();next=start;
   while(elapsed(start)<duration){
    if(process.memoryUsage().rss>MAX_RSS){stopReason="Main-process memory safety limit reached";break;}
    const frameStart=process.hrtime.bigint(),data=await getData(),dataDone=process.hrtime.bigint(),fetchMs=elapsed(frameStart,dataDone);timing.dataFetchMs=fetchMs;
    const frame=await renderRawFrame(data),done=process.hrtime.bigint();
    if(timing.rawBufferInfo?.zeroCopyEligible)zeroCopyFrames++;if(!frame||frame.length!==FRAME_BYTES)throw Error("Invalid RGBA frame");
-   const totalFrameMs=elapsed(frameStart,done);times.push(totalFrameMs);fetches.push(fetchMs);queues.push(timing.queueWaitMs);avatars.push(timing.avatarWaitMs);
+   const totalFrameMs=elapsed(frameStart,done);times.push(totalFrameMs);fetches.push(fetchMs);queues.push(timing.queueWaitMs);
    renders.push(timing.drawMainMs||timing.renderMs);buffers.push(timing.bufferMs);raws.push(timing.rawBufferMs);
    for(const k in drawParts)drawParts[k].push(timing.drawParts?.[k]||0);
-   pipelines.push(timing.pipelineTotalMs);workerTimes.push(timing.workerExecutionMs||timing.workerMs||0);copies.push(timing.transferCopyMs||0);prepares.push(timing.transferPrepareMs||0);
+   pipelines.push(timing.pipelineTotalMs);workerTimes.push(timing.workerExecutionMs||0);copies.push(timing.transferCopyMs||0);prepares.push(timing.transferPrepareMs||0);
    roundTrips.push(timing.roundTripMs||0);dispatches.push(timing.workerDispatchMs||0);deliveries.push(timing.workerToMainDeliveryMs||0);responses.push(timing.mainResponseDelayMs||0);messageHandling.push(timing.mainMessageHandlingMs||0);
-   const probe=timing.extractProbe||{},sample={frame:frames+1,totalFrameMs:round(totalFrameMs),dataFetchMs:round(fetchMs),workerDispatchMs:round(timing.workerDispatchMs||0),workerExecutionMs:round(timing.workerExecutionMs||timing.workerMs||0),canvasRenderMs:round(timing.drawMainMs||timing.renderMs),rawExtractionMs:round(timing.rawBufferMs),extractCpuMs:probe.threadCpuMs??null,extractCpuWallRatio:probe.cpuWallRatio??null,extractSecondCallMs:probe.secondWallMs??null,drawParts:timing.drawParts,transferPreparationMs:round(timing.transferPrepareMs||0),workerToMainDeliveryMs:round(timing.workerToMainDeliveryMs||0),mainMessageHandlingMs:round(timing.mainMessageHandlingMs||0),mainResponseDelayMs:round(timing.mainResponseDelayMs||0),roundTripMs:round(timing.roundTripMs||0),over100ms:totalFrameMs>FRAME_MS};
+   const sample={frame:frames+1,totalFrameMs:round(totalFrameMs),dataFetchMs:round(fetchMs),mainToWorkerStartMs:round(timing.workerDispatchMs||0),renderQueueWaitMs:round(timing.queueWaitMs||0),workerExecutionMs:round(timing.workerExecutionMs||0),canvasRenderMs:round(timing.drawMainMs||timing.renderMs),rawExtractionMs:round(timing.rawBufferMs),transferPreparationMs:round(timing.transferPrepareMs||0),workerToMainDeliveryMs:round(timing.workerToMainDeliveryMs||0),mainMessageHandlingMs:round(timing.mainMessageHandlingMs||0),mainResponseDelayMs:round(timing.mainResponseDelayMs||0),roundTripMs:round(timing.roundTripMs||0),drawParts:timing.drawParts,over100ms:totalFrameMs>FRAME_MS};
    frameSamples.push(sample);frames++;maxRss=Math.max(maxRss,process.memoryUsage().rss);next+=FRAME_NS;
    if(done>next){const late=done-next,slots=late/FRAME_NS+1n;sample.scheduleLateMs=round(Number(late)/1e6);missed+=Number(slots);maxLate=Math.max(maxLate,Number(late)/1e6);next+=slots*FRAME_NS;}
    else{const wait=Number(next-done)/1e6;if(wait>0&&elapsed(start)+wait<duration)await sleep(wait);else if(elapsed(start)+wait>=duration)break;}
   }
-  const total=elapsed(start),used=process.cpuUsage(cpu),after=process.memoryUsage(),delay={meanMs:round(eventLoop.mean/1e6),p95Ms:round(eventLoop.percentile(95)/1e6),maxMs:round(eventLoop.max/1e6)};
-  eventLoop.reset();const slow=[...frameSamples].sort((a,b)=>b.totalFrameMs-a.totalFrameMs).slice(0,5),wd=timing.workerDiagnostics||{};
+  const total=elapsed(start),used=process.cpuUsage(cpu),after=memorySnapshot(),delay={meanMs:round(eventLoop.mean/1e6),p95Ms:round(eventLoop.percentile(95)/1e6),maxMs:round(eventLoop.max/1e6)};
+  eventLoop.reset();const slow=[...frameSamples].sort((a,b)=>b.totalFrameMs-a.totalFrameMs).slice(0,8);
   return{
    renderer:"@napi-rs/canvas",worker:"worker_threads",resolution:`${W}x${H}`,targetFPS:FPS,durationMs:round(total),frames,estimatedFPS:round(frames/Math.max(.001,total/1000)),frameMs:stats(times),missedDeadlines:missed,missedDeadlinePercent:round(missed/Math.max(1,frames+missed)*100),
    hotspots:{drawMain:stats(renders),canvasData:stats(raws),drawParts:Object.fromEntries(Object.entries(drawParts).map(([k,v])=>[k,stats(v)])),bufferTransfer:stats(copies)},
-   otherStages:{dataFetch:stats(fetches),queueWait:stats(queues),workerDispatch:stats(dispatches),workerDelivery:stats(deliveries),mainResponse:stats(responses)},
-   extractionDiagnostics:{cpuSource:wd.extractProbe?.cpuSource||"threadCpuUsage",lastProbe:wd.extractProbe||null,secondCallSamples:frameSamples.filter(x=>x.extractSecondCallMs!=null).map(x=>x.extractSecondCallMs),slowestFrameExtraction:slow.map(x=>({frame:x.frame,wallMs:x.rawExtractionMs,cpuMs:x.extractCpuMs,cpuWallRatio:x.extractCpuWallRatio,secondCallMs:x.extractSecondCallMs}))},
-   workerDiagnostics:{eventLoopDelay:wd.workerEventLoopDelay||null,gc:{count:wd.gc?.count??0,durationMs:wd.gc?.durationMs??0},gcDuringBenchmark:{count:Math.max(0,(wd.gc?.count||0)-gcBase),durationMs:round(Math.max(0,(wd.gc?.durationMs||0)-gcTimeBase))}},
+   workerScheduling:{mainToWorkerStart:stats(dispatches),renderQueueWait:stats(queues),workerExecution:stats(workerTimes),workerToMainDelivery:stats(deliveries),mainResponseDelay:stats(responses),roundTrip:stats(roundTrips)},
+   otherStages:{dataFetch:stats(fetches),mainMessageHandling:stats(messageHandling),bufferPreparation:stats(prepares),pipeline:stats(pipelines)},
    slowestFrames:slow,frameCountOver100ms:frameSamples.filter(x=>x.over100ms).length,maxLatenessMs:round(maxLate),eventLoopDelay:delay,
    cpu:{userMs:round(used.user/1000),systemMs:round(used.system/1000)},
-   memory:{rssBeforeMiB:mib(mem.rss),rssAfterMiB:mib(after.rss),rssPeakMiB:mib(maxRss),heapBeforeMiB:mib(mem.heapUsed),heapAfterMiB:mib(after.heapUsed),externalBeforeMiB:mib(mem.external),externalAfterMiB:mib(after.external)},
-   frameBytes:FRAME_BYTES,rawPixelMethod,zeroCopyEligibleFrames:zeroCopyFrames,rawBufferInfo:timing.rawBufferInfo,stopReason
+   memory:{before:mem,after,rssPeakMiB:mib(maxRss)},frameBytes:FRAME_BYTES,rawPixelMethod,zeroCopyEligibleFrames:zeroCopyFrames,rawBufferInfo:timing.rawBufferInfo,stopReason
   };
  }
  function attach(app,getData){
@@ -388,7 +358,7 @@ if(IS_WORKER){
    if(benchmarkActive)return res.status(409).json({error:"Another benchmark is running"});benchmarkActive=true;
    try{
     const frame=await renderRawFrame(await getData()),mem=memorySnapshot();
-    res.set("Cache-Control","no-store").json({renderer:"@napi-rs/canvas",worker:"worker_threads",rawPixelMethod:timing.rawPixelMethod,resolution:`${W}x${H}`,frameBytes:frame.length,expectedBytes:FRAME_BYTES,valid:frame.length===FRAME_BYTES,fontRegistered:GlobalFonts.has(FONT),timing:{...timing},memory:mem,workerDiagnostics:timing.workerDiagnostics||null,mainThreadEventLoopDelay:{meanMs:round(eventLoop.mean/1e6),p95Ms:round(eventLoop.percentile(95)/1e6),p99Ms:round(eventLoop.percentile(99)/1e6),maxMs:round(eventLoop.max/1e6)}});
+    res.set("Cache-Control","no-store").json({renderer:"@napi-rs/canvas",worker:"worker_threads",rawPixelMethod:timing.rawPixelMethod,resolution:`${W}x${H}`,frameBytes:frame.length,expectedBytes:FRAME_BYTES,valid:frame.length===FRAME_BYTES,fontRegistered:GlobalFonts.has(FONT),timing:{...timing},memory:mem,mainThreadEventLoopDelay:{meanMs:round(eventLoop.mean/1e6),p95Ms:round(eventLoop.percentile(95)/1e6),p99Ms:round(eventLoop.percentile(99)/1e6),maxMs:round(eventLoop.max/1e6)}});
    }catch(e){console.error("[CANVAS DIAGNOSTICS]",e.stack||e);if(!res.headersSent)res.status(500).json({error:"Canvas diagnostics failed",message:e.message});}
    finally{benchmarkActive=false;eventLoop.reset();}
   };
