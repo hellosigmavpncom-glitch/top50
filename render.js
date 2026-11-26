@@ -7,10 +7,8 @@ const nf=new Intl.NumberFormat("en-US"),MAX_RSS=440*1048576,IS_WORKER=!isMainThr
 const elapsed=(a,b=process.hrtime.bigint())=>Number(b-a)/1e6,mib=n=>+(n/1048576).toFixed(2),round=n=>+Number(n||0).toFixed(2),sleep=ms=>new Promise(r=>setTimeout(r,Math.max(1,ms)));
 const C={bg:"#050713",panel:"#0b1024",panel2:"#101832",border:"#273a68",blue:"#27a9ff",purple:"#8b36ff",teal:"#25e5c0",white:"#f5f7ff",muted:"#aab8df",red:"#ff4267"};
 const images=new Map(),rollStates=new Map(),measureCache=new Map(),fontCache=new Map(),wrapCache=new Map(),avatarSprites=new WeakMap(),fallbackSprites=new Map();
-const history={subs:[],rates:[],samples:[],lastSample:0};
-const timing={dataFetchMs:0,avatarWaitMs:0,queueWaitMs:0,buildMs:0,renderMs:0,bufferMs:0,rawBufferMs:0,pipelineTotalMs:0,totalMs:0,transferCopyMs:0,transferPrepareMs:0,canvasDataCpuMs:0,canvasDataNonCpuWaitMs:0,drawCpuMs:0,drawNonCpuWaitMs:0,transferPreparationCpuMs:0,transferPreparationWallMs:0};
-let benchmarkActive=false,latestMain=null,sampleTimer=null,staticCanvas=null,staticReady=false,mainCanvas=null,mainContext=null;
-let chartCanvas=null,chartContext=null,chartCacheKey="",chartX=null,chartY=null,barSprite=null,barsCanvas=null,barsContext=null,barsKey="",goalGradient=null,profileGradient=null,lastUpdated=-1,lastUpdatedText="",rawPixelMethod="canvas.data()",lastDrawMetrics=null;
+const history={subs:[],rates:[],samples:[],lastSample:0},timing={dataFetchMs:0,avatarWaitMs:0,queueWaitMs:0,buildMs:0,renderMs:0,bufferMs:0,rawBufferMs:0,pipelineTotalMs:0,totalMs:0,transferCopyMs:0,transferPrepareMs:0,canvasDataCpuMs:0,canvasDataNonCpuWaitMs:0,drawCpuMs:0,drawNonCpuWaitMs:0,transferPreparationCpuMs:0,transferPreparationWallMs:0};
+let benchmarkActive=false,latestMain=null,sampleTimer=null,staticCanvas=null,staticReady=false,mainCanvas=null,mainContext=null,chartCanvas=null,chartContext=null,chartCacheKey="",chartX=null,chartY=null,barSprite=null,barsCanvas=null,barsContext=null,barsKey="",goalGradient=null,profileGradient=null,lastUpdated=-1,lastUpdatedText="",rawPixelMethod="canvas.data()",lastDrawMetrics=null;
 
 function cpuSnapshot(){try{return typeof process.threadCpuUsage==="function"?process.threadCpuUsage():null;}catch{return null;}}
 function cpuDeltaMs(a,b=cpuSnapshot()){return!a||!b?null:Math.max(0,((b.user-a.user)+(b.system-a.system))/1000);}
@@ -21,8 +19,7 @@ if(IS_WORKER)workerEventLoop.enable();
 
 function font(size,weight=800){const k=weight+":"+size;let v=fontCache.get(k);if(!v)fontCache.set(k,v=`${weight} ${size}px "${FONT}"`);return v;}
 function registerFonts(){
- const root=path.join(__dirname,"node_modules","@fontsource","inter","files"),files=["inter-latin-700-normal.woff2","inter-latin-800-normal.woff2","inter-latin-900-normal.woff2"];
- let count=0;
+ const root=path.join(__dirname,"node_modules","@fontsource","inter","files"),files=["inter-latin-700-normal.woff2","inter-latin-800-normal.woff2","inter-latin-900-normal.woff2"];let count=0;
  for(const f of files){const p=path.join(root,f);if(fs.existsSync(p))try{GlobalFonts.registerFromPath(p,FONT);count++;}catch(e){console.error("[FONT]",e.message);}}
  for(const f of ["Inter-Bold.ttf","Inter-ExtraBold.ttf","Inter-Black.ttf"]){const p=path.join(__dirname,"assets","fonts",f);if(fs.existsSync(p))try{GlobalFonts.registerFromPath(p,FONT);count++;}catch(e){console.error("[FONT]",e.message);}}
  if(!IS_WORKER)console.log(count?"[FONT] Inter registered":"[FONT] Inter files not found");
@@ -243,12 +240,18 @@ function extractRawFrame(canvas){
  if(result.length!==FRAME_BYTES)throw Error("Invalid RGBA frame size: "+result.length+" expected "+FRAME_BYTES);
  return{result,extractMs:wallMs,extractCpuMs:cpuMs,extractNonCpuWaitMs:cpuMs===null?null:Math.max(0,wallMs-cpuMs),bufferInfo:{byteLength:result.byteLength,byteOffset:result.byteOffset,backingBytes:result.buffer.byteLength,zeroCopyEligible:result.byteOffset===0&&result.byteLength===result.buffer.byteLength}};
 }
-function renderInternalUnlocked(data={},mode="png",avatarPair,metrics){
+
+/* PNG output: async encode for previews, toBuffer for comparison, raw for streaming. */
+async function renderInternalUnlocked(data={},mode="png",avatarPair,metrics){
  const start=process.hrtime.bigint();drawMain.avatar1=avatarPair[0];drawMain.avatar2=avatarPair[1];
  const drawCpuStart=cpuSnapshot(),drawStart=process.hrtime.bigint(),canvas=drawMain(data),drawDone=process.hrtime.bigint(),drawWallMs=elapsed(drawStart,drawDone),drawCpuMs=cpuDeltaMs(drawCpuStart);
  let result,extractMs=0,bufferInfo=null,extractCpuMs=null,extractNonCpuWaitMs=null;
- if(mode==="raw"){const raw=extractRawFrame(canvas);result=raw.result;extractMs=raw.extractMs;bufferInfo=raw.bufferInfo;extractCpuMs=raw.extractCpuMs;extractNonCpuWaitMs=raw.extractNonCpuWaitMs;}
- else result=canvas.toBuffer("image/png");
+ if(mode==="raw"){
+  const raw=extractRawFrame(canvas);result=raw.result;extractMs=raw.extractMs;bufferInfo=raw.bufferInfo;extractCpuMs=raw.extractCpuMs;extractNonCpuWaitMs=raw.extractNonCpuWaitMs;
+ }else if(mode==="png-async"){
+  if(typeof canvas.encode!=="function")throw Error("canvas.encode() is unavailable");
+  const encoded=await canvas.encode("png");result=Buffer.isBuffer(encoded)?encoded:Buffer.from(encoded);
+ }else result=canvas.toBuffer("image/png");
  const done=process.hrtime.bigint();
  Object.assign(timing,{
   avatarWaitMs:metrics.avatarWaitMs,queueWaitMs:metrics.queueWaitMs,
@@ -261,9 +264,9 @@ function renderInternalUnlocked(data={},mode="png",avatarPair,metrics){
  });
  return result;
 }
-function renderInternal(data={},mode="png",queueWaitMs=0){
+async function renderInternal(data={},mode="png",queueWaitMs=0){
  const requestStart=process.hrtime.bigint(),pair=[avatar(data.lucan?.channel?.avatar),avatar(data.mine?.channel?.avatar)];
- return renderInternalUnlocked(data,mode,pair,{requestStart,avatarWaitMs:0,queueWaitMs});
+ return await renderInternalUnlocked(data,mode,pair,{requestStart,avatarWaitMs:0,queueWaitMs});
 }
 function stats(a){
  if(!a.length)return{averageMs:0,medianMs:0,p95Ms:0,minMs:0,maxMs:0};
@@ -273,11 +276,11 @@ function stats(a){
 function memorySnapshot(){const m=process.memoryUsage();return{rssMiB:mib(m.rss),heapUsedMiB:mib(m.heapUsed),heapTotalMiB:mib(m.heapTotal),externalMiB:mib(m.external),arrayBuffersMiB:mib(m.arrayBuffers||0)};}
 
 if(IS_WORKER){
- parentPort.on("message",msg=>{
+ parentPort.on("message",async msg=>{
   if(msg.type==="resetEventLoop"){workerEventLoop.reset();return;}
   const{id,mode,data,dispatchNs,queueWaitMs}=msg,workerStarted=process.hrtime.bigint();
   try{
-   const result=renderInternal(data,mode,queueWaitMs),renderDone=process.hrtime.bigint(),workerExecutionMs=elapsed(workerStarted,renderDone),length=result.byteLength;
+   const result=await renderInternal(data,mode,queueWaitMs),renderDone=process.hrtime.bigint(),workerExecutionMs=elapsed(workerStarted,renderDone),length=result.byteLength;
    const prepStart=process.hrtime.bigint(),prepCpuStart=cpuSnapshot();let transfer=null,transferCopyMs=0,zeroCopy=false;
    if(result.buffer instanceof ArrayBuffer&&result.byteOffset===0&&result.byteLength===result.buffer.byteLength){transfer=result.buffer;zeroCopy=true;}
    else{const copyStart=process.hrtime.bigint();transfer=new ArrayBuffer(length);new Uint8Array(transfer).set(new Uint8Array(result.buffer,result.byteOffset,length));transferCopyMs=elapsed(copyStart);}
@@ -318,7 +321,6 @@ if(IS_WORKER){
  }
  function pump(){
   if(active)return;
-  // Raw frames take priority; PNG previews run when no raw frame is waiting.
   const r=latestRaw||pngQueue.shift();if(!r)return;
   if(r===latestRaw)latestRaw=null;
   startWorker();active=r;r.dispatchNs=process.hrtime.bigint();r.queueWaitMs=elapsed(r.queuedNs,r.dispatchNs);
@@ -338,7 +340,11 @@ if(IS_WORKER){
   });
  }
  async function renderDashboard(data){
-  const r=await workerRequest(data,"png"),resumed=process.hrtime.bigint();
+  const r=await workerRequest(data,"png-async"),resumed=process.hrtime.bigint();
+  r.meta.mainResponseDelayMs=r.meta.messageReceivedNs?elapsed(BigInt(r.meta.messageReceivedNs),resumed):0;Object.assign(timing,r.meta);return r.buffer;
+ }
+ async function renderPngFrame(data,method="async"){
+  const r=await workerRequest(data,method==="async"?"png-async":"png-buffer"),resumed=process.hrtime.bigint();
   r.meta.mainResponseDelayMs=r.meta.messageReceivedNs?elapsed(BigInt(r.meta.messageReceivedNs),resumed):0;Object.assign(timing,r.meta);return r.buffer;
  }
  async function renderRawFrame(data){
@@ -383,6 +389,31 @@ if(IS_WORKER){
    memory:{before:mem,after,rssPeakMiB:mib(maxRss)},frameBytes:FRAME_BYTES,rawPixelMethod,zeroCopyEligibleFrames:zeroCopyFrames,rawBufferInfo:timing.rawBufferInfo,stopReason
   };
  }
+ async function freshPngBenchmark(getData,method="async"){
+  const duration=10000,frames=[],encodeTimes=[],drawTimes=[],workerTimes=[],sizes=[];
+  let count=0,maxRss=0,stopReason=null;
+  const initial=await getData();for(let i=0;i<8;i++)await renderPngFrame(initial,method);
+  eventLoop.reset();worker.postMessage({type:"resetEventLoop"});
+  const start=process.hrtime.bigint(),nextStart=start;
+  let next=nextStart;
+  while(elapsed(start)<duration){
+   if(process.memoryUsage().rss>MAX_RSS){stopReason="Main-process memory safety limit reached";break;}
+   const frameStart=process.hrtime.bigint(),data=await getData(),png=await renderPngFrame(data,method),done=process.hrtime.bigint();
+   if(!png?.length)throw Error("PNG encoder returned an empty frame");
+   frames.push(elapsed(frameStart,done));encodeTimes.push(timing.bufferMs||0);drawTimes.push(timing.drawMainMs||0);workerTimes.push(timing.workerExecutionMs||0);sizes.push(png.length);
+   count++;maxRss=Math.max(maxRss,process.memoryUsage().rss);next+=FRAME_NS;
+   if(done>next){const slots=(done-next)/FRAME_NS+1n;next+=slots*FRAME_NS;}
+   else{const wait=Number(next-done)/1e6;if(wait>0&&elapsed(start)+wait<duration)await sleep(wait);else break;}
+  }
+  const total=elapsed(start),mainDelay=eventLoopSnapshot(eventLoop);eventLoop.reset();
+  return{
+   renderer:"@napi-rs/canvas",test:"PNG encoding",method:method==="async"?'canvas.encode("png")':'canvas.toBuffer("image/png")',
+   resolution:`${W}x${H}`,targetFPS:FPS,durationMs:round(total),frames:count,estimatedFPS:round(count/Math.max(.001,total/1000)),
+   totalFrameMs:stats(frames),encodingMs:stats(encodeTimes),drawMs:stats(drawTimes),workerExecutionMs:stats(workerTimes),
+   pngSizeBytes:{average:round(sizes.reduce((a,b)=>a+b,0)/Math.max(1,sizes.length)),min:sizes.length?Math.min(...sizes):0,max:sizes.length?Math.max(...sizes):0},
+   eventLoopDelay:{main:mainDelay,worker:timing.workerEventLoopDelay},memory:{...memorySnapshot(),rssPeakMiB:mib(maxRss)},stopReason
+  };
+ }
  function attach(app,getData){
   app.get("/api/renderer/preview.png",async(req,res)=>{
    if(benchmarkActive)return res.status(503).send("Benchmark running; retry shortly");
@@ -393,6 +424,15 @@ if(IS_WORKER){
    if(benchmarkActive)return res.status(409).json({error:"Benchmark already running"});benchmarkActive=true;
    try{res.set("Cache-Control","no-store");res.json(await freshBenchmark(getData));}
    catch(e){console.error("[CANVAS BENCHMARK]",e.stack||e);if(!res.headersSent)res.status(500).json({error:"Benchmark failed",message:e.message});}
+   finally{benchmarkActive=false;}
+  });
+  app.get("/api/renderer/png-benchmark",async(req,res)=>{
+   if(benchmarkActive)return res.status(409).json({error:"Another benchmark is running"});
+   const method=String(req.query.method||"async").toLowerCase();
+   if(method!=="async"&&method!=="buffer")return res.status(400).json({error:"Use method=async or method=buffer"});
+   benchmarkActive=true;
+   try{res.set("Cache-Control","no-store");res.json(await freshPngBenchmark(getData,method));}
+   catch(e){console.error("[PNG BENCHMARK]",e.stack||e);if(!res.headersSent)res.status(500).json({error:"PNG benchmark failed",message:e.message});}
    finally{benchmarkActive=false;}
   });
   const diagnostics=async(req,res)=>{
