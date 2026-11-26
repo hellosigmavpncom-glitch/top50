@@ -235,7 +235,7 @@ function drawMain(data={}){
  parts.footerMs=elapsed(t);parts.totalMs=elapsed(drawStart);lastDrawMetrics=parts;return mainCanvas;
 }
 
-/* Exactly one pixel extraction per raw frame. No probe, CPU snapshot or memory snapshot. */
+/* One pixel extraction per raw frame; retains the zero-copy Buffer path. */
 function extractRawFrame(canvas){
  const start=process.hrtime.bigint();let result;
  if(typeof canvas.data==="function"){rawPixelMethod="canvas.data()";result=canvas.data();}
@@ -316,7 +316,11 @@ if(IS_WORKER){
   const initial=await getData();await warmWorker(initial);eventLoop.reset();
   const start=process.hrtime.bigint(),cpu=process.cpuUsage(),mem=memorySnapshot();next=start;
   while(elapsed(start)<duration){
-   if(process.memoryUsage().rss>MAX_RSS){stopReason="Main-process memory safety limit reached";break;}
+   /* Sample RSS every 10 frames instead of twice on every frame. */
+   if(frames%10===0){
+    const rss=process.memoryUsage().rss;maxRss=Math.max(maxRss,rss);
+    if(rss>MAX_RSS){stopReason="Main-process memory safety limit reached";break;}
+   }
    const frameStart=process.hrtime.bigint(),data=await getData(),dataDone=process.hrtime.bigint(),fetchMs=elapsed(frameStart,dataDone);timing.dataFetchMs=fetchMs;
    const frame=await renderRawFrame(data),done=process.hrtime.bigint();
    if(timing.rawBufferInfo?.zeroCopyEligible)zeroCopyFrames++;if(!frame||frame.length!==FRAME_BYTES)throw Error("Invalid RGBA frame");
@@ -326,11 +330,13 @@ if(IS_WORKER){
    pipelines.push(timing.pipelineTotalMs);workerTimes.push(timing.workerExecutionMs||0);copies.push(timing.transferCopyMs||0);prepares.push(timing.transferPrepareMs||0);
    roundTrips.push(timing.roundTripMs||0);dispatches.push(timing.workerDispatchMs||0);deliveries.push(timing.workerToMainDeliveryMs||0);responses.push(timing.mainResponseDelayMs||0);messageHandling.push(timing.mainMessageHandlingMs||0);
    const sample={frame:frames+1,totalFrameMs:round(totalFrameMs),dataFetchMs:round(fetchMs),mainToWorkerStartMs:round(timing.workerDispatchMs||0),renderQueueWaitMs:round(timing.queueWaitMs||0),workerExecutionMs:round(timing.workerExecutionMs||0),canvasRenderMs:round(timing.drawMainMs||timing.renderMs),rawExtractionMs:round(timing.rawBufferMs),transferPreparationMs:round(timing.transferPrepareMs||0),workerToMainDeliveryMs:round(timing.workerToMainDeliveryMs||0),mainMessageHandlingMs:round(timing.mainMessageHandlingMs||0),mainResponseDelayMs:round(timing.mainResponseDelayMs||0),roundTripMs:round(timing.roundTripMs||0),drawParts:timing.drawParts,over100ms:totalFrameMs>FRAME_MS};
-   frameSamples.push(sample);frames++;maxRss=Math.max(maxRss,process.memoryUsage().rss);next+=FRAME_NS;
+   frameSamples.push(sample);frames++;next+=FRAME_NS;
    if(done>next){const late=done-next,slots=late/FRAME_NS+1n;sample.scheduleLateMs=round(Number(late)/1e6);missed+=Number(slots);maxLate=Math.max(maxLate,Number(late)/1e6);next+=slots*FRAME_NS;}
    else{const wait=Number(next-done)/1e6;if(wait>0&&elapsed(start)+wait<duration)await sleep(wait);else if(elapsed(start)+wait>=duration)break;}
   }
-  const total=elapsed(start),used=process.cpuUsage(cpu),after=memorySnapshot(),delay={meanMs:round(eventLoop.mean/1e6),p95Ms:round(eventLoop.percentile(95)/1e6),maxMs:round(eventLoop.max/1e6)};
+  const total=elapsed(start),used=process.cpuUsage(cpu),after=memorySnapshot();
+  maxRss=Math.max(maxRss,process.memoryUsage().rss);
+  const delay={meanMs:round(eventLoop.mean/1e6),p95Ms:round(eventLoop.percentile(95)/1e6),maxMs:round(eventLoop.max/1e6)};
   eventLoop.reset();const slow=[...frameSamples].sort((a,b)=>b.totalFrameMs-a.totalFrameMs).slice(0,8);
   return{
    renderer:"@napi-rs/canvas",worker:"worker_threads",resolution:`${W}x${H}`,targetFPS:FPS,durationMs:round(total),frames,estimatedFPS:round(frames/Math.max(.001,total/1000)),frameMs:stats(times),missedDeadlines:missed,missedDeadlinePercent:round(missed/Math.max(1,frames+missed)*100),
