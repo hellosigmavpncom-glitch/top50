@@ -1,19 +1,17 @@
+
 "use strict";
 const fs=require("fs"),path=require("path"),{Worker,isMainThread,parentPort,workerData}=require("worker_threads");
 console.log("[CANVAS VERSION]",require("@napi-rs/canvas/package.json").version);
 const {createCanvas,loadImage,GlobalFonts}=require("@napi-rs/canvas"),{monitorEventLoopDelay,PerformanceObserver}=require("perf_hooks");
 const W=1280,H=720,FPS=10,FRAME_MS=1000/FPS,FRAME_NS=BigInt(Math.round(FRAME_MS*1e6)),FRAME_BYTES=W*H*4,SHARED_SLOT_COUNT=3;
-const nf=new Intl.NumberFormat("en-US"),MAX_RSS=440*1048576,IS_WORKER=!isMainThread,FONT="Inter";
-const elapsed=(a,b=process.hrtime.bigint())=>Number(b-a)/1e6,mib=n=>+(n/1048576).toFixed(2),round=n=>+Number(n||0).toFixed(2);
-const sleep=ms=>new Promise(r=>setTimeout(r,Math.max(1,ms)));
+const nf=new Intl.NumberFormat("en-US"),MAX_RSS=440*1048576,IS_WORKER=!isMainThread,FONT="Inter",WORKER_REQUEST_TIMEOUT=12000,SLOT_WAIT_TIMEOUT=12000,MAX_WORKER_QUEUE=6;
+const elapsed=(a,b=process.hrtime.bigint())=>Number(b-a)/1e6,mib=n=>+(n/1048576).toFixed(2),round=n=>+Number(n||0).toFixed(2),sleep=ms=>new Promise(r=>setTimeout(r,Math.max(1,ms)));
 const C={bg:"#050713",panel:"#0b1024",panel2:"#101832",border:"#273a68",blue:"#27a9ff",purple:"#8b36ff",teal:"#25e5c0",white:"#f5f7ff",muted:"#aab8df",red:"#ff4267"};
 const images=new Map(),rollStates=new Map(),measureCache=new Map(),fontCache=new Map(),wrapCache=new Map(),avatarSprites=new WeakMap(),fallbackSprites=new Map();
 const history={subs:[],rates:[],samples:[],lastSample:0};
 const timing={dataFetchMs:0,avatarWaitMs:0,queueWaitMs:0,buildMs:0,renderMs:0,bufferMs:0,rawBufferMs:0,pipelineTotalMs:0,totalMs:0,transferCopyMs:0,transferPrepareMs:0,sharedFrameCopyMs:0};
 const sharedViews=IS_WORKER&&Array.isArray(workerData)?workerData.map(s=>new Uint8Array(s)):[];
-let benchmarkActive=false,latestMain=null,sampleTimer=null,staticCanvas=null,staticReady=false,mainCanvas=null,mainContext=null;
-let chartCanvas=null,chartContext=null,chartCacheKey="",chartX=null,chartY=null,barSprite=null,barsCanvas=null,barsContext=null,barsKey="",goalGradient=null,profileGradient=null,lastUpdated=-1,lastUpdatedText="",renderQueue=Promise.resolve(),rawPixelMethod="canvas.data()",lastDrawMetrics=null;
-let lastExtractProbe=null,gcStats={count:0,durationMs:0},gcEvents=[],workerLoop=null,gcObserver=null;
+let benchmarkActive=false,latestMain=null,sampleTimer=null,staticCanvas=null,staticReady=false,mainCanvas=null,mainContext=null,chartCanvas=null,chartContext=null,chartCacheKey="",chartX=null,chartY=null,barSprite=null,barsCanvas=null,barsContext=null,barsKey="",goalGradient=null,profileGradient=null,lastUpdated=-1,lastUpdatedText="",renderQueue=Promise.resolve(),rawPixelMethod="canvas.data()",lastDrawMetrics=null,lastExtractProbe=null,gcStats={count:0,durationMs:0},gcEvents=[],workerLoop=null,gcObserver=null;
 
 function collectGc(entries){for(const e of entries||[]){gcStats.count++;gcStats.durationMs+=e.duration;gcEvents.push({startTimeMs:round(e.startTime),durationMs:round(e.duration),kind:e.kind,flags:e.flags});if(gcEvents.length>128)gcEvents.shift();}}
 function font(size,weight=800){const key=weight+":"+size;let v=fontCache.get(key);if(!v){v=`${weight} ${size}px "${FONT}"`;fontCache.set(key,v);}return v;}
@@ -53,8 +51,10 @@ function renderInternal(data={},mode="png",options={}){const requestStart=proces
 
 if(IS_WORKER){
  workerLoop=monitorEventLoopDelay({resolution:10});workerLoop.enable();
+ let workerQueueDepth=0;
  try{gcObserver=new PerformanceObserver(list=>collectGc(list.getEntries()));gcObserver.observe({entryTypes:["gc"]});}catch{}
- parentPort.on("message",async msg=>{
+ const sendFailure=(id,e,received)=>{try{parentPort.postMessage({id,ok:false,error:e?.stack||e?.message||String(e),workerReceivedNs:String(received),workerPostNs:String(process.hrtime.bigint())});}catch(postError){console.error("[WORKER RESPONSE ERROR]",postError.stack||postError);}};
+ const processMessage=async msg=>{
   const{id,mode,data,sentNs,options}=msg,workerReceivedNs=process.hrtime.bigint();
   try{
    let result=Buffer.alloc(0);
@@ -66,20 +66,32 @@ if(IS_WORKER){
    const workerPostNs=process.hrtime.bigint();
    parentPort.postMessage({id,ok:true,buffer:result,meta,workerReceivedNs:String(workerReceivedNs),workerDoneNs:String(workerDoneNs),workerPostNs:String(workerPostNs)});
    workerLoop?.reset();
-  }catch(e){try{parentPort.postMessage({id,ok:false,error:e.stack||e.message,workerReceivedNs:String(workerReceivedNs),workerPostNs:String(process.hrtime.bigint())});}catch(postError){console.error("[WORKER RESPONSE ERROR]",postError.stack||postError);}}
+  }catch(e){sendFailure(id,e,workerReceivedNs);}
+ };
+ parentPort.on("message",msg=>{
+  if(msg.mode==="ping"){processMessage(msg);return;}
+  if(workerQueueDepth>=MAX_WORKER_QUEUE){sendFailure(msg.id,Error("Renderer worker queue is full; request rejected to prevent backlog"),process.hrtime.bigint());return;}
+  workerQueueDepth++;
+  processMessage(msg).finally(()=>{workerQueueDepth=Math.max(0,workerQueueDepth-1);});
  });
 }else{
- let worker=null,nextId=0;
- const pending=new Map(),eventLoop=monitorEventLoopDelay({resolution:20}),sharedFrameSlots=[],slotWaiters=[];
+ let worker=null,nextId=0,workerGeneration=0;
+ const pending=new Map(),terminations=new WeakMap(),eventLoop=monitorEventLoopDelay({resolution:20}),sharedFrameSlots=[],slotWaiters=[];
  for(let i=0;i<SHARED_SLOT_COUNT;i++){const sab=new SharedArrayBuffer(FRAME_BYTES);sharedFrameSlots.push({sab,buffer:Buffer.from(sab),leased:false,index:i});}
  eventLoop.enable();
  try{gcObserver=new PerformanceObserver(list=>collectGc(list.getEntries()));gcObserver.observe({entryTypes:["gc"]});}catch{}
- function acquireFrameSlot(){const free=sharedFrameSlots.find(s=>!s.leased);if(free){free.leased=true;return Promise.resolve(free);}return new Promise(resolve=>slotWaiters.push(resolve));}
- function releaseFrameSlot(slot){if(!slot||!slot.leased)return;const next=slotWaiters.shift();if(next)next(slot);else slot.leased=false;}
+ function rejectGeneration(instance,error){for(const[id,p]of pending){if(p.worker!==instance)continue;clearTimeout(p.timer);pending.delete(id);p.reject(error);}console.error("[RENDER WORKER]",error?.stack||error);}
+ function stopWorker(instance,error){if(!instance)return Promise.resolve();if(worker===instance)worker=null;let stopping=terminations.get(instance);if(!stopping){stopping=Promise.resolve().then(()=>instance.terminate()).catch(e=>console.error("[RENDER WORKER TERMINATE]",e.message)).then(()=>{rejectGeneration(instance,error||Error("Renderer worker stopped"));});terminations.set(instance,stopping);}return stopping;}
+ function acquireFrameSlot(){const free=sharedFrameSlots.find(s=>!s.leased);if(free){free.leased=true;return Promise.resolve(free);}return new Promise((resolve,reject)=>{const waiter={resolve,reject,timer:null,settled:false};waiter.timer=setTimeout(()=>{if(waiter.settled)return;waiter.settled=true;const i=slotWaiters.indexOf(waiter);if(i!==-1)slotWaiters.splice(i,1);reject(Error("Timed out waiting for a free shared frame slot"));},SLOT_WAIT_TIMEOUT);waiter.timer.unref?.();slotWaiters.push(waiter);});}
+ function releaseFrameSlot(slot){if(!slot||!slot.leased)return;while(slotWaiters.length){const next=slotWaiters.shift();if(next.settled)continue;next.settled=true;clearTimeout(next.timer);next.resolve(slot);return;}slot.leased=false;}
  function makeLease(slot,meta){let released=false;return{buffer:slot.buffer,meta,release(){if(released)return;released=true;releaseFrameSlot(slot);}};}
- function failWorker(error){for(const[id,p]of pending){p.reject(error);pending.delete(id);}console.error("[RENDER WORKER]",error?.stack||error);}
- function startWorker(){if(worker)return;if(typeof SharedArrayBuffer==="undefined")throw Error("SharedArrayBuffer is unavailable");worker=new Worker(__filename,{workerData:sharedFrameSlots.map(s=>s.sab)});worker.on("message",msg=>{const mainReceiveNs=process.hrtime.bigint(),p=pending.get(msg.id);if(!p)return;pending.delete(msg.id);if(!msg.ok){p.reject(Error(msg.error));return;}let buffer=Buffer.alloc(0);if(msg.buffer){if(Buffer.isBuffer(msg.buffer))buffer=msg.buffer;else if(ArrayBuffer.isView(msg.buffer))buffer=Buffer.from(msg.buffer.buffer,msg.buffer.byteOffset,msg.buffer.byteLength);else if(msg.buffer instanceof ArrayBuffer)buffer=Buffer.from(msg.buffer);}const mainHandlingDoneNs=process.hrtime.bigint(),workerReceivedNs=BigInt(msg.workerReceivedNs),workerPostNs=BigInt(msg.workerPostNs);p.resolve({buffer,meta:{...msg.meta,mainToWorkerMessageMs:elapsed(p.sentNs,workerReceivedNs),workerToMainDeliveryMs:elapsed(workerPostNs,mainReceiveNs),mainMessageHandlingMs:elapsed(mainReceiveNs,mainHandlingDoneNs),roundTripMs:elapsed(p.sentNs,mainReceiveNs),mainReceiveNs:String(mainReceiveNs),workerReceivedNs:msg.workerReceivedNs,workerPostNs:msg.workerPostNs}});});worker.on("error",e=>{failWorker(e);worker=null;});worker.on("exit",code=>{worker=null;if(code!==0)failWorker(Error("Renderer worker exited with code "+code));});console.log("[RENDER WORKER] Started embedded canvas worker | shared slots:",SHARED_SLOT_COUNT);}
- function workerRequest(data,mode="png",options={}){startWorker();const id=++nextId,sentNs=process.hrtime.bigint();return new Promise((resolve,reject)=>{pending.set(id,{resolve,reject,sentNs});try{worker.postMessage({id,data,mode,options,sentNs:String(sentNs)});}catch(e){pending.delete(id);reject(e);}});}
+ function startWorker(){if(worker)return worker;if(typeof SharedArrayBuffer==="undefined")throw Error("SharedArrayBuffer is unavailable");const instance=new Worker(__filename,{workerData:sharedFrameSlots.map(s=>s.sab)}),generation=++workerGeneration;instance.generation=generation;worker=instance;
+  instance.on("message",msg=>{if(worker!==instance&&instance.generation!==generation)return;const mainReceiveNs=process.hrtime.bigint(),p=pending.get(msg.id);if(!p||p.worker!==instance)return;clearTimeout(p.timer);pending.delete(msg.id);if(!msg.ok){p.reject(Error(msg.error));return;}let buffer=Buffer.alloc(0);if(msg.buffer){if(Buffer.isBuffer(msg.buffer))buffer=msg.buffer;else if(ArrayBuffer.isView(msg.buffer))buffer=Buffer.from(msg.buffer.buffer,msg.buffer.byteOffset,msg.buffer.byteLength);else if(msg.buffer instanceof ArrayBuffer)buffer=Buffer.from(msg.buffer);}const mainHandlingDoneNs=process.hrtime.bigint(),workerReceivedNs=BigInt(msg.workerReceivedNs),workerPostNs=BigInt(msg.workerPostNs);p.resolve({buffer,meta:{...msg.meta,mainToWorkerMessageMs:elapsed(p.sentNs,workerReceivedNs),workerToMainDeliveryMs:elapsed(workerPostNs,mainReceiveNs),mainMessageHandlingMs:elapsed(mainReceiveNs,mainHandlingDoneNs),roundTripMs:elapsed(p.sentNs,mainReceiveNs),mainReceiveNs:String(mainReceiveNs),workerReceivedNs:msg.workerReceivedNs,workerPostNs:msg.workerPostNs}});});
+  instance.on("error",e=>{void stopWorker(instance,e);});
+  instance.on("exit",code=>{if(worker===instance)worker=null;rejectGeneration(instance,Error("Renderer worker exited unexpectedly with code "+code));});
+  console.log("[RENDER WORKER] Started embedded canvas worker | generation:",generation,"| shared slots:",SHARED_SLOT_COUNT);return instance;
+ }
+ function workerRequest(data,mode="png",options={}){const instance=startWorker(),id=++nextId,sentNs=process.hrtime.bigint();return new Promise((resolve,reject)=>{const p={resolve,reject,sentNs,worker:instance,timer:null};p.timer=setTimeout(()=>{if(!pending.has(id))return;console.error("[RENDER WORKER] Request timed out:",id,mode,"after",WORKER_REQUEST_TIMEOUT+"ms");stopWorker(instance,Error("Renderer worker request timed out after "+WORKER_REQUEST_TIMEOUT+"ms ("+mode+")"));},WORKER_REQUEST_TIMEOUT);p.timer.unref?.();pending.set(id,p);try{instance.postMessage({id,data,mode,options,sentNs:String(sentNs)});}catch(e){clearTimeout(p.timer);pending.delete(id);void stopWorker(instance,e);reject(e);}});}
  async function renderDashboard(data){const r=await workerRequest(data,"png"),resumed=process.hrtime.bigint();r.meta.mainResponseDelayMs=elapsed(BigInt(r.meta.mainReceiveNs),resumed);Object.assign(timing,r.meta);return r.buffer;}
  async function renderRawFrameDetailed(data){const waitStart=process.hrtime.bigint(),slot=await acquireFrameSlot(),slotAcquired=process.hrtime.bigint();try{const r=await workerRequest(data,"raw-shared",{slotIndex:slot.index}),resumed=process.hrtime.bigint();r.meta.slotWaitMs=elapsed(waitStart,slotAcquired);r.meta.sharedSlotsLeased=sharedFrameSlots.filter(s=>s.leased).length;r.meta.sharedSlotWaiters=slotWaiters.length;r.meta.mainResponseDelayMs=elapsed(BigInt(r.meta.mainReceiveNs),resumed);Object.assign(timing,r.meta);return makeLease(slot,r.meta);}catch(e){releaseFrameSlot(slot);throw e;}}
  async function renderRawFrame(data){const lease=await renderRawFrameDetailed(data);try{return Buffer.from(lease.buffer);}finally{lease.release();}}
