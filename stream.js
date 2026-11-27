@@ -2,8 +2,7 @@
 "use strict";
 const {spawn,execFileSync}=require("child_process"),{performance}=require("perf_hooks"),renderer=require("./render"),fs=require("fs"),os=require("os"),path=require("path");
 const ffmpeg=process.env.FFMPEG_PATH||"ffmpeg";
-const W=1280,H=720,OUT_W=960,OUT_H=540,FPS=10,FRAME_MS=1000/FPS,BYTES=W*H*4,BITRATE="1500k",AUDIO="anullsrc=channel_layout=stereo:sample_rate=44100",SCALE="scale="+OUT_W+":"+OUT_H+":flags=fast_bilinear,format=yuv420p",PROTOCOL=(process.env.YOUTUBE_PROTOCOL||"rtmp").toLowerCase(),RENDER_TIMEOUT=15000,WRITE_TIMEOUT=15000,STALL_TIMEOUT=20000,RESTART_MAX=30000,sleep=ms=>new Promise(r=>setTimeout(r,ms));
-let active=false,child=null,restartTimer=null,heartbeatTimer=null,frames=0,dropped=0,intervalFrames=0,intervalDropped=0,lastReport=0,starting=false,ffmpegChecked=false,encoderChecked=false,rawChecked=false,actualChecked=false,flvChecked=false,restartCount=0,lastFrameAt=0,lastHeartbeat=0,pumpState="idle",currentWrite=null,stageStartedAt=0,lastHeartbeatFrames=0,stalledProcess=null;
+const W=1280,H=720,OUT_W=1280,OUT_H=720,FPS=10,FRAME_MS=1000/FPS,BYTES=W*H*4,BITRATE="2000k",AUDIO="anullsrc=channel_layout=stereo:sample_rate=44100",SCALE="format=yuv420p"let active=false,child=null,restartTimer=null,heartbeatTimer=null,frames=0,dropped=0,intervalFrames=0,intervalDropped=0,lastReport=0,starting=false,ffmpegChecked=false,encoderChecked=false,rawChecked=false,actualChecked=false,flvChecked=false,restartCount=0,lastFrameAt=0,lastHeartbeat=0,pumpState="idle",currentWrite=null,stageStartedAt=0,lastHeartbeatFrames=0,stalledProcess=null;
 let renderSamples=[],writeSamples=[],cycleSamples=[],callbackSamples=[],drainSamples=[],frameIntervalSamples=[],scheduleSamples=[],totalBackpressure=0,intervalBackpressure=0,maxWritableLength=0;
 const syntheticFrame=Buffer.alloc(BYTES,80);
 function safe(s){const k=process.env.YOUTUBE_STREAM_KEY;return String(s).replace(k||"__NO_KEY__","[REDACTED]");}
