@@ -1,8 +1,7 @@
 
 "use strict";
 const {spawn,execFileSync}=require("child_process"),{performance}=require("perf_hooks"),renderer=require("./render"),fs=require("fs"),os=require("os"),path=require("path");
-let ffmpeg=process.env.FFMPEG_PATH||null;
-if(!ffmpeg){try{ffmpeg=require("ffmpeg-static");}catch(e){ffmpeg="ffmpeg";}}
+let ffmpeg=process.env.FFMPEG_PATH||"ffmpeg";
 const W=1280,H=720,FPS=10,FRAME_MS=1000/FPS,BYTES=W*H*4,BITRATE="1500k",sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let active=false,child=null,restartTimer=null,frames=0,dropped=0,intervalFrames=0,lastReport=0,starting=false,ffmpegChecked=false,encoderChecked=false,rawChecked=false,actualChecked=false,flvChecked=false,restartCount=0;
 function runTest(args,label,timeoutMs=15000){return new Promise(resolve=>{let output="",done=false,timer,proc;const finish=(ok,reason)=>{if(done)return;done=true;clearTimeout(timer);if(proc&&!proc.killed)proc.kill("SIGKILL");console.log("["+label+"]",ok?"PASSED":"FAILED",reason||"");if(!ok&&output)console.error("["+label+" STDERR]",output.slice(-5000));resolve(ok);};try{proc=spawn(ffmpeg,args,{stdio:["ignore","ignore","pipe"]});}catch(e){return finish(false,e.message);}proc.stderr.on("data",d=>{output+=d.toString();if(output.length>12000)output=output.slice(-12000);});proc.on("error",e=>finish(false,e.message));proc.on("close",(code,signal)=>finish(code===0,"code="+code+" signal="+signal));timer=setTimeout(()=>finish(false,"timeout"),timeoutMs);});}
